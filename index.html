@@ -1523,12 +1523,16 @@ function checkTrophies() {
 }
 // Detail for a tapped Milestones tile: a bar chart of recent days, or a breakdown. Shared with the Thor's bottom screen.
 const MS_KEYS = [["perday", "📈 Words a day"], ["known", "💬 Words known"], ["learning", "✏️ Learning"], ["reviews", "🎯 Reviews"], ["stories", "📖 Stories"], ["learned", "⭐ Learned"], ["streak", "🔥 Streak"], ["minutes", "⏱️ Time"]];
-function msBars(st, field, unit, days = 30) {
+function msBars(st, field, unit, days = 30, running = false) {
   const today = new Date(); today.setHours(12, 0, 0, 0);
   const rows = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today.getTime() - i * DAY), x = st.dayMap[todayKey(d)] || {};
     rows.push({ d, v: typeof field === "function" ? field(x) : (x[field] || 0) });
+  }
+  if (running) {   // a running total that ends at today's figure
+    let acc = running - rows.reduce((n, r) => n + r.v, 0);
+    for (const r of rows) { acc += r.v; r.v = Math.max(0, acc); }
   }
   const max = Math.max(1, ...rows.map(r => r.v)), W = 600, H = 170, top = 18, base = 140, bw = W / days;
   const iMax = rows.reduce((b, r, i) => (r.v > rows[b].v ? i : b), 0);
@@ -1540,14 +1544,15 @@ function msBars(st, field, unit, days = 30) {
     return `<g><title>${fmt(r.d)}: ${r.v} ${unit}</title><rect x="${i * bw}" y="0" width="${bw}" height="${base}" fill="transparent"/>${shape}${lab}</g>`;
   }).join("");
   const ticks = rows.map((r, i) => (i % 7 === (days - 1) % 7 ? `<text x="${i * bw + bw / 2}" y="${base + 18}" text-anchor="middle" class="ms-tick">${i === days - 1 ? "today" : fmt(r.d)}</text>` : "")).join("");
-  const total = rows.reduce((n, r) => n + r.v, 0);
+  const total = running ? rows[days - 1].v - rows[0].v : rows.reduce((n, r) => n + r.v, 0);
   return `<svg viewBox="0 0 ${W} ${H}" class="ms-chart" role="img" aria-label="${unit} per day, last ${days} days">
       <line x1="0" x2="${W}" y1="${base + .5}" y2="${base + .5}" class="ms-axis"/>${bars}${ticks}</svg>
-    <div class="muted small">${total} ${unit} in the last ${days} days · best day ${rows[iMax].v} (${fmt(rows[iMax].d)})</div>`;
+    <div class="muted small">${running ? `+${total} ${unit} in the last ${days} days` : `${total} ${unit} in the last ${days} days · best day ${rows[iMax].v} (${fmt(rows[iMax].d)})`}</div>`;
 }
 function msDetail(key, st) {
   const head = (t, sub) => `<div class="ms-dh"><b>${t}</b><span class="muted small">${sub || ""}</span><button class="icon-btn ms-close" data-ms="" aria-label="Close">✕</button></div>`;
-  if (key === "perday" || key === "known") return head("Words learned per day", `average ${st.perDay.toFixed(1)} a day`) + msBars(st, "k", "words");
+  if (key === "perday") return head("Words learned per day", `average ${st.perDay.toFixed(1)} a day`) + msBars(st, "k", "words");
+  if (key === "known") return head("Words known, growing", `${st.known} now`) + msBars(st, "k", "words", 30, st.known);
   if (key === "reviews") return head("Reviews per day", `${st.reviews} in total`) + msBars(st, "r", "reviews");
   if (key === "minutes" || key === "streak") return head("Minutes studied per day", key === "streak" ? `streak ${st.streak} · best ${st.best}` : "") + msBars(st, x => Math.round((x.t || 0) / 60), "minutes");
   if (key === "stories") {
