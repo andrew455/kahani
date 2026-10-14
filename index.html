@@ -3013,6 +3013,7 @@ function ghSet(state, msg) {
   ghStatus = state; ghMsg = msg || "";
   updateSync();
   const el = document.getElementById("ghStatus"); if (el) el.textContent = ghStatusText();
+  if (typeof pushBottom === "function") pushBottom();
 }
 function ghQueue(path, patch) {
   if (!GH_DOC.test(path)) return;
@@ -3139,7 +3140,7 @@ function setLang(l) {
   if (l === LANG) return;
   try { localStorage.setItem("kahani:lang", l); } catch (e) {}
   if (NATIVE) { try { NATIVE.send(JSON.stringify({ view: "switching", lang: l })); } catch (e) {} }
-  location.reload();
+  if (NATIVE && NATIVE.reload) NATIVE.reload(); else location.reload();
 }
 function flagsHtml() {
   return `<span class="flags" role="group" aria-label="Language"><button class="flag" data-lang="hi" aria-pressed="${!FR}" title="Hindi">🇮🇳</button><button class="flag" data-lang="fr" aria-pressed="${FR}" title="French">🇫🇷</button></span>`;
@@ -3231,7 +3232,7 @@ function pushBottom() {
   setTimeout(() => { pushQueued = false; try { NATIVE.send(JSON.stringify(bottomState())); } catch (e) { console.error(e); } }, 40);
 }
 function bottomState() {
-  const st = { lang: LANG, view: route.view, due: dueWords().length, playing: player.playing, rate: settings.rate, size: settings.size, sentMode: !!settings.sentMode };
+  const st = { lang: LANG, sync: gh ? ghStatusText() : "", view: route.view, due: dueWords().length, playing: player.playing, rate: settings.rate, size: settings.size, sentMode: !!settings.sentMode };
   if (route.view === "reader") {
     const L = currentLesson();
     if (L) {
