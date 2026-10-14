@@ -521,7 +521,26 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .tr-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--gold), var(--gold-2)); }
 .lib-tabs button { font-size: .95rem; padding: 7px 14px; }
 .ms-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 26px; }
-.ms-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 2px; }
+.ms-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 2px; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.ms-stat:hover { border-color: var(--muted); }
+.ms-stat[aria-pressed="true"] { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-bg); }
+.ms-detail { --bar: var(--accent-strong); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; margin: -10px 0 26px; display: grid; gap: 10px; }
+.ms-dh { display: flex; align-items: baseline; gap: 12px; }
+.ms-close { margin-left: auto; width: 32px; height: 32px; font-size: .85rem; }
+.ms-chart { width: 100%; height: auto; display: block; overflow: visible; }
+.ms-chart .ms-axis { stroke: var(--line); stroke-width: 1; }
+.ms-chart .ms-tick { fill: var(--muted); font-size: 11px; }
+.ms-chart .ms-val { fill: var(--ink); font-size: 12px; font-weight: 600; }
+.ms-chart g:hover path { opacity: .8; }
+.ms-levels { display: grid; gap: 8px; }
+.ms-lv { display: grid; grid-template-columns: minmax(90px, 160px) 1fr auto; gap: 12px; align-items: center; }
+.ms-lvbar { height: 12px; border-radius: 99px; background: var(--sunk); overflow: hidden; }
+.ms-lvbar i { display: block; height: 100%; border-radius: 99px; }
+.ms-list { display: grid; gap: 4px; }
+.ms-letters { display: flex; flex-wrap: wrap; gap: 6px; }
+.ms-let { font-family: var(--f-display); font-size: 1.4rem; min-width: 40px; text-align: center; border-radius: 8px; padding: 2px 6px; background: var(--sunk); color: var(--muted); }
+.ms-let.m { background: color-mix(in srgb, var(--good) 25%, var(--surface)); color: var(--ink); }
+.ms-let.p { background: var(--l3); color: var(--ink); }
 .ms-stat .ms-ico { font-size: 1.35rem; }
 .ms-stat .num { font-size: 1.9rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .ms-stat .num small { font-size: .95rem; color: var(--muted); font-weight: 500; }
@@ -1502,6 +1521,54 @@ function checkTrophies() {
   store.set("trophies", trophySeen);
   if (!first) { const t = fresh[fresh.length - 1]; toast(`🏆 Trophy unlocked: ${t[1]} ${t[2]}${fresh.length > 1 ? ` (+${fresh.length - 1} more)` : ""}`, 5000); }
 }
+// Detail for a tapped Milestones tile: a bar chart of recent days, or a breakdown. Shared with the Thor's bottom screen.
+const MS_KEYS = [["perday", "📈 Words a day"], ["known", "💬 Words known"], ["learning", "✏️ Learning"], ["reviews", "🎯 Reviews"], ["stories", "📖 Stories"], ["learned", "⭐ Learned"], ["streak", "🔥 Streak"], ["minutes", "⏱️ Time"]];
+function msBars(st, field, unit, days = 30) {
+  const today = new Date(); today.setHours(12, 0, 0, 0);
+  const rows = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * DAY), x = st.dayMap[todayKey(d)] || {};
+    rows.push({ d, v: typeof field === "function" ? field(x) : (x[field] || 0) });
+  }
+  const max = Math.max(1, ...rows.map(r => r.v)), W = 600, H = 170, top = 18, base = 140, bw = W / days;
+  const iMax = rows.reduce((b, r, i) => (r.v > rows[b].v ? i : b), 0);
+  const fmt = d => d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const bars = rows.map((r, i) => {
+    const h = r.v ? Math.max(3, (r.v / max) * (base - top)) : 0, x = i * bw + 1, w = bw - 2, y = base - h, rr = Math.min(4, w / 2, h);
+    const shape = h ? `<path d="M${x},${base} V${y + rr} Q${x},${y} ${x + rr},${y} H${x + w - rr} Q${x + w},${y} ${x + w},${y + rr} V${base} Z" fill="var(--bar)"/>` : "";
+    const lab = r.v && (i === iMax || i === days - 1) ? `<text x="${x + w / 2}" y="${y - 5}" text-anchor="middle" class="ms-val">${r.v}</text>` : "";
+    return `<g><title>${fmt(r.d)}: ${r.v} ${unit}</title><rect x="${i * bw}" y="0" width="${bw}" height="${base}" fill="transparent"/>${shape}${lab}</g>`;
+  }).join("");
+  const ticks = rows.map((r, i) => (i % 7 === (days - 1) % 7 ? `<text x="${i * bw + bw / 2}" y="${base + 18}" text-anchor="middle" class="ms-tick">${i === days - 1 ? "today" : fmt(r.d)}</text>` : "")).join("");
+  const total = rows.reduce((n, r) => n + r.v, 0);
+  return `<svg viewBox="0 0 ${W} ${H}" class="ms-chart" role="img" aria-label="${unit} per day, last ${days} days">
+      <line x1="0" x2="${W}" y1="${base + .5}" y2="${base + .5}" class="ms-axis"/>${bars}${ticks}</svg>
+    <div class="muted small">${total} ${unit} in the last ${days} days · best day ${rows[iMax].v} (${fmt(rows[iMax].d)})</div>`;
+}
+function msDetail(key, st) {
+  const head = (t, sub) => `<div class="ms-dh"><b>${t}</b><span class="muted small">${sub || ""}</span><button class="icon-btn ms-close" data-ms="" aria-label="Close">✕</button></div>`;
+  if (key === "perday" || key === "known") return head("Words learned per day", `average ${st.perDay.toFixed(1)} a day`) + msBars(st, "k", "words");
+  if (key === "reviews") return head("Reviews per day", `${st.reviews} in total`) + msBars(st, "r", "reviews");
+  if (key === "minutes" || key === "streak") return head("Minutes studied per day", key === "streak" ? `streak ${st.streak} · best ${st.best}` : "") + msBars(st, x => Math.round((x.t || 0) / 60), "minutes");
+  if (key === "stories") {
+    const done = Object.entries(effActivity().lessons || {}).sort((a, b) => (b[1].done || 0) - (a[1].done || 0));
+    return head("Stories read", `${done.length} finished`) + msBars(st, "l", "stories") +
+      (done.length ? `<div class="ms-list">${done.slice(0, 12).map(([id, x]) => { const L = lessons.find(l => l.id === id); return L ? `<span><b class="display">${esc(L.title)}</b> <span class="muted small">${esc(L.titleEn || "")} · ${new Date(x.done).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</span></span>` : ""; }).join("")}</div>` : "");
+  }
+  if (key === "learning") {
+    const lv = [1, 2, 3, 4].map(n => Object.values(V).filter(e => e.s === n).length), max = Math.max(1, ...lv);
+    return head("Words in learning, by level", "level 4 = nearly known") + `<div class="ms-levels">${lv.map((n, i) => `<div class="ms-lv"><span>Level ${i + 1}</span><span class="ms-lvbar"><i style="width:${(n / max) * 100}%;background:var(--l${i + 1})"></i></span><b>${n}</b></div>`).join("")}<div class="ms-lv"><span>Known</span><span class="ms-lvbar"><i style="width:${Math.min(100, (st.known / max) * 100)}%;background:var(--good)"></i></span><b>${st.known}</b></div></div>`;
+  }
+  if (key === "learned") {
+    const rows = sortedLessons().map(L => ({ L, m: lessonMix(L) })).sort((a, b) => (a.m.n + a.m.l) - (b.m.n + b.m.l));
+    return head("Closest to learned", "words left to know in each story") + `<div class="ms-levels">${rows.slice(0, 10).map(({ L, m }) => `<div class="ms-lv"><span class="display" style="font-size:1.05rem">${esc(L.title)}</span><span class="ms-lvbar"><i style="width:${m.t ? (m.k / m.t) * 100 : 0}%;background:var(--good)"></i></span><b>${m.n + m.l ? m.n + m.l + " left" : "★"}</b></div>`).join("")}</div>`;
+  }
+  if (key === "letters") {
+    const L = ABC_LETTERS.filter(l => !QUIZ_SKIP.has(l.g));
+    return head("Letters", `${st.letters} solid`) + `<div class="ms-letters">${L.map(l => { const s = letterState(l.g); return `<span class="ms-let ${s}" lang="hi" title="${esc(l.r)}">${esc(l.g)}</span>`; }).join("")}</div><div class="muted small">Green = solid, amber = practising. Practise in Study → Alphabet.</div>`;
+  }
+  return "";
+}
 function viewMilestones() {
   const st = progressStats();
   const ri = RANKS.reduce((b, r, i) => (st.known >= r[0] ? i : b), 0);
@@ -1522,7 +1589,7 @@ function viewMilestones() {
     const lvl = !n ? 0 : n < 10 ? 1 : n < 30 ? 2 : n < 60 ? 3 : 4;
     cells.push(`<i data-l="${lvl}" title="${d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}: ${x.r || 0} reviews, ${x.k || 0} words known, ${x.l || 0} stories"${i === 0 ? ' class="today"' : ""}></i>`);
   }
-  const statTile = (ico, num, label) => `<div class="ms-stat"><span class="ms-ico" aria-hidden="true">${ico}</span><span class="num">${num}</span><span class="label muted small">${label}</span></div>`;
+  const statTile = (ico, num, label, key) => `<button class="ms-stat" data-ms="${key}" aria-pressed="${route.ms === key}"><span class="ms-ico" aria-hidden="true">${ico}</span><span class="num">${num}</span><span class="label muted small">${label}</span></button>`;
   return `<div class="milestones">
     <div class="rank-card">
       <div class="rank-medal" aria-hidden="true"><span>${ri + 1}</span></div>
@@ -1534,15 +1601,16 @@ function viewMilestones() {
       <div class="rank-trophies"><span class="big-num">${got.length}</span><span class="muted small">of ${TROPHIES.length} trophies</span></div>
     </div>
     <div class="ms-stats">
-      ${statTile("💬", st.known, "words known")}
-      ${statTile("📈", st.perDay.toFixed(1), "words learned a day (average)")}
-      ${statTile("✏️", st.learning, "learning")}
-      ${statTile("📖", st.stories, "stories read")}
-      ${statTile("⭐", `${st.learned}<small>/${lessons.length}</small>`, "stories learned")}
-      ${statTile("🔥", st.streak, `day streak · best ${st.best}`)}
-      ${statTile("🎯", st.reviews, "reviews")}
-      ${FR ? statTile("🗓️", st.days, "days studied") : statTile("क", `${st.letters}<small>/${st.lettersTotal}</small>`, "letters solid")}
+      ${statTile("💬", st.known, "words known", "known")}
+      ${statTile("📈", st.perDay.toFixed(1), "words learned a day (average)", "perday")}
+      ${statTile("✏️", st.learning, "learning", "learning")}
+      ${statTile("📖", st.stories, "stories read", "stories")}
+      ${statTile("⭐", `${st.learned}<small>/${lessons.length}</small>`, "stories learned", "learned")}
+      ${statTile("🔥", st.streak, `day streak · best ${st.best}`, "streak")}
+      ${statTile("🎯", st.reviews, "reviews", "reviews")}
+      ${FR ? statTile("🗓️", st.days, "days studied", "minutes") : statTile("क", `${st.letters}<small>/${st.lettersTotal}</small>`, "letters solid", "letters")}
     </div>
+    ${route.ms ? `<div class="ms-detail" id="msDetail">${msDetail(route.ms, st)}</div>` : `<p class="muted small" style="margin:-14px 0 22px">Tap a number to see a graph of it.</p>`}
     <div class="ms-two">
       <section>
         <div class="section-h"><h2>Next goals</h2></div>
@@ -2855,6 +2923,7 @@ document.addEventListener("click", e => {
     return;
   }
   if (t.dataset.grade) { grade(+t.dataset.grade); return; }
+  if (t.dataset.ms != null) { route.ms = route.ms === t.dataset.ms ? "" : t.dataset.ms; render(); return; }
   if (t.dataset.lang) { setLang(t.dataset.lang); return; }
   if (t.dataset.libtab) { route.libTab = t.dataset.libtab; render(); return; }
   if (t.dataset.cols != null) { settings.cols = +t.dataset.cols; saveSettings(); render(); return; }
@@ -3386,6 +3455,10 @@ function bottomState() {
     const w = rv.queue[rv.i];
     if (w) { const e = V[w] || {}; st.review = { i: rv.i, n: rv.queue.length, shown: rv.shown, w, roman: e.t || roman(w), meaning: e.m || "", ivs: [1, 2, 3, 4].map(g => fmtIv(nextIv(e, g))) }; }
     else st.review = { done: true, did: rv.done, learning: Object.values(V).filter(e => e.s >= 1 && e.s <= 4).length };
+  } else if (route.view === "milestones") {
+    const keys = MS_KEYS.concat(FR ? [] : [["letters", "क Letters"]]);
+    const cur = route.ms || "perday";
+    st.ms = { keys, cur, html: msDetail(cur, progressStats()) };
   } else if (route.view === "library") {
     const doneMap = effActivity().lessons || {};
     st.lessons = sortedLessons().map(L => { const m = lessonMix(L); return { id: L.id, title: L.title, titleEn: L.titleEn || "", n: m.n, left: m.n + m.l, done: !!doneMap[L.id], learned: isLearned(L) }; });
@@ -3408,6 +3481,7 @@ function handleCmd(c) {
     case "go": go(c.view); break;
     case "open": go("reader", { lesson: c.id }); break;
     case "lang": setLang(c.v); return;
+    case "ms": route.ms = c.v; render(); break;
     case "libtab": route.libTab = c.v; render(); break;
     case "set": if (sel) setStatus(c.v); break;
     case "say": if (sel) speak(sel.w); break;
