@@ -1481,7 +1481,13 @@ function progressStats() {
     learned: lessons.filter(isLearned).length,
     streak: streak(), best: Math.max(best, streak()),
     reviews: Object.values(days).reduce((n, d) => n + ((d && d.r) || 0), 0),
-    letters, lettersTotal, days: keys.length, dayMap: days
+    letters, lettersTotal, days: keys.length, dayMap: days,
+    // words marked known per calendar day, from the first day studied to today
+    perDay: (() => {
+      if (!keys.length) return 0;
+      const span = Math.max(1, Math.round((new Date(todayKey() + "T12:00:00") - new Date(keys[0] + "T12:00:00")) / DAY) + 1);
+      return Object.values(days).reduce((n, d) => n + ((d && d.k) || 0), 0) / span;
+    })()
   };
 }
 const trophyGoal = (t, st) => t[5] || st.lettersTotal || 1;
@@ -1529,6 +1535,7 @@ function viewMilestones() {
     </div>
     <div class="ms-stats">
       ${statTile("💬", st.known, "words known")}
+      ${statTile("📈", st.perDay.toFixed(1), "words learned a day (average)")}
       ${statTile("✏️", st.learning, "learning")}
       ${statTile("📖", st.stories, "stories read")}
       ${statTile("⭐", `${st.learned}<small>/${lessons.length}</small>`, "stories learned")}
@@ -3357,6 +3364,7 @@ if (FR) TABS.splice(TABS.length - 1, 0, ["bakery", "Boulangerie", "🥐"]);
 
 /* ===================== Thor: second screen and controller ===================== */
 var DUAL = !!NATIVE && NATIVE.hasBottom();
+var trOpen = -1;   // sentence whose English is shown on the bottom screen (Y)
 var pushQueued = false;
 if (DUAL) document.documentElement.classList.add("dual");
 function pushBottom() {
@@ -3372,7 +3380,7 @@ function bottomState() {
       const m = lessonMix(L); const nx = nextLesson();
       st.lesson = { title: L.title, titleEn: L.titleEn || "" };
       st.finish = { n: m.n, done: !!(effActivity().lessons || {})[L.id], next: nx ? nx.title : null };
-      if (sel) { const s = L.sentences[sel.si]; st.sel = { w: sel.w, roman: romanOf(sel.w, L), meaning: meaningOf(sel.w, L), s: statusOf(sel.w), name: isNameWord(sel.w), hi: s.hi, en: s.en || "", units: FR ? frUnits(sel.w) : syllables(sel.w) }; }
+      if (sel) { const s = L.sentences[sel.si]; st.sel = { w: sel.w, roman: romanOf(sel.w, L), meaning: meaningOf(sel.w, L), s: statusOf(sel.w), name: isNameWord(sel.w), hi: s.hi, en: s.en || "", units: FR ? frUnits(sel.w) : syllables(sel.w), tr: trOpen === sel.si }; }
     }
   } else if (route.view === "review") {
     const w = rv.queue[rv.i];
@@ -3380,7 +3388,7 @@ function bottomState() {
     else st.review = { done: true, did: rv.done, learning: Object.values(V).filter(e => e.s >= 1 && e.s <= 4).length };
   } else if (route.view === "library") {
     const doneMap = effActivity().lessons || {};
-    st.lessons = sortedLessons().map(L => { const m = lessonMix(L); return { id: L.id, title: L.title, titleEn: L.titleEn || "", n: m.n, done: !!doneMap[L.id], learned: isLearned(L) }; });
+    st.lessons = sortedLessons().map(L => { const m = lessonMix(L); return { id: L.id, title: L.title, titleEn: L.titleEn || "", n: m.n, left: m.n + m.l, done: !!doneMap[L.id], learned: isLearned(L) }; });
     st.libTab = route.libTab === "learned" ? "learned" : "reading";
     st.known = Object.values(V).filter(e => e.s === 5).length;
   }
@@ -3434,7 +3442,7 @@ window.__pad = k => {
       down: () => gotoSentence(sel ? curSi + 1 : curSi), up: () => gotoSentence(sel ? (sel.k === firstWordK(curSi) ? curSi - 1 : curSi) : curSi - 1),
       a: () => { if (!L) return; stopPlayer(); const si = Math.max(0, Math.min(L.sentences.length - 1, curSi)); player.si = si; highlightSentence(si); speak(L.sentences[si].hi, { onend: () => highlightSentence(-1) }); },
       b: () => { stopPlayer(); highlightSentence(-1); },
-      x: () => sel && setStatus(5), y: () => sel && speak(sel.w),
+      x: () => sel && setStatus(5), y: () => { trOpen = trOpen === curSi ? -1 : curSi; },
       r1: () => lvl(1), l1: () => lvl(-1),
       r2: goNextLesson, l2: goPrevLesson,
       start: togglePlay, select: toggleSentMode
