@@ -3938,7 +3938,7 @@ const fly = { st: "menu", pick: 0, lv: 0, score: 0, lives: 3, lane: 0, x: 0, gat
 const FLY_SKIP = /^(is|are|am|was|were|of|to|in|on|at|and|or|the|a|an|also|too|so|then|from|with|for|his|her|my|your|our|their|this|these|that|polite|but|not|no|yes|very|if|what|who|where|how|which|here|there|now|oh|hey|wow|please|let's|\(|'s|marker|question)\b/i;
 const flyOpts = Object.assign({ words: "both", en: false }, store.get("flyopts", {}));   // words: known | learning | both
 function flyOptsHtml() {
-  const b = (k, v, label) => `<button data-gk="opt" data-gi="${k}:${v}" aria-pressed="${flyOpts[k] === v}">${label}</button>`;
+  const b = (k, v, label) => `<button data-gk="opt" data-gi="${k}:${v}" aria-pressed="${flyOpts[k] === v}">${flyOpts[k] === v ? "✓ " : ""}${label}</button>`;
   return `<div class="hub fly-opts"><div class="seg" role="group" aria-label="Which words">${b("words", "known", "Known words")}${b("words", "learning", "Words I'm learning")}${b("words", "both", "Both")}</div>
     <div class="seg" role="group" aria-label="English">${b("en", false, "No English")}${b("en", true, "Show English with the sound")}</div></div>`;
 }
