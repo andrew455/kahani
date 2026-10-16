@@ -4084,7 +4084,10 @@ function matchFlip(i) {
       if (left.length) match.curW = left[Math.floor(Math.random() * left.length)];
       const picsLeft = [...Array(half).keys()].filter(j => !match.done.includes(j)); if (picsLeft.length && match.done.includes(match.cur)) match.cur = picsLeft[0];
     }
-    sayThen(it[0], pickOne(SAY_GOOD)); toast(`${it[2]} ${it[0]} = ${it[1]}`, 2500);
+    toast(`${it[2]} ${it[0]} = ${it[1]}`, 2500);
+    if (DUAL) { const nx = match.cards[match.cards.length / 2 + match.curW]; const left = match.done.length < match.cards.length;   // praise, then the word now under the cursor
+      if (left && nx) sayThen(pickOne(SAY_GOOD), match.items[nx.k][0]); else sayNow(pickOne(SAY_GOOD)); }
+    else sayThen(it[0], pickOne(SAY_GOOD));
     const wk = gameWordKey(it[0]); if (statusOf(wk) === 0) setWord(wk, { s: 1, m: FR ? `${it[1]} (${it[0]})` : it[1], t: it[3], l: "game" }, true);
     if (match.done.length === match.cards.length) {
       match.st = "won"; if (match.best[match.lv] == null || match.moves < match.best[match.lv]) { match.best[match.lv] = match.moves; store.set("matchbest2", match.best); }
