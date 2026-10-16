@@ -483,7 +483,29 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .pastry.on .pastry-ico { filter: none; opacity: 1; background: radial-gradient(circle at 40% 35%, #fffaf0, #f7e6c4); box-shadow: inset 0 0 0 2px rgba(217,164,65,.4); }
 .pastry-n { position: absolute; right: -4px; bottom: -2px; background: var(--accent); color: #fff; font-size: .75rem; font-weight: 700; border-radius: 99px; padding: 1px 7px; }
 .pastry-fr { font-family: var(--f-display); font-size: 1.05rem; }
-.dual main:has(.bakery), .dual main:has(.deb) { padding-top: 36px !important; }
+.dual main:has(.bakery), .dual main:has(.deb), .dual main:has(.adv) { padding-top: 36px !important; }
+.adv { max-width: 900px; margin: 0 auto; display: grid; gap: 16px; }
+.adv-chs { display: grid; gap: 10px; }
+.adv-ch { display: flex; gap: 16px; align-items: center; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; font: inherit; color: inherit; }
+.adv-ch.pick { border-color: var(--accent-strong); box-shadow: 0 0 0 2px var(--accent-strong); }
+.adv-ch.locked { opacity: .75; }
+.adv-n { width: 46px; height: 46px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--sunk); font-size: 1.2rem; font-weight: 700; }
+.adv-t { display: grid; gap: 4px; flex: 1; }
+.adv-t b { font-size: 1.5rem; font-weight: 400; }
+.adv-bar { height: 8px; border-radius: 99px; background: var(--sunk); overflow: hidden; display: block; max-width: 360px; }
+.adv-bar i { display: block; height: 100%; background: var(--accent-strong); border-radius: 99px; }
+.adv-head { display: flex; justify-content: space-between; gap: 12px; }
+.adv-text { padding: 26px 30px; }
+.adv-s { font-size: calc(var(--read-size) * 1.15) !important; line-height: 2 !important; margin: 0 0 .5em !important; }
+.adv-en { display: block; font-size: .9rem; color: var(--muted); font-family: var(--f-body); line-height: 1.4; }
+.adv-choices { display: grid; gap: 10px; }
+.adv-c { text-align: left; display: grid; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; font-size: 1.3rem; color: inherit; }
+.adv-c small { font-size: .9rem; color: var(--muted); }
+.adv-c.pick { border-color: var(--accent-strong); box-shadow: 0 0 0 2px var(--accent-strong); }
+.adv-end { font-size: 1.2rem; display: flex; gap: 14px; align-items: center; }
+.dual .adv-choices, .dual .adv .kbd, .dual .adv-end .btn { display: none; }
+.dual .adv-text { background: none; border: 0; padding: 4vh 2vw; }
+.dual .adv-s { font-size: calc(var(--read-size) * 1.7) !important; }
 .lang-fr .cj .g { font-family: var(--f-display); font-size: 1.5rem; min-width: 80px; }
 /* Two screens: the top shows only the Hindi; everything else lives on the bottom screen. */
 .dual .top, .dual #banner, .dual .bottom, .dual .reader-bar, .dual #finish, .dual .sref, .dual #panel { display: none !important; }
@@ -1010,6 +1032,7 @@ function render() {
   else if (route.view === "alphabet") v.innerHTML = studyNav() + viewAlphabet();
   else if (route.view === "milestones") v.innerHTML = viewMilestones();
   else if (route.view === "bakery") v.innerHTML = viewBakery();
+  else if (route.view === "game") v.innerHTML = viewGame();
   else if (route.view === "talk") v.innerHTML = viewTalk();
   else v.innerHTML = viewLibrary();
   if (route.view === "reader") {
@@ -2910,6 +2933,12 @@ document.addEventListener("click", e => {
   if (t.dataset.npc) { walkToNpc(NPC_BY_ID[t.dataset.npc]); return; }
   if (t.dataset.sugg != null) { const sg = talk.sugg[+t.dataset.sugg]; const inp = $("#tinput"); if (sg && inp) { inp.value = sg.hi; inp.focus(); speak(sg.hi, { rate: Math.min(settings.rate, 0.8) }); } return; }
   if (t.dataset.open) { go("reader", { lesson: t.dataset.open }); renderPanel(); renderFinish(); return; }
+  if (route.view === "game") {
+    if (t.classList.contains("w")) { const w = t.dataset.w; speak(w); const m = meaningOf(w, { gloss: (advCh() || {}).gloss || {} }); toast(`${w} · ${m || "?"}`, 3000); if (settings.autoLearn && statusOf(w) === 0) setWord(w, { s: 1, m: m || "", l: "game" }); return; }
+    if (t.dataset.advch) { adv.pick = ADV.findIndex(c => c.id === t.dataset.advch); advStart(t.dataset.advch); return; }
+    if (t.dataset.advpick != null) { advPick(+t.dataset.advpick); return; }
+    if (t.dataset.advback) { adv.ch = null; adv.pick = 0; saveAdv(); render(); return; }
+  }
   if (t.classList.contains("w")) {
     if (sel && sel.k === +t.dataset.k) { speak(t.dataset.w); return; }
     saveMeaning(); selectWord(t); speak(t.dataset.w);
@@ -3076,6 +3105,7 @@ function onActivity(snap) {
   else if (route.view === "reader") renderFinish();
 }
 
+const GAME_HI = {"chapters": [{"id": "c1", "title": "दादी की चाबी", "en": "Grandma's Key", "need": 0, "start": "start", "summary": "Grandma's key is missing. Find it before tea time!", "gloss": {"देखता": {"m": "look / see (m.)", "t": "dekhta"}, "खेलती": {"m": "plays (f.)", "t": "kheltee"}, "भागती": {"m": "runs (f.)", "t": "bhaagtee"}, "लेता": {"m": "take (m.)", "t": "leta"}, "वापस": {"m": "back (वापस आती = comes back)", "t": "vaapas"}, "मिनी": {"m": "Mini (name)", "t": "minee"}, "हाल": {"m": "state (क्या हाल है? = how's it going?)", "t": "haal"}, "पकड़ना": {"m": "to catch", "t": "pakadna"}, "मुश्किल": {"m": "difficult", "t": "mushkil"}, "करता": {"m": "do (m.) (बात करता = talk)", "t": "karta"}, "चीज़": {"m": "thing", "t": "cheez"}, "लीजिए": {"m": "please take", "t": "leejiye"}}, "scenes": {"start": {"hi": [["सुबह है। मैं घर में हूँ।", "It's morning. I'm at home."], ["दादी कहती हैं, \"रवि, मेरी चाबी कहाँ है?\"", "Grandma says, \"Ravi, where is my key?\""], ["चाबी नहीं है!", "The key isn't there!"]], "choices": [{"hi": "मैं कमरे में देखता हूँ।", "en": "I look in the room.", "go": "room"}, {"hi": "मैं बाहर जाता हूँ।", "en": "I go outside.", "go": "outside"}]}, "room": {"hi": [["कमरे में एक बड़ा संदूक है।", "In the room there is a big chest."], ["संदूक पर एक किताब है।", "There is a book on the chest."], ["चाबी यहाँ नहीं है।", "The key isn't here."]], "choices": [{"hi": "मैं किताब पढ़ता हूँ।", "en": "I read the book.", "go": "book"}, {"hi": "मैं बाहर जाता हूँ।", "en": "I go outside.", "go": "outside"}]}, "book": {"hi": [["किताब में एक कहानी है।", "In the book there is a story."], ["कहानी में एक बिल्ली चाबी के साथ खेलती है।", "In the story a cat plays with a key."], ["अरे! मिनी भी चाबी के साथ खेलती है!", "Oh! Mini plays with keys too!"]], "choices": [{"hi": "मैं मिनी को देखता हूँ।", "en": "I look for Mini.", "go": "outside"}]}, "outside": {"hi": [["बाहर बहुत धूप है।", "Outside it's very sunny."], ["पेड़ के नीचे अमन है।", "Aman is under the tree."], ["पेड़ के ऊपर एक बिल्ली है। यह मिनी है!", "Up in the tree there's a cat. It's Mini!"]], "choices": [{"hi": "मैं अमन से बात करता हूँ।", "en": "I talk to Aman.", "go": "aman"}, {"hi": "मैं पेड़ पर जाता हूँ।", "en": "I climb the tree.", "go": "tree"}, {"hi": "मैं बाज़ार जाता हूँ।", "en": "I go to the market.", "go": "market"}]}, "aman": {"hi": [["\"नमस्ते रवि! क्या हाल है?\"", "\"Hello Ravi! How's it going?\""], ["\"अमन, दादी की चाबी कहाँ है?\"", "\"Aman, where is Grandma's key?\""], ["अमन कहता है, \"मिनी के पास एक चीज़ है।\"", "Aman says, \"Mini has something.\""]], "choices": [{"hi": "मैं पेड़ पर जाता हूँ।", "en": "I climb the tree.", "go": "tree"}, {"hi": "मैं बाज़ार जाता हूँ।", "en": "I go to the market.", "go": "market"}]}, "tree": {"hi": [["मैं पेड़ पर जाता हूँ।", "I climb the tree."], ["मिनी भागती है!", "Mini runs away!"], ["पेड़ पर चाबी नहीं है।", "The key isn't in the tree."], ["मिनी बाज़ार जाती है।", "Mini goes to the market."]], "choices": [{"hi": "मैं भी बाज़ार जाता हूँ।", "en": "I go to the market too.", "go": "market"}]}, "market": {"hi": [["बाज़ार में बहुत लोग हैं।", "There are lots of people in the market."], ["मीना की दुकान पर मिठाई है।", "There are sweets at Meena's shop."], ["राजू चाय बनाता है।", "Raju is making tea."]], "choices": [{"hi": "मैं मीना से बात करता हूँ।", "en": "I talk to Meena.", "go": "meena"}, {"hi": "मैं राजू से बात करता हूँ।", "en": "I talk to Raju.", "go": "raju"}]}, "meena": {"hi": [["मीना कहती है, \"मिनी? नहीं, मिनी यहाँ नहीं है।\"", "Meena says, \"Mini? No, Mini isn't here.\""], ["\"लेकिन मिठाई लीजिए!\"", "\"But have some sweets!\""], ["मीना मुझे मिठाई देती है।", "Meena gives me some sweets."]], "choices": [{"hi": "धन्यवाद! मैं राजू से बात करता हूँ।", "en": "Thank you! I talk to Raju.", "go": "raju", "get": "मिठाई"}]}, "raju": {"hi": [["राजू कहता है, \"मिनी यहाँ है, दुकान के नीचे!\"", "Raju says, \"Mini is here, under the shop!\""], ["मिनी के पास चाबी है!", "Mini has the key!"], ["राजू के पास दूध है।", "Raju has some milk."]], "choices": [{"hi": "मैं मिनी को पकड़ता हूँ।", "en": "I catch Mini.", "go": "run"}, {"hi": "मैं राजू से दूध लेता हूँ।", "en": "I take some milk from Raju.", "go": "milk"}]}, "run": {"hi": [["मिनी भागती है!", "Mini runs away!"], ["फिर मिनी वापस आती है।", "Then Mini comes back."], ["बिल्ली को पकड़ना बहुत मुश्किल है!", "Catching a cat is very hard!"]], "choices": [{"hi": "मैं राजू से दूध लेता हूँ।", "en": "I take some milk from Raju.", "go": "milk"}]}, "milk": {"hi": [["मैं मिनी को दूध देता हूँ।", "I give Mini the milk."], ["मिनी दूध पीती है।", "Mini drinks the milk."], ["चाबी नीचे है! मैं चाबी लाता हूँ।", "The key is on the ground! I bring the key."]], "choices": [{"hi": "मैं घर जाता हूँ।", "en": "I go home.", "go": "home"}]}, "home": {"hi": [["मैं दादी को चाबी देता हूँ।", "I give Grandma the key."], ["दादी कहती हैं, \"धन्यवाद, रवि! आप बहुत अच्छे हैं!\"", "Grandma says, \"Thank you, Ravi! You're very good!\""], ["फिर हम चाय पीते हैं और मिठाई खाते हैं।", "Then we drink tea and eat sweets."]], "end": true}}}, {"id": "c2", "title": "दिल्ली की ट्रेन", "en": "The Train to Delhi", "need": 150, "soon": true, "summary": "Ravi and Priya take the train to visit Sonu's old city."}, {"id": "c3", "title": "निंजा का राज़", "en": "The Ninja's Secret", "need": 200, "soon": true, "summary": "The ninja has a secret. Can you work it out?"}]};
 /* ===================== standalone: GitHub sync ===================== */
 // The Thor app and the browser version keep their data on the device and sync it with a private GitHub repo
 // (default andrew455/kahani-data). The repo mirrors the online database: lessons/<id>.json, vocab/bNN.json,
@@ -3436,6 +3466,89 @@ function viewBakery() {
 }
 if (FR) TABS.splice(TABS.length - 1, 0, ["bakery", "Boulangerie", "🥐"]);
 
+/* ===================== Adventure: a choose-your-path game for the controller (Hindi) ===================== */
+// Chapters live in game-hi.json (built in as GAME_HI). Each scene is a few Hindi sentences and 1–3 choices.
+// Chapters unlock as known words grow. Words are tappable like in stories, and new ones go into Learning 1.
+const ADV = (typeof GAME_HI !== "undefined" && !FR) ? GAME_HI.chapters : [];
+let adv = store.get("adv", { ch: null, scene: null, items: [], done: {}, pick: 0, tr: false });
+const saveAdv = () => store.set("adv", adv);
+const advCh = () => ADV.find(c => c.id === adv.ch) || null;
+const advScene = () => { const c = advCh(); return c && c.scenes ? c.scenes[adv.scene] : null; };
+const advKnown = () => Object.values(V).filter(e => e.s === 5).length;
+const advChoices = () => { const sc = advScene(); return sc ? (sc.choices || []).filter(o => !o.need || adv.items.includes(o.need)) : []; };
+function advStart(id) {
+  const c = ADV.find(x => x.id === id); if (!c || c.soon || advKnown() < c.need) return;
+  adv = Object.assign(adv, { ch: id, scene: c.start, items: [], pick: 0, tr: false }); saveAdv(); render(); advSay();
+}
+function advPick(i) {
+  const o = advChoices()[i]; if (!o) return;
+  if (o.get && !adv.items.includes(o.get)) adv.items.push(o.get);
+  adv.scene = o.go; adv.pick = 0; adv.tr = false; saveAdv();
+  if (advScene() && advScene().end) { adv.done[adv.ch] = Date.now(); saveAdv(); }
+  render(); scrollTo(0, 0); advSay();
+}
+function advSay() {   // reads the scene aloud, sentence by sentence
+  const sc = advScene(); if (!sc) return;
+  const lines = sc.hi.map(x => x[0]); let i = 0;
+  const next = () => { if (i < lines.length && route.view === "game") speak(lines[i++], { onend: err => { if (!err) setTimeout(next, 250); } }); };
+  stopPlayer(); next();
+}
+function advMove(d) {
+  const n = advChoices().length; if (!n) return;
+  adv.pick = (adv.pick + d + n) % n; saveAdv(); render();
+  speak(advChoices()[adv.pick].hi);
+}
+function advKey(k) {
+  if (!adv.ch) {   // chapter list
+    const open = ADV.filter(c => !c.soon && advKnown() >= c.need);
+    if (k === "up" || k === "down") { adv.pick = Math.max(0, Math.min(ADV.length - 1, adv.pick + (k === "down" ? 1 : -1))); saveAdv(); render(); }
+    else if (k === "a") advStart(ADV[adv.pick] && ADV[adv.pick].id);
+    else if (k === "b" || k === "select") go("library");
+    return;
+  }
+  const sc = advScene();
+  if (sc && sc.end) { if (k === "a" || k === "b") { adv.ch = null; adv.pick = 0; saveAdv(); render(); } else if (k === "select") go("library"); return; }
+  if (k === "up") advMove(-1); else if (k === "down") advMove(1);
+  else if (k === "a") advPick(adv.pick);
+  else if (k === "y") { adv.tr = !adv.tr; saveAdv(); render(); }
+  else if (k === "x") advSay();
+  else if (k === "b") { adv.ch = null; adv.pick = 0; saveAdv(); render(); }
+  else if (k === "select") go("library");
+}
+function viewGame() {
+  const known = advKnown();
+  if (!adv.ch) {
+    return `<div class="adv">
+      <div class="section-h"><h2 class="display" style="font-size:1.9rem">🗺️ रोमांच <span class="muted" style="font-family:var(--f-body);font-size:1rem">Adventure</span></h2><span class="muted small">${known} known words</span></div>
+      <p class="muted">Choose your path through the village. Read the Hindi, then pick what Ravi does next. New chapters open as you learn more words.</p>
+      <div class="adv-chs">${ADV.map((c, i) => {
+        const open = !c.soon && known >= c.need, locked = known < c.need;
+        return `<button class="adv-ch ${open ? "" : "locked"} ${adv.pick === i ? "pick" : ""}" data-advch="${c.id}" ${open ? "" : "disabled"}>
+          <span class="adv-n">${adv.done[c.id] ? "★" : locked ? "🔒" : i + 1}</span>
+          <span class="adv-t"><b class="display">${esc(c.title)}</b><span class="muted small">${esc(c.en)} · ${esc(c.summary || "")}</span>
+          ${locked ? `<span class="adv-bar"><i style="width:${Math.min(100, (known / c.need) * 100)}%"></i></span><span class="muted small">Unlocks at ${c.need} known words · ${c.need - known} to go</span>` : c.soon ? `<span class="muted small">Unlocked! Coming soon: ask Claude to write it.</span>` : adv.done[c.id] ? `<span class="muted small">Finished · play again</span>` : ""}</span>
+        </button>`; }).join("")}</div>
+    </div>`;
+  }
+  const c = advCh(), sc = advScene(); if (!sc) { adv.ch = null; saveAdv(); return viewGame(); }
+  const counter = { k: 0 }, L = { gloss: c.gloss || {} };
+  const text = sc.hi.map(([hi, en], si) => `<p class="adv-s">${tokensHtml(hi, si, L, counter)}${adv.tr ? `<span class="adv-en">${esc(en)}</span>` : ""}</p>`).join("");
+  const ch = advChoices();
+  return `<div class="adv">
+    <div class="adv-head"><span class="muted small">${esc(c.title)} · ${esc(c.en)}</span>${adv.items.length ? `<span class="muted small">🎒 ${adv.items.map(esc).join(", ")}</span>` : ""}</div>
+    <div class="adv-text story" lang="hi">${text}</div>
+    ${sc.end ? `<div class="adv-end">⭐ शाबाश! Chapter complete. <button class="btn" data-advback="1">Back to chapters</button></div>`
+      : `<div class="adv-choices">${ch.map((o, i) => `<button class="adv-c ${adv.pick === i ? "pick" : ""}" data-advpick="${i}"><span lang="hi">${esc(o.hi)}</span>${adv.tr ? `<small>${esc(o.en)}</small>` : ""}</button>`).join("")}</div>
+         <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> go · <kbd>Y</kbd> English · <kbd>X</kbd> hear again · <kbd>B</kbd> chapters</div>`}
+  </div>`;
+}
+function advBottom() {
+  if (!adv.ch) return { list: ADV.map((c, i) => ({ id: c.id, title: c.title, en: c.en, need: c.need, open: !c.soon && advKnown() >= c.need, soon: !!c.soon, done: !!adv.done[c.id] })), pick: adv.pick, known: advKnown() };
+  const c = advCh(), sc = advScene() || { hi: [] };
+  return { ch: c.title, en: c.en, end: !!sc.end, tr: adv.tr, lines: sc.hi, choices: advChoices().map(o => ({ hi: o.hi, en: o.en })), pick: adv.pick, items: adv.items };
+}
+if (ADV.length) TABS.splice(TABS.length - 1, 0, ["game", "Adventure", "🗺️"]);
+
 /* ===================== Thor: second screen and controller ===================== */
 var DUAL = !!NATIVE && NATIVE.hasBottom();
 var trOpen = -1;   // sentence whose English is shown on the bottom screen (Y)
@@ -3460,6 +3573,8 @@ function bottomState() {
     const w = rv.queue[rv.i];
     if (w) { const e = V[w] || {}; st.review = { i: rv.i, n: rv.queue.length, shown: rv.shown, w, roman: e.t || roman(w), meaning: e.m || "", ivs: [1, 2, 3, 4].map(g => fmtIv(nextIv(e, g))) }; }
     else st.review = { done: true, did: rv.done, learning: Object.values(V).filter(e => e.s >= 1 && e.s <= 4).length };
+  } else if (route.view === "game") {
+    st.adv = advBottom();
   } else if (route.view === "milestones") {
     const keys = MS_KEYS.concat(FR ? [] : [["letters", "क Letters"]]);
     const cur = route.ms || "perday";
@@ -3479,7 +3594,10 @@ function moveWord(delta) {
   saveMeaning(); selectWord(words[nk]);
   words[nk].scrollIntoView({ block: "center", behavior: "smooth" });
   speak(words[nk].dataset.w);
+  autoLearnSel();
 }
+// Like tapping: landing on a new (blue) word with the controller puts it in Learning 1 (when that setting is on).
+function autoLearnSel() { if (sel && settings.autoLearn && statusOf(sel.w) === 0) setStatus(1); }
 function togglePlay() { if (route.view !== "reader") return; if (player.playing) stopPlayer(); else playFrom(sel ? sel.si : player.si); }
 function handleCmd(c) {
   switch (c.cmd) {
@@ -3487,6 +3605,9 @@ function handleCmd(c) {
     case "open": go("reader", { lesson: c.id }); break;
     case "lang": setLang(c.v); return;
     case "ms": route.ms = c.v; render(); break;
+    case "advpick": advPick(c.d); return;
+    case "advch": adv.pick = ADV.findIndex(x => x.id === c.v); advStart(c.v); return;
+    case "advkey": advKey(c.v); break;
     case "libtab": route.libTab = c.v; render(); break;
     case "set": if (sel) setStatus(c.v); break;
     case "say": if (sel) speak(sel.w); break;
@@ -3524,13 +3645,16 @@ window.__pad = k => {
       x: () => sel && setStatus(5), y: () => { trOpen = trOpen === curSi ? -1 : curSi; },
       r1: () => lvl(1), l1: () => lvl(-1),
       r2: goNextLesson, l2: goPrevLesson,
-      start: togglePlay, select: toggleSentMode
+      start: () => { stopPlayer(); highlightSentence(-1); playFrom(0); },   // play the whole story from the beginning
+      select: () => { saveMeaning(); go("library"); }
     }[k];
     if (act) act();
   } else if (v === "review") {
     if (rv.i >= rv.queue.length) { if (k === "b" || k === "select") go("library"); }
     else if (!rv.shown) { if (k === "a" || k === "down") handleCmd({ cmd: "reveal" }); else if (k === "b") go("library"); }
     else { const g = { b: 1, y: 2, a: 3, x: 4 }[k]; if (g) grade(g); }
+  } else if (v === "game") {
+    advKey(k);
   } else if (v === "library") {
     if (k === "a" || k === "start") { const list = sortedLessons(); const done = effActivity().lessons || {}; const L = list.find(l => !done[l.id] && !isLearned(l)) || list.find(l => !isLearned(l)) || list[0]; if (L) go("reader", { lesson: L.id }); }
     else if (k === "select" || k === "r2") go("review");
@@ -3584,7 +3708,7 @@ function gotoSentence(si) {
   si = Math.max(0, Math.min(L.sentences.length - 1, si));
   const el = $(`#story .w[data-si="${si}"]`); if (!el) return;
   stopPlayer(); player.si = si;
-  saveMeaning(); selectWord(el);
+  saveMeaning(); selectWord(el); autoLearnSel();
   el.scrollIntoView({ block: "center", behavior: "smooth" });
   if (settings.sentMode) { highlightSentence(si); speak(L.sentences[si].hi, { onend: () => highlightSentence(-1) }); }
   else speak(el.dataset.w);
