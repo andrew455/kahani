@@ -1,0 +1,1 @@
+{"name": "Phone Notes", "short_name": "Notes", "start_url": ".", "scope": ".", "display": "standalone", "background_color": "#f6f4ef", "theme_color": "#f6f4ef", "icons": [{"src": "icon.png", "sizes": "180x180", "type": "image/png"}, {"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}]}

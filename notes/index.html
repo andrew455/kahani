@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Notes">
+<meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1917" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Phone Notes</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #ffffff; --ink: #1f1d1a; --muted: #77716a; --line: #e5e0d8;
+    --accent: #d97757; --accent-ink: #fff; --chip: #efebe4; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 2px 8px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1a1917; --card: #24221f; --ink: #ece8e1; --muted: #9a948b; --line: #35322d; --chip: #2e2b27; --shadow: none; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)); }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  header h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .sync { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3f9c6d; }
+  .sync.busy::before { background: #d9a43b; }
+  .sync.err::before { background: #c9473d; }
+  .spacer { flex: 1; }
+
+  .layout { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 900px) { .layout { grid-template-columns: 260px minmax(0, 1fr); align-items: start; } .side { position: sticky; top: 16px; } }
+  @media (max-width: 899px) { .desktop-only { display: none !important; } }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+  .compose { margin-bottom: 14px; display: grid; gap: 8px; }
+  .compose textarea { width: 100%; min-height: 110px; padding: 12px 14px; outline: 0; resize: vertical; font-size: 17px; display: block; }
+  .compose textarea:focus { border-color: var(--muted); }
+  .pickbox { padding: 10px 12px; }
+  .pickbox .label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+  .cats { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cat-pick { border: 1px solid var(--line); background: var(--chip); border-radius: 999px; padding: 6px 12px; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  .cat-pick.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .primary { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 600; width: 100%; font-size: 17px; }
+  .primary:disabled { opacity: .5; }
+  .ghost { background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; font-size: 14px; }
+
+  .filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; scrollbar-width: none; }
+  .filters::-webkit-scrollbar { display: none; }
+  .filters .cat-pick { white-space: nowrap; }
+  .count { opacity: .6; font-size: 12px; }
+  .tools { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .tools input[type=search] { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 12px; }
+  .toggle { font-size: 14px; color: var(--muted); display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+
+  .list { display: grid; gap: 10px; }
+  .note { padding: 12px 14px 10px; border-left: 4px solid var(--c, var(--line)); }
+  .note.done .text { color: var(--muted); text-decoration: line-through; }
+  .note .text { white-space: pre-wrap; word-break: break-word; }
+  .note textarea { width: 100%; min-height: 80px; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--bg); }
+  .meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .meta select { border: 1px solid var(--line); background: var(--chip); border-radius: 8px; padding: 3px 6px; font-size: 13px; }
+  .icon { background: none; border: 0; padding: 4px 6px; border-radius: 6px; color: var(--muted); font-size: 13px; }
+  .icon:hover { background: var(--chip); color: var(--ink); }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+
+  .side .card { padding: 14px; margin-bottom: 14px; }
+  .side h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  .side p { margin: 0 0 10px; font-size: 14px; color: var(--muted); }
+  .catlist { display: grid; gap: 6px; }
+  .catlist div { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .catlist div span.n { flex: 1; }
+  .addcat { display: flex; gap: 6px; margin-top: 10px; }
+  .addcat input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 8px; font-size: 14px; }
+
+  .setup { max-width: 480px; margin: 40px auto; padding: 20px; }
+  .setup h2 { margin: 0 0 8px; }
+  .setup p, .setup li { color: var(--muted); font-size: 15px; }
+  .setup input { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 10px 12px; margin: 6px 0 12px; }
+  .setup .err { color: #c9473d; font-size: 14px; min-height: 1.4em; }
+  .foot { text-align: center; margin-top: 24px; font-size: 13px; }
+  .foot button { color: var(--muted); }
+
+  .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); text-align: center; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <form class="card setup" id="setup" hidden>
+    <h2>Connect to GitHub</h2>
+    <p>Notes are saved in your private <b>kahani-data</b> repo, so only you can read them.</p>
+    <ol>
+      <li>Use your <b>Kahani apps</b> token (the one the Kahani app uses), or make one with access to <b>kahani-data</b> and <b>Contents: Read and write</b>.</li>
+      <li>Paste it below. You only do this once on each device.</li>
+    </ol>
+    <label>Token<input id="tokenIn" type="password" autocomplete="off" placeholder="github_pat_…"></label>
+    <label>Repo<input id="repoIn" value="andrew455/kahani-data"></label>
+    <div class="err" id="setupErr"></div>
+    <button class="primary">Connect</button>
+  </form>
+
+  <div id="app" hidden>
+    <header>
+      <h1>Notes</h1>
+      <span class="sync" id="sync">Synced</span>
+      <span class="spacer"></span>
+      <button class="ghost" id="copyClaude" title="Copy all open For Claude notes">Copy for Claude</button>
+    </header>
+
+    <div class="layout">
+      <aside class="side desktop-only">
+        <div class="card">
+          <h2>Categories</h2>
+          <div class="catlist" id="catList"></div>
+          <form class="addcat" id="addCat"><input id="newCat" placeholder="New category" maxlength="30"><button class="ghost">Add</button></form>
+        </div>
+        <div class="card">
+          <h2>Claude</h2>
+          <p>In Claude Code, say <b>"check kahana notes"</b> for Kahani notes, or <b>"read my phone notes"</b> for For Claude notes.</p>
+        </div>
+      </aside>
+
+      <main>
+        <form class="compose" id="compose">
+          <textarea class="card" id="text" placeholder="Write a note…"></textarea>
+          <div class="card pickbox">
+            <div class="label">Category</div>
+            <div class="cats" id="pick"></div>
+          </div>
+          <button class="primary" id="saveBtn" disabled>Save note</button>
+        </form>
+
+        <div class="filters" id="filters"></div>
+        <div class="tools">
+          <input type="search" id="search" placeholder="Search notes">
+          <label class="toggle"><input type="checkbox" id="showDone"> Show done</label>
+        </div>
+        <div class="list" id="list"></div>
+        <div class="foot"><button class="icon" id="disconnect">Disconnect this device</button></div>
+      </main>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// Phone Notes, online. Notes live in one JSON file in the private kahani-data repo and are read and
+// written through the GitHub API. Each change is replayed onto the latest copy before saving, so the
+// phone and the computer can both edit without overwriting each other. Unsent changes wait on the device.
+const FILE = 'notes/phone-notes.json';
+const CFG_KEY = 'phonenotes:gh', KAHANI_KEY = 'kahani:gh', CACHE_KEY = 'phonenotes:cache', PEND_KEY = 'phonenotes:pending', PICK_KEY = 'phonenotes:pick';
+const BUILT_IN = ['general', 'claude', 'kahani'];
+const EMPTY = { version: 1, categories: [
+  { id: 'claude', name: 'For Claude', color: '#d97757' },
+  { id: 'kahani', name: 'Kahani', color: '#c4a03b' },
+  { id: 'general', name: 'General', color: '#4a7fd6' },
+  { id: 'ideas', name: 'Ideas', color: '#9b6bd6' },
+  { id: 'todo', name: 'To-do', color: '#3f9c6d' },
+], notes: [] };
+
+const $ = id => document.getElementById(id);
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+// Reuse the Kahani app's GitHub connection if this device already has one (same website).
+let cfg = load(CFG_KEY, null) || load(KAHANI_KEY, null);
+let remote = load(CACHE_KEY, null);         // last copy seen on GitHub
+let pending = load(PEND_KEY, []);           // changes not yet saved to GitHub
+let sha = null, etag = null, busy = false;
+const ui = { filter: 'all', pick: load(PICK_KEY, 'general'), editing: null };
+
+const b64e = s => { const b = new TextEncoder().encode(s); let o = ''; for (let i = 0; i < b.length; i += 0x8000) o += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(o); };
+const b64d = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, '')), c => c.charCodeAt(0)));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+async function gh(path, opts = {}, c = cfg) {
+  const r = await fetch('https://api.github.com/repos/' + c.repo + path, {
+    method: opts.method || 'GET', cache: 'no-store',
+    headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opts.headers || {}), ...(opts.body ? { 'Content-Type': 'application/json' } : {}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (r.status === 304) return { notModified: true };
+  if (!r.ok) { const e = new Error('GitHub ' + r.status); e.status = r.status; throw e; }
+  return { data: await r.json(), etag: r.headers.get('ETag') };
+}
+function errText(e) {
+  const s = e && e.status;
+  if (s === 401) return 'GitHub didn\'t accept the token — it may have expired.';
+  if (s === 403) return 'The token can\'t save to this repo (needs Contents: Read and write).';
+  if (s === 404) return 'Repo not found, or the token has no access to it.';
+  return 'Offline — notes are kept on this phone and sync when you\'re back online.';
+}
+
+// ---- changes (applied to whatever the latest copy is) ----
+function apply(db, op) {
+  db = structuredClone(db);
+  const note = op.id && db.notes.find(n => n.id === op.id);
+  if (op.t === 'add' && !db.notes.some(n => n.id === op.note.id)) db.notes.unshift(op.note);
+  if (op.t === 'edit' && note) Object.assign(note, op.set, { updated: op.at });
+  if (op.t === 'del') db.notes = db.notes.filter(n => n.id !== op.id);
+  if (op.t === 'addcat' && !db.categories.some(c => c.id === op.cat.id)) db.categories.push(op.cat);
+  if (op.t === 'delcat' && !BUILT_IN.includes(op.cat)) {
+    db.categories = db.categories.filter(c => c.id !== op.cat);
+    for (const n of db.notes) if (n.category === op.cat) n.category = 'general';
+  }
+  return db;
+}
+const view = () => pending.reduce(apply, remote || EMPTY);
+
+function change(op) {
+  op.at = Date.now();
+  pending.push(op); keep(PEND_KEY, pending);
+  render(); sync();
+}
+
+// ---- sync with GitHub ----
+async function pull(force) {
+  const r = await gh('/contents/' + FILE, force || !etag ? {} : { headers: { 'If-None-Match': etag } }).catch(e => { if (e.status === 404) return { missing: true }; throw e; });
+  if (r.notModified) return false;
+  if (r.missing) { sha = null; etag = null; remote = remote || EMPTY; return true; }
+  sha = r.data.sha; etag = r.etag;
+  remote = JSON.parse(b64d(r.data.content));
+  for (const c of EMPTY.categories) if (BUILT_IN.includes(c.id) && !remote.categories.some(x => x.id === c.id)) remote.categories.unshift(c);
+  keep(CACHE_KEY, remote);
+  return true;
+}
+async function push() {
+  for (let attempt = 0; pending.length; attempt++) {
+    const ops = pending.slice();
+    const next = ops.reduce(apply, remote || EMPTY);
+    next.version = (next.version || 1) + 1;
+    try {
+      const r = await gh('/contents/' + FILE, { method: 'PUT', body: { message: 'Phone note: ' + ops.map(o => o.t).join(', '), content: b64e(JSON.stringify(next, null, 1)), ...(sha ? { sha } : {}) } });
+      sha = r.data.content.sha; etag = null; remote = next; keep(CACHE_KEY, remote);
+      pending = pending.slice(ops.length); keep(PEND_KEY, pending);
+    } catch (e) {
+      // someone else saved first: fetch their copy and replay our changes on top
+      if ((e.status === 409 || e.status === 422) && attempt < 4) { await pull(true); continue; }
+      throw e;
+    }
+  }
+}
+async function sync() {
+  if (!cfg || busy) return;
+  busy = true; setSync('busy', 'Syncing…');
+  try {
+    const changed = await pull();
+    await push();
+    setSync('ok', 'Synced');
+    if (changed && !ui.editing) render();
+  } catch (e) { console.error(e); setSync('err', e.status ? 'Not synced' : 'Offline'); if (e.status) toast(errText(e)); }
+  finally { busy = false; }
+  if (pending.length && $('sync').classList.contains('ok')) sync();
+}
+function setSync(state, text) { const s = $('sync'); s.className = 'sync ' + state; s.textContent = text + (pending.length ? ` (${pending.length} waiting)` : ''); }
+
+// ---- UI ----
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600); }
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+function ago(t) {
+  const s = (Date.now() - t) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+function render() {
+  const db = view();
+  const cat = id => db.categories.find(c => c.id === id) || { name: '?', color: '#999' };
+  if (!db.categories.some(c => c.id === ui.pick)) ui.pick = 'general';
+
+  $('pick').innerHTML = db.categories.map(c => `<button type="button" class="cat-pick ${c.id === ui.pick ? 'on' : ''}" data-pick="${c.id}"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}</button>`).join('');
+
+  const open = id => db.notes.filter(n => !n.done && (id === 'all' || n.category === id)).length;
+  $('filters').innerHTML = [{ id: 'all', name: 'All' }, ...db.categories].map(c =>
+    `<button class="cat-pick ${ui.filter === c.id ? 'on' : ''}" data-filter="${c.id}">${c.color ? `<span class="dot" style="background:${c.color}"></span>` : ''}${esc(c.name)} <span class="count">${open(c.id)}</span></button>`).join('');
+
+  $('catList').innerHTML = db.categories.map(c => `<div><span class="dot" style="background:${c.color}"></span><span class="n">${esc(c.name)}</span>${BUILT_IN.includes(c.id) ? '' : `<button class="icon" data-delcat="${c.id}" title="Delete category">✕</button>`}</div>`).join('');
+
+  const q = $('search').value.trim().toLowerCase();
+  const showDone = $('showDone').checked;
+  const notes = db.notes.filter(n => (ui.filter === 'all' || n.category === ui.filter) && (showDone || !n.done) && (!q || n.text.toLowerCase().includes(q)));
+
+  $('list').innerHTML = notes.length ? notes.map(n => {
+    const c = cat(n.category);
+    const editing = ui.editing === n.id;
+    return `<div class="card note ${n.done ? 'done' : ''}" style="--c:${c.color}">
+      ${editing ? `<textarea data-edit="${n.id}">${esc(n.text)}</textarea>` : `<div class="text">${esc(n.text)}</div>`}
+      <div class="meta">
+        <select data-move="${n.id}" aria-label="Category">${db.categories.map(x => `<option value="${x.id}" ${x.id === n.category ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+        <span>${ago(n.created)}</span>
+        <span class="spacer"></span>
+        ${editing
+          ? `<button class="icon" data-saveedit="${n.id}">Save</button><button class="icon" data-canceledit>Cancel</button>`
+          : `<button class="icon" data-copy="${n.id}">Copy</button><button class="icon" data-startedit="${n.id}">Edit</button>`}
+        <button class="icon" data-done="${n.id}">${n.done ? 'Undo' : 'Done'}</button>
+        <button class="icon" data-del="${n.id}">Delete</button>
+      </div></div>`;
+  }).join('') : `<div class="empty">${db.notes.length ? 'No notes match.' : 'No notes yet — write one above.'}</div>`;
+}
+
+$('text').addEventListener('input', () => $('saveBtn').disabled = !$('text').value.trim());
+$('text').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) $('compose').requestSubmit(); });
+$('compose').addEventListener('submit', e => {
+  e.preventDefault();
+  const text = $('text').value.trim();
+  if (!text) return;
+  change({ t: 'add', note: { id: uid(), text, category: ui.pick, done: false, created: Date.now(), updated: Date.now() } });
+  $('text').value = ''; $('saveBtn').disabled = true;
+  toast('Saved to ' + (view().categories.find(c => c.id === ui.pick) || {}).name);
+});
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (!t) return;
+  const d = t.dataset, db = view();
+  const note = id => db.notes.find(n => n.id === id);
+  if (d.pick) { ui.pick = d.pick; keep(PICK_KEY, d.pick); render(); }
+  else if (d.filter) { ui.filter = d.filter; render(); }
+  else if (d.done) change({ t: 'edit', id: d.done, set: { done: !note(d.done).done } });
+  else if (d.del) { if (confirm('Delete this note?')) change({ t: 'del', id: d.del }); }
+  else if (d.copy) copy(note(d.copy).text);
+  else if (d.startedit) { ui.editing = d.startedit; render(); document.querySelector(`[data-edit="${d.startedit}"]`).focus(); }
+  else if ('canceledit' in d) { ui.editing = null; render(); }
+  else if (d.saveedit) { const text = document.querySelector(`[data-edit="${d.saveedit}"]`).value.trim(); ui.editing = null; if (text) change({ t: 'edit', id: d.saveedit, set: { text } }); else render(); }
+  else if (d.delcat) { const c = db.categories.find(x => x.id === d.delcat); if (confirm(`Delete "${c.name}"? Its notes move to General.`)) change({ t: 'delcat', cat: d.delcat }); }
+});
+document.addEventListener('change', e => { if (e.target.dataset.move) change({ t: 'edit', id: e.target.dataset.move, set: { category: e.target.value } }); });
+$('search').addEventListener('input', render);
+$('showDone').addEventListener('change', render);
+$('addCat').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('newCat').value.trim().slice(0, 30);
+  if (!name) return;
+  const palette = ['#c4683b', '#2f8f9d', '#b0487a', '#7d8c2a', '#5b63c9', '#a66b1f'];
+  const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(16).slice(2, 6);
+  change({ t: 'addcat', cat: { id, name, color: palette[view().categories.length % palette.length] } });
+  $('newCat').value = '';
+});
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast('Copied'); }
+  catch { const ta = document.createElement('textarea'); ta.value = text; document.body.append(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('Copied'); }
+}
+$('copyClaude').addEventListener('click', () => {
+  const open = view().notes.filter(n => n.category === 'claude' && !n.done);
+  if (!open.length) return toast('No open For Claude notes');
+  copy(open.map((n, i) => `${i + 1}. ${n.text}`).join('\n\n'));
+});
+
+// ---- connect / disconnect ----
+$('setup').addEventListener('submit', async e => {
+  e.preventDefault();
+  const c = { repo: $('repoIn').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, ''), token: $('tokenIn').value.trim(), branch: 'main' };
+  if (!/^[\w.-]+\/[\w.-]+$/.test(c.repo) || !c.token) { $('setupErr').textContent = 'Enter the token and the repo (owner/name).'; return; }
+  $('setupErr').textContent = 'Checking…';
+  try {
+    const info = (await gh('', {}, c)).data;
+    if (info.permissions && info.permissions.push === false) { $('setupErr').textContent = 'That token can read the repo but can\'t save to it.'; return; }
+  } catch (err) { $('setupErr').textContent = errText(err); return; }
+  cfg = c; keep(CFG_KEY, cfg);
+  $('tokenIn').value = '';
+  start();
+});
+$('disconnect').addEventListener('click', () => {
+  if (pending.length && !confirm(`${pending.length} change(s) haven't reached GitHub yet and will be lost. Disconnect anyway?`)) return;
+  if (!pending.length && !confirm('Disconnect this device? Your notes stay safe on GitHub.')) return;
+  for (const k of [CFG_KEY, CACHE_KEY, PEND_KEY]) try { localStorage.removeItem(k); } catch {}
+  location.reload();
+});
+
+function start() {
+  $('setup').hidden = true; $('app').hidden = false;
+  render(); sync();
+  setInterval(() => { if (!document.hidden) sync(); }, 15000);
+  setInterval(() => { if (!ui.editing && document.activeElement?.tagName !== 'SELECT') render(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
+  addEventListener('online', sync);
+}
+if (cfg) start(); else $('setup').hidden = false;
+</script>
+</body>
+</html>
