@@ -3959,7 +3959,7 @@ function flyJudge() {
   const g = fly.gate, ok = g.words[fly.lane] === g.target;
   if (ok) { fly.score++; fly.speed += .012; fly.msg = `✓ ${g.target.w} = ${g.target.m}`; fly.fcol = "rgba(92,194,139,.35)"; }
   else { fly.lives--; fly.msg = `✗ ${g.target.m} is ${g.target.w}`; fly.fcol = "rgba(240,123,114,.4)"; }
-  fly.flash = 1; speak(g.target.w);
+  fly.flash = 1;
   if (fly.lives <= 0) {
     fly.st = "over"; if ((fly.best[fly.lv] || 0) < fly.score) { fly.best[fly.lv] = fly.score; store.set("flybest", fly.best); }
     fly.gate = null; render(); return;
@@ -3972,7 +3972,7 @@ function flyLoop(now) {
   const G = fly.gate;
   if (G) {
     G.t += dt;
-    if (G.phase === "in") { G.d -= dt * 2.4; if (G.d <= .16) { G.d = .16; G.phase = "read"; G.t = 0; pushBottom(); } }
+    if (G.phase === "in") { G.d -= dt * 3.5; if (G.d <= .16) { G.d = .16; G.phase = "steer"; G.t = 0; sayNow(G.target.w); pushBottom(); } }   // arrive, say the word, start the clock
     else if (G.phase === "read" && G.t >= 3) { G.phase = "steer"; G.t = 0; sayNow(G.target.w); pushBottom(); }
     else if (G.phase === "steer" && G.t >= 3) { G.phase = "out"; G.t = 0; pushBottom(); }
     else if (G.phase === "out") { G.d -= dt * 1.2; if (G.d <= 0) flyJudge(); }
