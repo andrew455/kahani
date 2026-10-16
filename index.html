@@ -4419,13 +4419,15 @@ if (FR && BK) { GAMES.push(["bake", "👨‍🍳", "Au travail !", "Bakery Shift
 const SHOP_TXT = FR
   ? { hi: ["Bonjour ! Je voudrais ça, s'il vous plaît.", "Hello! I'd like this, please."], thanks: ["Merci ! Au revoir !", "Thank you! Goodbye!"], no: ["Désolé, je n'en ai pas.", "Sorry, I don't have any."], ok: ["Ah, d'accord. Au revoir !", "Ah, okay. Goodbye!"], bad: ["Non, ce n'est pas ça !", "No, that's not it!"], cur: "€", price: () => 1 + Math.floor(Math.random() * 5), tip: 1, title: "🛒 Le magasin", name: "Le magasin" }
   : { hi: ["नमस्ते! मुझे यह चाहिए।", "Hello! I need this."], thanks: ["धन्यवाद!", "Thank you!"], no: ["माफ़ कीजिए, यह नहीं है।", "Sorry, we don't have it."], ok: ["ठीक है, धन्यवाद!", "Okay, thank you!"], bad: ["नहीं, यह नहीं!", "No, not this!"], cur: "₹", price: () => 10 * (1 + Math.floor(Math.random() * 5)), tip: 5, title: "🛒 दुकान", name: "दुकान" };
-const SHOP_LEVELS = MATCH_LEVELS.slice(1).map((L, i) => ({ need: L.need, name: i === 0 ? "Small shop" : i === 1 ? "Corner shop" : "Big shop " + (i - 1), about: "Things up to Object Match level " + (i + 2), upto: i + 2 }));
+const SHOP_LEVELS = MATCH_LEVELS.slice(1).map((L, i) => ({ need: L.need, name: i === 0 ? "Small shop" : i === 1 ? "Corner shop" : i === 2 ? "Supermarket" : "Hypermarket " + (i - 2), about: `up to ${10 * (i + 1)} things in stock`, upto: i + 2 }));
 const PEOPLE = ["🧑", "👩", "👴", "👵", "👦", "👧", "🧔", "👨‍🦱", "👩‍🦰", "🧕"];
 const shop = { st: "menu", pick: 0, lv: 0, stock: [], queue: [], ci: 0, sel: 0, money: 0, msg: ["", ""], answered: null, tr: false, best: store.get("shopbest", {}) };
 function shopStart(lv) {
   const L = SHOP_LEVELS[lv]; if (!L || knownN() < L.need) return;
   const pool = gShuffle(MATCH_LEVELS.slice(0, L.upto + 1).filter(x => knownN() >= x.need).flatMap(x => x.items));
-  const wanted = pool.slice(0, 8), extra = pool.slice(8, 10), missing = pool.slice(10, 12);
+  // bigger shop each level: 10 things on level 1, 20 on level 2, 30 on level 3… (as many as the word lists allow)
+  const size = Math.max(10, Math.min(10 * (lv + 1), pool.length - 2));
+  const wanted = pool.slice(0, 8), extra = pool.slice(8, size), missing = pool.slice(size, size + 2);
   shop.stock = gShuffle(wanted.concat(extra)).map(it => ({ it, sold: false, price: SHOP_TXT.price() }));
   shop.queue = gShuffle(wanted.map(it => ({ it, have: true })).concat(missing.map(it => ({ it, have: false })))).map(q => Object.assign(q, { who: PEOPLE[Math.floor(Math.random() * PEOPLE.length)] }));
   Object.assign(shop, { st: "play", lv, ci: 0, sel: 0, money: 0, answered: null, msg: SHOP_TXT.hi });
