@@ -3941,7 +3941,8 @@ function flyNewGate() {
   const L = FLY_LEVELS[fly.lv], pool = flyPool();
   if (pool.length < L.lanes) { fly.msg = "Learn a few more words first!"; fly.st = "over"; return; }
   const pick = gShuffle(pool).slice(0, L.lanes);
-  fly.gate = { target: pick[0], words: gShuffle(pick), d: 1.1 };
+  // phases: rush in → stop to read (3 s) → hear the word, steer (3 s, or A) → fly through
+  fly.gate = { target: pick[0], words: gShuffle(pick), d: 1.1, phase: "in", t: 0 };
   pushBottom();
 }
 function flyStart(lv) {
@@ -3964,7 +3965,14 @@ function flyJudge() {
 function flyLoop(now) {
   if (route.view !== "fly" || fly.st !== "play") return;
   const dt = Math.min(.05, (now - fly.last) / 1000); fly.last = now;
-  if (fly.gate) { fly.gate.d -= fly.speed * dt; if (fly.gate.d <= 0) flyJudge(); }
+  const G = fly.gate;
+  if (G) {
+    G.t += dt;
+    if (G.phase === "in") { G.d -= dt * 2.4; if (G.d <= .16) { G.d = .16; G.phase = "read"; G.t = 0; pushBottom(); } }
+    else if (G.phase === "read" && G.t >= 3) { G.phase = "steer"; G.t = 0; sayNow(G.target.w); pushBottom(); }
+    else if (G.phase === "steer" && G.t >= 3) { G.phase = "out"; G.t = 0; pushBottom(); }
+    else if (G.phase === "out") { G.d -= dt * 1.2; if (G.d <= 0) flyJudge(); }
+  }
   fly.x += (fly.lane - fly.x) * Math.min(1, dt * 10);
   fly.flash = Math.max(0, fly.flash - dt * 1.5);
   flyDraw(now / 1000);
@@ -4009,18 +4017,19 @@ function flyDraw(t) {
   const g0 = fly.gate; x.textAlign = "left"; x.textBaseline = "top";
   x.fillStyle = "rgba(17,19,29,.7)"; x.fillRect(0, 0, W, H * .1);
   x.fillStyle = "#fff"; x.font = `600 ${H * .05}px Mukta, system-ui, sans-serif`;
-  x.fillText(g0 ? `Fly through: ${g0.target.m}` : "", W * .02, H * .022);
+  const ph = g0 && g0.phase, left = g0 ? Math.max(0, Math.ceil(3 - g0.t)) : 0;
+  x.fillText(ph === "read" ? `Read the rings… ${left}` : ph === "steer" ? `🔊 Listen and steer! ${left}  (A = go)` : ph === "out" ? "…" : "", W * .02, H * .022);
   x.textAlign = "right"; x.fillText(`★ ${fly.score}   ${"❤️".repeat(Math.max(0, fly.lives))}`, W * .98, H * .022);
   if (fly.msg) { x.textAlign = "center"; x.font = `600 ${H * .045}px "Tiro Devanagari Hindi", Mukta, sans-serif`; x.fillStyle = "rgba(17,19,29,.65)"; const tw = x.measureText(fly.msg).width; x.fillRect(W / 2 - tw / 2 - 16, H * .12, tw + 32, H * .07); x.fillStyle = "#fff"; x.fillText(fly.msg, W / 2, H * .13); }
   if (fly.flash) { x.fillStyle = fly.fcol; x.globalAlpha = fly.flash; x.fillRect(0, 0, W, H); x.globalAlpha = 1; }
 }
 function viewFly() {
-  if (fly.st === "menu") return levelMenu(FR ? "✈️ Dans le ciel · Sky Words" : "✈️ आसमान · Sky Words", FLY_LEVELS, fly.pick, fly.best) + `<p class="muted small" style="text-align:center">Fly through the ring with the ${FR ? "French" : "Hindi"} word for the English at the top. Uses only words you know (${flyPool().length} right now).</p>`;
+  if (fly.st === "menu") return levelMenu(FR ? "✈️ Dans le ciel · Sky Words" : "✈️ आसमान · Sky Words", FLY_LEVELS, fly.pick, fly.best) + `<p class="muted small" style="text-align:center">Read the rings, then listen: fly through the ring with the word you hear. Uses only words you know (${flyPool().length} right now).</p>`;
   if (fly.st === "over") return `<div class="hub" style="text-align:center"><h2 class="display" style="font-size:2rem">✈️ Landed!</h2><p style="font-size:1.4rem">★ ${fly.score} · best ${fly.best[fly.lv] || 0}</p><p class="muted">${esc(fly.msg)}</p>
     <div class="ask-row" style="justify-content:center"><button class="btn primary" data-gk="a">Fly again</button><button class="btn" data-gk="b">Levels</button></div></div>`;
   setTimeout(() => flyDraw(performance.now() / 1000), 0);
   return `<div class="fly-wrap"><canvas id="flyc" class="fly-c" aria-label="Sky Words game"></canvas>
-    <div class="fly-pad"><button class="btn" data-gk="left">◀</button><button class="btn" data-gk="b">Stop</button><button class="btn" data-gk="right">▶</button></div></div>`;
+    <div class="fly-pad"><button class="btn" data-gk="left">◀</button><button class="btn primary" data-gk="a">Go! (A)</button><button class="btn" data-gk="x">🔊</button><button class="btn" data-gk="right">▶</button><button class="btn" data-gk="b">Stop</button></div></div>`;
 }
 function flyKey(k, i) {
   if (fly.st === "menu") {
@@ -4031,6 +4040,9 @@ function flyKey(k, i) {
     return;
   }
   if (fly.st === "over") { if (k === "a") flyStart(fly.lv); else if (k === "b") { fly.st = "menu"; render(); } return; }
+  const G = fly.gate;
+  if (k === "a" && G && (G.phase === "steer" || G.phase === "read")) { if (G.phase === "read") sayNow(G.target.w); G.phase = "out"; G.t = 0; pushBottom(); return; }
+  if ((k === "x" || k === "y") && G && G.phase !== "in" && G.phase !== "read") { sayNow(G.target.w); return; }
   const n = FLY_LEVELS[fly.lv].lanes;
   if (k === "left") fly.lane = Math.max(0, fly.lane - 1);
   else if (k === "right") fly.lane = Math.min(n - 1, fly.lane + 1);
@@ -4222,7 +4234,8 @@ function gameBottom() {
   const menu = (title, levels, pick, best) => ({ type: "levels", title, pick, list: levels.map((L, i) => ({ name: `Level ${i + 1}${L.name ? " · " + L.name : ""}`, open: k >= L.need, need: L.need, best: best[i] })), known: k });
   if (v === "fly") {
     if (fly.st === "menu") return menu("✈️ Sky Words", FLY_LEVELS, fly.pick, fly.best);
-    return { type: "fly", over: fly.st === "over", prompt: fly.gate ? fly.gate.target.m : "", score: fly.score, lives: fly.lives, msg: fly.msg, best: fly.best[fly.lv] || 0 };
+    const G = fly.gate;
+    return { type: "fly", over: fly.st === "over", phase: G ? G.phase : "", prompt: G && G.phase === "read" ? "Read the rings…" : G && G.phase === "steer" ? "🔊 Listen and steer! (A = go)" : "", score: fly.score, lives: fly.lives, msg: fly.msg, best: fly.best[fly.lv] || 0 };
   }
   if (v === "match") {
     if (match.st === "menu") return menu("🧩 Object Match", MATCH_LEVELS, match.pick, match.best);
