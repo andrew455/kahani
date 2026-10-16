@@ -3638,7 +3638,8 @@ function advKey(k) {
   if (sc && sc.end) { if (k === "a" || k === "b") { adv.ch = null; adv.pick = 0; saveAdv(); render(); } else if (k === "select") go("library"); return; }
   if (k === "up") advMove(-1); else if (k === "down") advMove(1);
   else if (k === "a") advPick(adv.pick);
-  else if (k === "y") { adv.tr = !adv.tr; saveAdv(); render(); }
+  else if (k === "y") { const o = advChoices()[adv.pick]; if (o) speak(o.hi); }   // hear the highlighted choice
+  else if (k === "translate") { adv.tr = !adv.tr; saveAdv(); render(); }
   else if (k === "x") advSay();
   else if (k === "b") { adv.ch = null; adv.pick = 0; saveAdv(); render(); }
   else if (k === "select") go("library");
@@ -3667,7 +3668,7 @@ function viewAdv() {
     <div class="adv-text story" lang="${FR ? "fr" : "hi"}">${text}</div>
     ${sc.end ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} Chapter complete. <button class="btn" data-advback="1">Back to chapters</button></div>`
       : `<div class="adv-choices">${ch.map((o, i) => `<button class="adv-c ${adv.pick === i ? "pick" : ""}" data-advpick="${i}"><span lang="hi">${esc(o.hi)}</span>${adv.tr ? `<small>${esc(o.en)}</small>` : ""}</button>`).join("")}</div>
-         <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> go · <kbd>Y</kbd> English · <kbd>X</kbd> hear again · <kbd>B</kbd> chapters</div>`}
+         <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> go · <kbd>Y</kbd> hear the choice · <kbd>X</kbd> hear the scene · <kbd>B</kbd> chapters</div>`}
   </div>`;
 }
 function advBottom() {
@@ -3896,6 +3897,7 @@ function matchKey(k, i) {
   if (k === "left") match.cur = (match.cur + n - 1) % n; else if (k === "right") match.cur = (match.cur + 1) % n;
   else if (k === "up" || k === "down") match.cur = (match.cur + half) % n;   // jump between pictures and words
   else if (k === "a") return matchFlip(match.cur);
+  else if (k === "y") { const c = match.cards[match.cur]; if (c && c.kind === "word") sayNow(MATCH_LEVELS[match.lv].items[c.k][0]); return; }
   else if (k === "b") { match.st = "menu"; render(); return; }
   void cols; render();
 }
@@ -3956,6 +3958,7 @@ function actsKey(k, i) {
   if (k === "up" || k === "down") { acts.sel = (acts.sel + (k === "down" ? 1 : 2)) % 3; render(); speak(acts.q.opts[acts.sel][0]); }
   else if (k === "a") actsAnswer(acts.sel);
   else if (k === "x") speak(ACTD.question[0]);
+  else if (k === "y" && acts.q) { sayNow(ACTD.prefix + acts.q.opts[acts.sel][0]); return; }
   else if (k === "b") { acts.st = "menu"; render(); }
 }
 
@@ -4254,7 +4257,7 @@ function shopKey(k, i) {
     for (let t = 0; t < n; t++) { shop.sel = (shop.sel + d) % n; if (!o[shop.sel].sold) break; }
   }
   else if (k === "a") return shopAnswer(shop.sel);
-  else if (k === "y") { if (shop.answered) shop.tr = !shop.tr; }
+  else if (k === "y") { if (shop.answered) shop.tr = !shop.tr; else { const o = shopOptions()[shop.sel]; sayNow(o.none ? SHOP_TXT.no[0] : o.it[0]); return; } }
   else if (k === "x") speak(shop.msg[0]);
   else if (k === "b") { shop.st = "menu"; }
   render();
