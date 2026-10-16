@@ -4256,7 +4256,7 @@ function viewShop() {
       <div class="bk-say-btns">${a ? `<button class="btn" data-gk="y" aria-pressed="${!!shop.tr}">🇬🇧 ${shop.tr ? "Hide English" : "Translate"}</button><button class="btn" data-gk="wbw" aria-pressed="${!!shop.wbw}">🔍 ${shop.wbw ? "Hide words" : "Word by word"}</button><button class="btn" data-gk="hear">🔊</button><button class="btn" data-gk="hearQ">🔊 Their request</button>` : `<button class="btn" data-gk="hear">🔊 Hear again</button>`}</div><div class="shop-want">${q.it[2]}</div>${a && !a.ok ? `<div class="small">${esc(q.it[0])} · ${esc(q.it[1])}${q.have ? "" : " · not in stock"}</div>` : ""}</div></div>
     <div class="shop-stock">${opts.map((o, i) => `<button class="shop-item ${shop.sel === i ? "pick" : ""} ${a && a.i === i ? (a.ok ? "right" : "wrong") : ""} ${o.none ? "none" : ""} ${o.sold && !(a && a.i === i) ? "sold" : ""}" data-gk="ans" data-gi="${i}">${o.none ? `<span>🚫 ${esc(SHOP_TXT.no[0])}</span>` : `<span class="si-name">${esc(o.it[0])}</span><span class="muted small">${SHOP_TXT.cur}${o.price}</span>`}</button>`).join("")}</div>
     ${a ? `<div class="ask-row" style="justify-content:center">${a.ok && q.have ? knowBtn(gameWordKey(q.it[0]), q.it[0]) : ""}<button class="btn primary next-btn" data-gk="next">Next customer ▶</button></div>` : ""}
-    <div class="kbd"><kbd>D-pad</kbd> choose · <kbd>A</kbd> ${a ? "next customer" : "sell"} · <kbd>Y</kbd> English · <kbd>B</kbd> close the shop</div></div>`;
+    <div class="kbd"><kbd>D-pad</kbd> choose · <kbd>A</kbd> ${a ? "next customer" : "sell"} · <kbd>X</kbd> hear their request · <kbd>Y</kbd> ${a ? "English" : "hear the item"} · <kbd>B</kbd> close the shop</div></div>`;
 }
 function shopKey(k, i) {
   if (shop.st === "menu") {
@@ -4290,7 +4290,7 @@ function shopKey(k, i) {
   }
   else if (k === "a") return shopAnswer(shop.sel);
   else if (k === "y") { if (shop.answered) shop.tr = !shop.tr; else { const o = shopOptions()[shop.sel]; sayNow(o.none ? SHOP_TXT.no[0] : o.it[0]); return; } }
-  else if (k === "x") speak(shop.msg[0]);
+  else if (k === "x") { sayNow(SHOP_TXT.hi[0]); return; }   // hear their request again
   else if (k === "b") { shop.st = "menu"; }
   render();
 }
