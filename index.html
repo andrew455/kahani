@@ -504,7 +504,7 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .adv-c.pick { border-color: var(--accent-strong); box-shadow: 0 0 0 2px var(--accent-strong); }
 .adv-end { font-size: 1.2rem; display: flex; gap: 14px; align-items: center; }
 .dual .adv-choices, .dual .adv .kbd, .dual .adv-end .btn { display: none; }
-.dual main:has(.hub), .dual main:has(.fly-wrap) { padding-top: 24px !important; }
+.dual main:has(.hub) { padding-top: 24px !important; }
 .hub { max-width: 1000px; margin: 0 auto; display: grid; gap: 16px; }
 .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
 .hub-card { display: grid; gap: 4px; justify-items: start; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px; font: inherit; color: inherit; box-shadow: var(--shadow); }
@@ -514,7 +514,8 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .hub-en { font-weight: 600; }
 .fly-wrap { display: grid; gap: 10px; }
 .fly-c { width: 100%; height: min(70vh, 620px); border-radius: 16px; display: block; background: #5aa7e8; }
-.dual .fly-c { height: calc(100vh - 40px); border-radius: 0; }
+.dual .fly-c { height: 100vh; border-radius: 0; }
+.dual main:has(.fly-wrap) { max-width: none !important; padding: 0 !important; }
 .fly-pad { display: flex; justify-content: center; gap: 12px; }
 .dual .fly-pad, .dual .hub .kbd, .dual .act-opts { display: none; }
 .mgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
@@ -532,6 +533,8 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .act-res.ok { color: var(--good); } .act-res.bad { color: var(--bad); }
 .adv-c.right { border-color: var(--good); box-shadow: 0 0 0 2px var(--good); }
 .adv-c.wrong { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad); }
+.dual .hub:has(.mgrid), .dual .hub.acts { max-width: 1500px; }
+@media (max-width: 600px) { .mgrid { gap: 6px; } .memo { font-size: 2.2rem; } .mword { font-size: 1.2rem; } .act-pic { font-size: 5rem; } }
 .dual .act-pic { font-size: 14rem; } .dual .act-scene { min-height: 55vh; } .dual .act-q { font-size: 2.4rem; }
 .dual .adv-text { background: none; border: 0; padding: 4vh 2vw; }
 .dual .adv-s { font-size: calc(var(--read-size) * 1.7) !important; }
@@ -3624,7 +3627,7 @@ const FLY_LEVELS = [
 ];
 const fly = { st: "menu", pick: 0, lv: 0, score: 0, lives: 3, lane: 0, x: 0, gate: null, speed: .3, msg: "", flash: 0, fcol: "", best: store.get("flybest", {}), raf: 0, last: 0, clouds: [] };
 // Little grammar words (of, to, is…) make poor targets: keep things you can picture or say on their own.
-const FLY_SKIP = /^(is|are|am|was|were|of|to|in|on|at|and|or|the|a|an|also|too|so|then|from|with|for|his|her|my|your|our|their|this|these|that|polite|\(|'s|marker|question)\b/i;
+const FLY_SKIP = /^(is|are|am|was|were|of|to|in|on|at|and|or|the|a|an|also|too|so|then|from|with|for|his|her|my|your|our|their|this|these|that|polite|but|not|no|yes|very|if|what|who|where|how|which|here|there|now|oh|hey|wow|please|let's|\(|'s|marker|question)\b/i;
 function flyPool() {
   const seenM = new Set(), out = [];
   for (const [w, e] of Object.entries(V)) {
