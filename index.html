@@ -528,6 +528,7 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .mcard.sel { border-color: var(--new); box-shadow: 0 0 0 3px var(--new); }
 .mcard.bad { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad); animation: chefshake .3s; }
 .mcard.done { opacity: .55; }
+.dual .mwords { display: none; } .dual .mpics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } .dual .mpics .memo { font-size: 7rem; }
 @media (max-width: 700px) { .mpics, .mwords { grid-template-columns: repeat(3, 1fr); } }
 .mback { font-size: 2rem; font-weight: 700; opacity: .8; }
 .memo { font-size: 3.4rem; line-height: 1; }
@@ -3844,11 +3845,11 @@ const SAY_BAD = FR ? ["Oups !", "Ah non !", "Non, essaie encore !"] : ["नह�
 let gameSaySeq = 0;
 const sayThen = (a, b) => { const n = ++gameSaySeq; speak(a, { onend: () => setTimeout(() => { if (n === gameSaySeq) speak(b); }, 150) }); };
 const sayNow = t => { ++gameSaySeq; stopPlayer(); speak(t); };   // cut off whatever was playing
-const match = { st: "menu", pick: 0, lv: 0, cards: [], cur: 0, open: [], done: [], bad: [], moves: 0, lock: false, found: [], best: store.get("matchbest2", {}) };
+const match = { st: "menu", pick: 0, lv: 0, cards: [], cur: 0, curW: 0, open: [], done: [], bad: [], moves: 0, lock: false, found: [], best: store.get("matchbest2", {}) };
 // Everything is face up: pictures on top, words underneath. Pick a picture and a word to link them. Best = fewest mistakes.
 function matchStart(lv) {
   const L = MATCH_LEVELS[lv]; if (!L || knownN() < L.need) return;
-  match.lv = lv; match.st = "play"; match.cur = 0; match.open = []; match.done = []; match.bad = []; match.moves = 0; match.found = []; match.lock = false;
+  match.lv = lv; match.st = "play"; match.cur = 0; match.curW = 0; match.open = []; match.done = []; match.bad = []; match.moves = 0; match.found = []; match.lock = false;
   match.cards = gShuffle(L.items.map((it, k) => ({ k, kind: "pic" }))).concat(gShuffle(L.items.map((it, k) => ({ k, kind: "word" }))));
   render();
 }
@@ -3876,8 +3877,8 @@ function matchFlip(i) {
 function viewMatch() {
   if (match.st === "menu") return levelMenu(FR ? "🧩 Les paires · Object Match" : "🧩 जोड़ी · Object Match", MATCH_LEVELS, match.pick, match.best) + `<p class="muted small" style="text-align:center">Link each picture to its ${FR ? "French" : "Hindi"} name: pick a picture, then its word. New words go into Learning.</p>`;
   const L = MATCH_LEVELS[match.lv];
-  const card = i => { const c = match.cards[i], it = L.items[c.k];
-    return `<button class="mcard up ${match.done.includes(i) ? "done" : ""} ${match.open.includes(i) ? "sel" : ""} ${match.bad.includes(i) ? "bad" : ""} ${match.cur === i ? "pick" : ""}" data-gk="flip" data-gi="${i}">${c.kind === "pic" ? `<span class="memo">${it[2]}</span>` : `<span class="mword">${esc(it[0])}</span>`}</button>`; };
+  const card = i => { const c = match.cards[i], it = L.items[c.k], pickHere = DUAL ? (i < L.items.length ? i === match.cur : i - L.items.length === match.curW) : match.cur === i;
+    return `<button class="mcard up ${match.done.includes(i) ? "done" : ""} ${match.open.includes(i) ? "sel" : ""} ${match.bad.includes(i) ? "bad" : ""} ${pickHere ? "pick" : ""}" data-gk="flip" data-gi="${i}">${c.kind === "pic" ? `<span class="memo">${it[2]}</span>` : `<span class="mword">${esc(it[0])}</span>`}</button>`; };
   const n = L.items.length, idx = [...Array(match.cards.length).keys()];
   return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.4rem">🧩 Level ${match.lv + 1}</h2><span class="muted small">${match.done.length / 2} / ${n} linked · ${match.moves} mistake${match.moves === 1 ? "" : "s"}</span></div>
     ${match.st === "won" ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} All linked with ${match.moves} mistake${match.moves === 1 ? "" : "s"}. <button class="btn primary" data-gk="a">Next level</button><button class="btn" data-gk="b">Levels</button></div>` : ""}
@@ -3885,6 +3886,7 @@ function viewMatch() {
     <div class="mgrid mwords">${idx.slice(n).map(card).join("")}</div>
     <div class="kbd"><kbd>D-pad</kbd> move · <kbd>A</kbd> pick a picture, then its word · <kbd>B</kbd> levels</div></div>`;
 }
+function speakW() { const c = match.cards[match.cards.length / 2 + match.curW]; if (c) sayNow(MATCH_LEVELS[match.lv].items[c.k][0]); }
 function matchKey(k, i) {
   if (match.st === "menu") {
     if (k === "level") return matchStart(+i);
@@ -3896,6 +3898,21 @@ function matchKey(k, i) {
   if (match.st === "won") { if (k === "a") { const nx = match.lv + 1; if (MATCH_LEVELS[nx] && knownN() >= MATCH_LEVELS[nx].need) matchStart(nx); else { match.st = "menu"; render(); } } else if (k === "b") { match.st = "menu"; render(); } return; }
   const n = match.cards.length, half = n / 2, cols = Math.min(half, 6);
   if (k === "flip") return matchFlip(+i);
+  if (DUAL) {   // two screens: left stick / D-pad = pictures (top), right stick = words (bottom), A = link them
+    const pc = 3, wc = 2, mv = (cur, d, size, c) => { const nx = cur + d; return nx < 0 || nx >= size ? cur : nx; };
+    if (k === "left" || k === "right") match.cur = mv(match.cur, k === "right" ? 1 : -1, half, pc);
+    else if (k === "up" || k === "down") match.cur = mv(match.cur, k === "down" ? pc : -pc, half, pc);
+    else if (k === "rleft" || k === "rright") { match.curW = mv(match.curW, k === "rright" ? 1 : -1, half, wc); speakW(); }
+    else if (k === "rup" || k === "rdown") { match.curW = mv(match.curW, k === "rdown" ? wc : -wc, half, wc); speakW(); }
+    else if (k === "wsel") { match.curW = +i; speakW(); }
+    else if (k === "a") {
+      if (match.done.includes(match.cur) || match.done.includes(half + match.curW)) { toast("That one's already linked."); return; }
+      match.open = [match.cur]; return matchFlip(half + match.curW);
+    }
+    else if (k === "y") { speakW(); return; }
+    else if (k === "b") { match.st = "menu"; render(); return; }
+    render(); return;
+  }
   if (k === "left") match.cur = (match.cur + n - 1) % n; else if (k === "right") match.cur = (match.cur + 1) % n;
   else if (k === "up" || k === "down") match.cur = (match.cur + half) % n;   // jump between pictures and words
   else if (k === "a") return matchFlip(match.cur);
@@ -3996,7 +4013,9 @@ function gameBottom() {
   if (v === "match") {
     if (match.st === "menu") return menu("🧩 Object Match", MATCH_LEVELS, match.pick, match.best);
     const L = MATCH_LEVELS[match.lv];
-    return { type: "match", level: match.lv + 1, won: match.st === "won", moves: match.moves, pairs: L.items.length, found: match.found.map(j => L.items[j]) };
+    const half = match.cards.length / 2;
+    return { type: "match", level: match.lv + 1, won: match.st === "won", moves: match.moves, pairs: L.items.length, found: match.found.map(j => L.items[j]),
+      words: match.cards.slice(half).map((c, j) => ({ label: L.items[c.k][0], done: match.done.includes(half + j), cur: j === match.curW, bad: match.bad.includes(half + j) })), linked: match.done.length / 2 };
   }
   if (v === "taxi") {
     const V0 = txV();
