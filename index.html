@@ -522,6 +522,13 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .mcard { aspect-ratio: 4 / 3; border-radius: 16px; border: 1px solid var(--line); background: linear-gradient(135deg, var(--accent-strong), #c4741a); color: #fff; font: inherit; display: grid; place-items: center; cursor: pointer; }
 .mcard.up { background: var(--surface); color: var(--ink); }
 .mcard.done { background: color-mix(in srgb, var(--good) 22%, var(--surface)); border-color: var(--good); }
+.mpics, .mwords { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.mwords .mword { font-size: 1.35rem; text-align: center; overflow-wrap: anywhere; } .dual .mwords .mword { font-size: 2rem; }
+.mwords { margin-top: 4px; } .mwords .mcard { aspect-ratio: 3 / 1.4; }
+.mcard.sel { border-color: var(--new); box-shadow: 0 0 0 3px var(--new); }
+.mcard.bad { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad); animation: chefshake .3s; }
+.mcard.done { opacity: .55; }
+@media (max-width: 700px) { .mpics, .mwords { grid-template-columns: repeat(3, 1fr); } }
 .mback { font-size: 2rem; font-weight: 700; opacity: .8; }
 .memo { font-size: 3.4rem; line-height: 1; }
 .mword { font-family: var(--f-display); font-size: 2rem; }
@@ -3811,42 +3818,45 @@ function flyKey(k, i) {
 const MATCH_LEVELS = (FR ? (typeof GAME_FR !== "undefined" ? GAME_FR.objects : []) : (typeof GAME_OBJ !== "undefined" ? GAME_OBJ.levels : [])).map((L, i) => Object.assign({ name: i < (FR ? 2 : 3) ? "From your stories" : "New things", about: L.items.map(x => x[2]).join(" ") }, L));
 // The word saved to your list: Hindi as is; French without le / la / l' ("le chat" → chat).
 const gameWordKey = phrase => FR ? norm(phrase.split(/[\s’']/).filter(Boolean).pop()) : phrase;
-const match = { st: "menu", pick: 0, lv: 0, cards: [], cur: 0, open: [], done: [], moves: 0, lock: false, found: [], best: store.get("matchbest", {}) };
+const match = { st: "menu", pick: 0, lv: 0, cards: [], cur: 0, open: [], done: [], bad: [], moves: 0, lock: false, found: [], best: store.get("matchbest2", {}) };
+// Everything is face up: pictures on top, words underneath. Pick a picture and a word to link them. Best = fewest mistakes.
 function matchStart(lv) {
   const L = MATCH_LEVELS[lv]; if (!L || knownN() < L.need) return;
-  match.lv = lv; match.st = "play"; match.cur = 0; match.open = []; match.done = []; match.moves = 0; match.found = []; match.lock = false;
-  match.cards = gShuffle(L.items.flatMap((it, k) => [{ k, kind: "pic" }, { k, kind: "word" }]));
+  match.lv = lv; match.st = "play"; match.cur = 0; match.open = []; match.done = []; match.bad = []; match.moves = 0; match.found = []; match.lock = false;
+  match.cards = gShuffle(L.items.map((it, k) => ({ k, kind: "pic" }))).concat(gShuffle(L.items.map((it, k) => ({ k, kind: "word" }))));
   render();
 }
 function matchFlip(i) {
-  if (match.lock || match.done.includes(i) || match.open.includes(i)) return;
+  if (match.lock || match.done.includes(i)) return;
   const L = MATCH_LEVELS[match.lv], c = match.cards[i], it = L.items[c.k];
-  match.open.push(i); if (c.kind === "word") speak(it[0]);
-  if (match.open.length === 2) {
-    match.moves++;
-    const [a, b] = match.open.map(j => match.cards[j]);
-    if (a.k === b.k) {
-      match.done.push(...match.open); match.open = []; match.found.unshift(c.k);
-      speak(it[0]); toast(`${it[2]} ${it[0]} = ${it[1]}`, 2500);
-      const wk = gameWordKey(it[0]); if (statusOf(wk) === 0) setWord(wk, { s: 1, m: FR ? `${it[1]} (${it[0]})` : it[1], t: it[3], l: "game" }, true);
-      if (match.done.length === match.cards.length) {
-        match.st = "won"; if (match.best[match.lv] == null || match.moves < match.best[match.lv]) { match.best[match.lv] = match.moves; store.set("matchbest", match.best); }
-      }
-    } else { match.lock = true; setTimeout(() => { match.open = []; match.lock = false; if (route.view === "match") render(); }, 1100); }
+  if (c.kind === "word") speak(it[0]);
+  const other = match.open.find(j => match.cards[j].kind !== c.kind);
+  if (other == null) { match.open = [i]; render(); return; }   // first pick (or a new pick of the same kind)
+  const o = match.cards[other];
+  if (o.k === c.k) {
+    match.done.push(other, i); match.open = []; match.found.unshift(c.k);
+    speak(it[0]); toast(`${it[2]} ${it[0]} = ${it[1]}`, 2500);
+    const wk = gameWordKey(it[0]); if (statusOf(wk) === 0) setWord(wk, { s: 1, m: FR ? `${it[1]} (${it[0]})` : it[1], t: it[3], l: "game" }, true);
+    if (match.done.length === match.cards.length) {
+      match.st = "won"; if (match.best[match.lv] == null || match.moves < match.best[match.lv]) { match.best[match.lv] = match.moves; store.set("matchbest2", match.best); }
+    }
+  } else {
+    match.moves++; match.bad = [other, i]; match.open = []; match.lock = true;
+    setTimeout(() => { match.bad = []; match.lock = false; if (route.view === "match") render(); }, 700);
   }
   render();
 }
 function viewMatch() {
-  if (match.st === "menu") return levelMenu(FR ? "🧩 Les paires · Object Match" : "🧩 जोड़ी · Object Match", MATCH_LEVELS, match.pick, match.best) + `<p class="muted small" style="text-align:center">Turn over two cards: find each picture and its ${FR ? "French" : "Hindi"} name. New words go into Learning.</p>`;
+  if (match.st === "menu") return levelMenu(FR ? "🧩 Les paires · Object Match" : "🧩 जोड़ी · Object Match", MATCH_LEVELS, match.pick, match.best) + `<p class="muted small" style="text-align:center">Link each picture to its ${FR ? "French" : "Hindi"} name: pick a picture, then its word. New words go into Learning.</p>`;
   const L = MATCH_LEVELS[match.lv];
-  const grid = match.cards.map((c, i) => {
-    const it = L.items[c.k], up = match.open.includes(i) || match.done.includes(i);
-    return `<button class="mcard ${up ? "up" : ""} ${match.done.includes(i) ? "done" : ""} ${match.cur === i ? "pick" : ""}" data-gk="flip" data-gi="${i}">${up ? (c.kind === "pic" ? `<span class="memo">${it[2]}</span>` : `<span class="mword">${esc(it[0])}</span>`) : `<span class="mback">?</span>`}</button>`;
-  }).join("");
-  return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.4rem">🧩 Level ${match.lv + 1}</h2><span class="muted small">${match.done.length / 2} / ${L.items.length} pairs · ${match.moves} moves</span></div>
-    ${match.st === "won" ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} All pairs in ${match.moves} moves. <button class="btn primary" data-gk="a">Next level</button><button class="btn" data-gk="b">Levels</button></div>` : ""}
-    <div class="mgrid">${grid}</div>
-    <div class="kbd"><kbd>D-pad</kbd> move · <kbd>A</kbd> turn over · <kbd>B</kbd> levels</div></div>`;
+  const card = i => { const c = match.cards[i], it = L.items[c.k];
+    return `<button class="mcard up ${match.done.includes(i) ? "done" : ""} ${match.open.includes(i) ? "sel" : ""} ${match.bad.includes(i) ? "bad" : ""} ${match.cur === i ? "pick" : ""}" data-gk="flip" data-gi="${i}">${c.kind === "pic" ? `<span class="memo">${it[2]}</span>` : `<span class="mword">${esc(it[0])}</span>`}</button>`; };
+  const n = L.items.length, idx = [...Array(match.cards.length).keys()];
+  return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.4rem">🧩 Level ${match.lv + 1}</h2><span class="muted small">${match.done.length / 2} / ${n} linked · ${match.moves} mistake${match.moves === 1 ? "" : "s"}</span></div>
+    ${match.st === "won" ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} All linked with ${match.moves} mistake${match.moves === 1 ? "" : "s"}. <button class="btn primary" data-gk="a">Next level</button><button class="btn" data-gk="b">Levels</button></div>` : ""}
+    <div class="mgrid mpics">${idx.slice(0, n).map(card).join("")}</div>
+    <div class="mgrid mwords">${idx.slice(n).map(card).join("")}</div>
+    <div class="kbd"><kbd>D-pad</kbd> move · <kbd>A</kbd> pick a picture, then its word · <kbd>B</kbd> levels</div></div>`;
 }
 function matchKey(k, i) {
   if (match.st === "menu") {
@@ -3857,13 +3867,13 @@ function matchKey(k, i) {
     return;
   }
   if (match.st === "won") { if (k === "a") { const nx = match.lv + 1; if (MATCH_LEVELS[nx] && knownN() >= MATCH_LEVELS[nx].need) matchStart(nx); else { match.st = "menu"; render(); } } else if (k === "b") { match.st = "menu"; render(); } return; }
-  const cols = 4, n = match.cards.length;
+  const n = match.cards.length, half = n / 2, cols = Math.min(half, 6);
   if (k === "flip") return matchFlip(+i);
   if (k === "left") match.cur = (match.cur + n - 1) % n; else if (k === "right") match.cur = (match.cur + 1) % n;
-  else if (k === "up") match.cur = (match.cur - cols + n) % n; else if (k === "down") match.cur = (match.cur + cols) % n;
+  else if (k === "up" || k === "down") match.cur = (match.cur + half) % n;   // jump between pictures and words
   else if (k === "a") return matchFlip(match.cur);
   else if (k === "b") { match.st = "menu"; render(); return; }
-  render();
+  void cols; render();
 }
 
 /* ---------- 🏃 What's He Doing?: a picture of him doing something, pick the right verb from three ---------- */
@@ -3963,6 +3973,7 @@ function gameBottom() {
     if (shop.st === "over") return { type: "shopover", money: SHOP_TXT.cur + shop.money, best: SHOP_TXT.cur + (shop.best[shop.lv] || 0) };
     const q = shop.queue[shop.ci];
     return { type: "shop", money: SHOP_TXT.cur + shop.money, ci: shop.ci + 1, n: shop.queue.length, want: q.it[2], msg: shop.msg, tr: shop.tr, sel: shop.sel, answered: shop.answered, next: shop.answered != null,
+      comment: shop.answered ? { fr: shop.msg[0], en: shop.tr ? shop.msg[1] : "", words: shop.wbw ? gameWords(shop.msg[0], SHOP_GLOSS) : null } : null,
       know: shop.answered && shop.answered.ok && q.have ? { w: gameWordKey(q.it[0]), label: q.it[0], known: statusOf(gameWordKey(q.it[0])) === 5 } : null,
       opts: shopOptions().map(o => o.none ? { none: true, label: SHOP_TXT.no[0] } : { label: o.it[0], price: SHOP_TXT.cur + o.price }) };
   }
@@ -4089,6 +4100,24 @@ function viewBake() {
   </div>`;
 }
 // The chef's request, word by word (shown only once you've answered).
+// Word by word for any game sentence: [word, meaning, how to say it].
+const SHOP_GLOSS = FR
+  ? { je: ["I", "zhuh"], voudrais: ["would like", "voo-DREH"], "ça": ["that, this", "sah"], vous: ["you (polite)", "voo"], "plaît": ["pleases (s'il vous plaît = please)", "pleh"],
+      "s'": ["if (s'il vous plaît = please)", "s"], il: ["it", "eel"], merci: ["thank you", "mair-SEE"], au: ["to the (au revoir = goodbye)", "oh"], revoir: ["seeing again (au revoir = goodbye)", "ruh-VWAHR"],
+      "désolé": ["sorry", "day-zoh-LAY"], "n'": ["not (before a vowel)", "n"], en: ["of it / any", "ahn"], ai: ["have (I)", "ay"], pas: ["not", "pah"], ah: ["ah", "ah"],
+      "d'accord": ["okay", "dah-KOR"], non: ["no", "nohn"], ce: ["it, this", "suh"], "n'est": ["is not", "neh"], est: ["is", "eh"], bonjour: ["hello", "bohn-ZHOOR"] }
+  : {};
+function gameWords(text, extra) {
+  const out = []; let m; const re = new RegExp(WORD_RE.source, "gi");
+  while ((m = re.exec(text))) {
+    const w = norm(m[0]), x = (extra || {})[w], gl = glossFor(w, null);
+    const mean = (x && x[0]) || (V[w] && V[w].m) || (gl && gl.m) || "";
+    const say = (x && x[1]) || (V[w] && V[w].t) || (gl && gl.t) || (FR ? "" : roman(w));
+    out.push([m[0], mean, say]);
+  }
+  return out;
+}
+const wbwHtml = list => `<div class="wbw-row" style="justify-content:flex-start;margin-top:8px">${list.map(([w, g, t]) => `<span class="wbw-w"><b>${esc(w)}</b>${t ? `<i class="wbw-t">${esc(t)}</i>` : ""}<small>${esc(g)}</small></span>`).join("")}</div>`;
 function bakeWords(text) {
   const out = []; let m; const re = new RegExp(WORD_RE.source, "gi");
   while ((m = re.exec(text))) {
@@ -4154,7 +4183,7 @@ function shopGoOn() {
   if (shop.answered == null || shop.st !== "play") return;
   shop.ci++; shop.answered = null; shop.sel = 0;
   if (shop.ci >= shop.queue.length) { shop.st = "over"; if ((shop.best[shop.lv] || 0) < shop.money) { shop.best[shop.lv] = shop.money; store.set("shopbest", shop.best); } render(); return; }
-  shop.msg = SHOP_TXT.hi; render(); speak(SHOP_TXT.hi[0]);
+  shop.msg = SHOP_TXT.hi; shop.tr = false; shop.wbw = false; render(); speak(SHOP_TXT.hi[0]);
 }
 function viewShop() {
   if (shop.st === "menu") return levelMenu(SHOP_TXT.title + " · The Shop", SHOP_LEVELS, shop.pick, Object.fromEntries(Object.entries(shop.best).map(([k, v]) => [k, SHOP_TXT.cur + v]))) +
@@ -4163,7 +4192,9 @@ function viewShop() {
     <div class="ask-row" style="justify-content:center"><button class="btn primary" data-gk="a">Open the shop again</button><button class="btn" data-gk="b">Levels</button></div></div>`;
   const q = shop.queue[shop.ci], opts = shopOptions(), a = shop.answered;
   return `<div class="hub shop"><div class="section-h"><span class="muted small">Customer ${shop.ci + 1} / ${shop.queue.length}</span><b class="shop-money">💰 ${SHOP_TXT.cur}${shop.money}</b></div>
-    <div class="shop-counter"><span class="shop-who">${q.who}</span><div class="bubble"><div class="bubble-fr">${esc(shop.msg[0])}</div>${shop.tr && shop.msg !== SHOP_TXT.hi ? `<div class="muted">${esc(shop.msg[1])}</div>` : ""}<div class="shop-want">${q.it[2]}</div>${a && !a.ok ? `<div class="small">${esc(q.it[0])} · ${esc(q.it[1])}${q.have ? "" : " · not in stock"}</div>` : ""}</div></div>
+    <div class="shop-counter"><span class="shop-who">${q.who}</span><div class="bubble"><div class="bubble-fr">${esc(shop.msg[0])}</div>${shop.tr && (a || shop.msg !== SHOP_TXT.hi) ? `<div class="muted">🇬🇧 ${esc(shop.msg[1])}</div>` : ""}
+      ${shop.wbw && a ? wbwHtml(gameWords(shop.msg[0], SHOP_GLOSS)) : ""}
+      <div class="bk-say-btns">${a ? `<button class="btn" data-gk="y" aria-pressed="${!!shop.tr}">🇬🇧 ${shop.tr ? "Hide English" : "Translate"}</button><button class="btn" data-gk="wbw" aria-pressed="${!!shop.wbw}">🔍 ${shop.wbw ? "Hide words" : "Word by word"}</button>` : ""}<button class="btn" data-gk="hear">🔊</button></div><div class="shop-want">${q.it[2]}</div>${a && !a.ok ? `<div class="small">${esc(q.it[0])} · ${esc(q.it[1])}${q.have ? "" : " · not in stock"}</div>` : ""}</div></div>
     <div class="shop-stock">${opts.map((o, i) => `<button class="shop-item ${shop.sel === i ? "pick" : ""} ${a && a.i === i ? (a.ok ? "right" : "wrong") : ""} ${o.none ? "none" : ""}" data-gk="ans" data-gi="${i}">${o.none ? `<span>🚫 ${esc(SHOP_TXT.no[0])}</span>` : `<span class="si-name">${esc(o.it[0])}</span><span class="muted small">${SHOP_TXT.cur}${o.price}</span>`}</button>`).join("")}</div>
     ${a ? `<div class="ask-row" style="justify-content:center">${a.ok && q.have ? knowBtn(gameWordKey(q.it[0]), q.it[0]) : ""}<button class="btn primary next-btn" data-gk="next">Next customer ▶</button></div>` : ""}
     <div class="kbd"><kbd>D-pad</kbd> choose · <kbd>A</kbd> ${a ? "next customer" : "sell"} · <kbd>Y</kbd> English · <kbd>B</kbd> close the shop</div></div>`;
@@ -4179,10 +4210,12 @@ function shopKey(k, i) {
   if (k === "ans") return shopAnswer(+i);
   if (k === "next" || (shop.answered != null && k === "a")) return shopGoOn();
   if (k === "known") return markKnown(i);
+  if (k === "wbw") { if (shop.answered) { shop.wbw = !shop.wbw; render(); } return; }
+  if (k === "hear") { speak(shop.msg[0]); return; }
   const n = shopOptions().length;
   if (k === "down" || k === "right") shop.sel = (shop.sel + 1) % n; else if (k === "up" || k === "left") shop.sel = (shop.sel + n - 1) % n;
   else if (k === "a") return shopAnswer(shop.sel);
-  else if (k === "y") shop.tr = !shop.tr;
+  else if (k === "y") { if (shop.answered) shop.tr = !shop.tr; }
   else if (k === "x") speak(shop.msg[0]);
   else if (k === "b") { shop.st = "menu"; }
   render();
