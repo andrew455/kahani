@@ -3540,6 +3540,24 @@ const PASTRIES = [
   ["millefeuille", "🍰", "le mille-feuille", "custard slice"], ["canele", "", "le canelé", "caramel cake from Bordeaux"], ["creme", "🍮", "la crème brûlée", "crème brûlée"],
   ["beignet", "🍩", "le beignet", "doughnut"], ["gateau", "🎂", "le gâteau au chocolat", "chocolate cake"]
 ];
+// Prizes: special pastries won by doing well in the games. [id, picture, French, English, how to win it]
+const PRIZES = [
+  ["chou", "🧁", "le chou à la crème", "cream puff", "Bakery Shift: make 5 pastries in one shift"],
+  ["religieuse", "⛄", "la religieuse", "double cream puff", "Bakery Shift: make 10 pastries in one shift"],
+  ["parisbrest", "🥯", "le paris-brest", "praline ring", "Taxi: get the boss's best verdict (7+ right)"],
+  ["galette", "👑", "la galette des rois", "king cake", "Taxi: buy the plane"],
+  ["kouign", "🥮", "le kouign-amann", "Breton butter cake", "Object Match: finish a level with no mistakes"],
+  ["tatin", "🍏", "la tarte Tatin", "upside-down apple tart", "Adventure: finish a chapter"],
+  ["opera", "🍫", "l'opéra", "opera cake", "What's He Doing?: get 10 out of 10"],
+  ["financier", "🧈", "le financier", "almond butter cake", "The Shop: earn €20 in one day"]
+];
+const prizesOf = () => effActivity().prizes || {};
+function awardPrize(id) {
+  if (!FR || prizesOf()[id]) return;
+  const p = PRIZES.find(x => x[0] === id); if (!p) return;
+  enqueue("stats/activity", { prizes: { [id]: Date.now() } });
+  setTimeout(() => toast(`🏆 New in Deb's bakery: ${p[1]} ${p[2]}!`, 5000), 400);
+}
 // Each day's goal is picked at random (the same all day): longer study wins fancier pastries.
 const PASTRY_TIER = { croissant: 0, baguette: 0, crepe: 0, pac: 0, madeleine: 0, macaron: 1, eclair: 1, tarte: 1, brioche: 1, millefeuille: 2, canele: 2, creme: 2, beignet: 2, gateau: 3 };
 const GOALS = [[600, "", 0], [1800, "⭐ Special", 1], [3600, "🌟 Deluxe", 2], [7200, "👑 Legendary", 3]];
@@ -3611,6 +3629,11 @@ function viewBakery() {
         <div class="pastry-fr">${n ? esc(p[2]) : "?"}</div>
         <div class="muted small">${n ? `${esc(p[3])} · ${fmt(first[p[0]])}` : "pas encore · not yet"}</div>
       </button>`; }).join("")}</div>
+    <div class="section-h" style="margin-top:6px"><h3 class="display" style="margin:0">🏆 Prizes from the games</h3><span class="muted small">${Object.keys(prizesOf()).length} / ${PRIZES.length}</span></div>
+    <div class="pastries">${PRIZES.map((p, k) => { const n = prizesOf()[p[0]] ? 1 : 0, pi = PASTRIES.length + k;
+      return `<button class="pastry ${n ? "on" : ""} ${pi === bakPick ? "pick" : ""}" data-bak="${pi}">
+        <div class="pastry-ico">${n ? `<span class="emo">${p[1]}</span>` : `<span class="emo">🏆</span>`}</div>
+        <div class="pastry-fr">${n ? esc(p[2]) : "?"}</div><div class="muted small">${n ? esc(p[3]) : esc(p[4])}</div></button>`; }).join("")}</div>
   </div>`;
 }
 if (FR) TABS.splice(TABS.length - 1, 0, ["bakery", "Boulangerie", "🥐"]);
@@ -3627,13 +3650,14 @@ const advKnown = () => Object.values(V).filter(e => e.s === 5).length;
 const advChoices = () => { const sc = advScene(); return sc ? (sc.choices || []).filter(o => !o.need || adv.items.includes(o.need)) : []; };
 function advStart(id) {
   const c = ADV.find(x => x.id === id); if (!c || c.soon || advKnown() < c.need) return;
-  adv = Object.assign(adv, { ch: id, scene: c.start, items: [], pick: 0, tr: false }); saveAdv(); render(); advSay();
+  adv = Object.assign(adv, { ch: id, scene: c.start, items: [], pick: 0, wi: 0, tr: false }); saveAdv(); render(); advSay();
 }
 function advPick(i) {
+  adv.pick = i;
   const o = advChoices()[i]; if (!o) return;
   if (o.get && !adv.items.includes(o.get)) adv.items.push(o.get);
-  adv.scene = o.go; adv.pick = 0; adv.tr = false; saveAdv();
-  if (advScene() && advScene().end) { adv.done[adv.ch] = Date.now(); saveAdv(); }
+  adv.scene = o.go; adv.pick = 0; adv.wi = 0; adv.tr = false; saveAdv();
+  if (advScene() && advScene().end) { adv.done[adv.ch] = Date.now(); saveAdv(); awardPrize("tatin"); }
   render(); scrollTo(0, 0); advSay();
 }
 function advSay() {   // reads the scene aloud, sentence by sentence
@@ -3647,6 +3671,26 @@ function advMove(d) {
   adv.pick = (adv.pick + d + n) % n; saveAdv(); render();
   speak(advChoices()[adv.pick].hi);
 }
+// The scene's words in order, with the sentence each is in (for the Thor's D-pad reading).
+function advWords() {
+  const sc = advScene(); if (!sc) return [];
+  const out = []; sc.hi.forEach(([hi], si) => { let m; const re = new RegExp(WORD_RE.source, "gi"); while ((m = re.exec(hi))) out.push({ w: norm(m[0]), si }); });
+  return out;
+}
+function advWordInfo() {
+  const ws = advWords(), x = ws[adv.wi || 0]; if (!x) return null;
+  const L = { gloss: (advCh() || {}).gloss || {} }, gl = L.gloss[x.w];
+  return { w: x.w, meaning: meaningOf(x.w, L) || (gl && gl.m) || "", say: (gl && gl.t) || romanOf(x.w, L), s: statusOf(x.w) };
+}
+function advMoveWord(k) {
+  const ws = advWords(); if (!ws.length) return;
+  let i = adv.wi || 0;
+  if (k === "left") i = Math.max(0, i - 1); else if (k === "right") i = Math.min(ws.length - 1, i + 1);
+  else { const si = ws[i].si + (k === "down" ? 1 : -1), j = ws.findIndex(x => x.si === si); if (j >= 0) i = j; }
+  adv.wi = i; const w = ws[i].w; speak(w);
+  if (settings.autoLearn && statusOf(w) === 0) { const info = advWordInfo(); setWord(w, { s: 1, m: info.meaning, t: info.say, l: "game" }, true); }
+  render();
+}
 function advKey(k) {
   if (!adv.ch) {   // chapter list
     const open = ADV.filter(c => !c.soon && advKnown() >= c.need);
@@ -3658,6 +3702,9 @@ function advKey(k) {
   }
   const sc = advScene();
   if (sc && sc.end) { if (k === "a" || k === "b") { adv.ch = null; adv.pick = 0; saveAdv(); render(); } else if (k === "select") go("library"); return; }
+  if (DUAL && ["left", "right", "up", "down"].includes(k)) return advMoveWord(k);
+  if (DUAL && (k === "a" || k === "y")) { const x = advWordInfo(); if (x) speak(x.w); return; }
+  if (k === "advknown") { const x = advWordInfo(); if (x) { setWord(x.w, { s: 5 }, true); toast(`✓ ${x.w} is now known`); render(); } return; }
   if (k === "up") advMove(-1); else if (k === "down") advMove(1);
   else if (k === "a") advPick(adv.pick);
   else if (k === "y") { const o = advChoices()[adv.pick]; if (o) speak(o.hi); }   // hear the highlighted choice
@@ -3683,7 +3730,8 @@ function viewAdv() {
   }
   const c = advCh(), sc = advScene(); if (!sc) { adv.ch = null; saveAdv(); return viewAdv(); }
   const counter = { k: 0 }, L = { gloss: c.gloss || {} };
-  const text = sc.hi.map(([hi, en], si) => `<p class="adv-s">${tokensHtml(hi, si, L, counter)}${adv.tr ? `<span class="adv-en">${esc(en)}</span>` : ""}</p>`).join("");
+  let text = sc.hi.map(([hi, en], si) => `<p class="adv-s">${tokensHtml(hi, si, L, counter)}${adv.tr ? `<span class="adv-en">${esc(en)}</span>` : ""}</p>`).join("");
+  if (DUAL) text = text.replace(new RegExp(`<span class="w"([^>]*data-k="${adv.wi || 0}")`), '<span class="w sel"$1');
   const ch = advChoices();
   return `<div class="adv">
     <div class="adv-head"><span class="muted small">${esc(c.title)} · ${esc(c.en)}</span>${adv.items.length ? `<span class="muted small">🎒 ${adv.items.map(esc).join(", ")}</span>` : ""}</div>
@@ -3696,7 +3744,7 @@ function viewAdv() {
 function advBottom() {
   if (!adv.ch) return { list: ADV.map((c, i) => ({ id: c.id, title: c.title, en: c.en, need: c.need, open: !c.soon && advKnown() >= c.need, soon: !!c.soon, done: !!adv.done[c.id] })), pick: adv.pick, known: advKnown() };
   const c = advCh(), sc = advScene() || { hi: [] };
-  return { ch: c.title, en: c.en, end: !!sc.end, tr: adv.tr, lines: sc.hi, choices: advChoices().map(o => ({ hi: o.hi, en: o.en })), pick: adv.pick, items: adv.items };
+  return { ch: c.title, en: c.en, end: !!sc.end, tr: adv.tr, lines: sc.hi, word: advWordInfo(), choices: advChoices().map(o => ({ hi: o.hi, en: o.en })), pick: adv.pick, items: adv.items };
 }
 
 
@@ -3755,6 +3803,26 @@ function pastryModel(id, locked) {
       add(cyl(1.1, 1.1, .6, 48), dark, 0, .3); add(cyl(.85, .85, .5, 48), dark, 0, .85); add(cyl(.87, .87, .06, 48), cream, 0, 1.12);
       for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; add(cyl(.04, .04, .35, 8), mat(0x6fa8ff, .5), Math.cos(a) * .5, 1.3, Math.sin(a) * .5); if (!locked) add(new T.ConeGeometry(.05, .14, 8), new T.MeshBasicMaterial({ color: 0xffb300 }), Math.cos(a) * .5, 1.55, Math.sin(a) * .5); }
       break;
+    case "chou":
+      add(sph, golden, 0, .55, 0, .85, .6, .85); add(new T.TorusGeometry(.72, .16, 16, 40), cream, 0, .55, 0, 1, 1, 1, Math.PI / 2); add(sph, mat(0xffffff, .9), 0, 1.0, 0, .55, .2, .55); break;
+    case "religieuse":
+      add(sph, golden, 0, .55, 0, .8, .6, .8); add(sph, dark, 0, .9, 0, .72, .25, .72); add(new T.TorusGeometry(.32, .1, 12, 30), cream, 0, 1.15, 0, 1, 1, 1, Math.PI / 2); add(sph, golden, 0, 1.4, 0, .4, .32, .4); add(sph, dark, 0, 1.58, 0, .34, .14, .34); break;
+    case "parisbrest":
+      add(new T.TorusGeometry(.85, .3, 18, 48), golden, 0, .3, 0, 1, 1, 1, Math.PI / 2); add(new T.TorusGeometry(.85, .22, 14, 48), mat(0xd6a76a, .6), 0, .55, 0, 1, 1, 1, Math.PI / 2); add(new T.TorusGeometry(.85, .26, 18, 48), golden, 0, .78, 0, 1, 1, .7, Math.PI / 2);
+      for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; add(new T.BoxGeometry(.12, .03, .07), cream, Math.cos(a) * .85, 1.0, Math.sin(a) * .85, 1, 1, 1, 0, a, 0); }
+      break;
+    case "galette":
+      add(cyl(1.3, 1.3, .3, 48), golden, 0, .15); for (let i = 0; i < 8; i++) add(new T.BoxGeometry(2.4, .02, .04), mat(0xb87628, .6), 0, .31, 0, 1, 1, 1, 0, i * Math.PI / 8, 0);
+      add(cyl(.45, .45, .35, 24, 1), mat(0xe8c040, .25, .8), 0, .5); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; add(new T.ConeGeometry(.1, .25, 8), mat(0xe8c040, .25, .8), Math.cos(a) * .42, .8, Math.sin(a) * .42); }
+      break;
+    case "kouign": { const pts = []; for (let i = 0; i <= 10; i++) pts.push(new T.Vector2(.95 + Math.sin(i / 10 * Math.PI) * .12, i * .07)); add(new T.LatheGeometry(pts, 8), mat(0xb5651d, .35), 0, 0); add(cyl(1.0, 1.0, .08, 8), mat(0x8a4a12, .3, .1), 0, .72); break; }
+    case "tatin":
+      add(cyl(1.2, 1.25, .25, 48), golden, 0, .12); for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2; add(sph, mat(0xb8661e, .3, .1), Math.cos(a) * .75, .38, Math.sin(a) * .75, .32, .18, .22, 0, -a, 0); } add(sph, mat(0xb8661e, .3, .1), 0, .38, 0, .35, .18, .35); break;
+    case "opera":
+      for (let i = 0; i < 6; i++) add(new T.BoxGeometry(1.8, .14, 1.1), [mat(0x5a3418, .5), mat(0x8a5a2a, .5), mat(0x3a1e0c, .4)][i % 3], 0, .08 + i * .15);
+      add(new T.BoxGeometry(1.82, .05, 1.12), mat(0x2a150a, .2), 0, .95); add(new T.BoxGeometry(.25, .02, .25), mat(0xe8c040, .2, .9), .3, .99, .1); break;
+    case "financier":
+      add(new T.BoxGeometry(1.5, .45, .8), mat(0xd9a441, .5), 0, .23); add(new T.BoxGeometry(1.52, .04, .82), mat(0xb87628, .5), 0, .46); for (let i = -2; i <= 2; i++) add(new T.BoxGeometry(.12, .04, .5), cream, i * .28, .5, 0, 1, 1, 1, 0, .3, 0); break;
     default: add(sph, golden, 0, .5, 0, .8, .5, .8);
   }
   return g;
@@ -3788,19 +3856,20 @@ function bakShow(canvas, id, locked) {
   }
 }
 function bakeryInfo() {
-  const t = treatsOf(), count = {}, first = {};
+  const t = treatsOf(), count = {}, first = {}, pz = prizesOf();
   for (const [d, id] of Object.entries(t).sort()) { count[id] = (count[id] || 0) + 1; if (!first[id]) first[id] = d; }
-  return PASTRIES.map(p => ({ p, n: count[p[0]] || 0, first: first[p[0]] }));
+  return PASTRIES.map(p => ({ p, n: count[p[0]] || 0, first: first[p[0]] }))
+    .concat(PRIZES.map(p => ({ p, n: pz[p[0]] ? 1 : 0, first: pz[p[0]] ? todayKey(new Date(pz[p[0]])) : null, prize: true, how: p[4] })));
 }
 function showcaseHtml() {
   const info = bakeryInfo(), it = info[bakPick] || info[0], p = it.p;
   const fmt = d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
   if (it.n) setTimeout(() => loadThree(() => bakShow(document.getElementById("bak3d"), p[0], false)), 0);
   return `<div class="showcase">${it.n ? `<canvas id="bak3d" aria-label="${esc(p[3])}"></canvas>` : `<div class="show-mystery">❔</div>`}
-    <div class="show-label"><b>${it.n ? esc(p[2]) : "?"}</b><span>${it.n ? `${esc(p[3])} · ${it.n > 1 ? `×${it.n} · ` : ""}first earned ${fmt(it.first)}` : "Not earned yet · keep studying to win it"}</span></div></div>`;
+    <div class="show-label"><b>${it.n ? esc(p[2]) : "?"}</b><span>${it.n ? `${esc(p[3])} · ${it.n > 1 ? `×${it.n} · ` : ""}${it.prize ? "🏆 won" : "first earned"} ${fmt(it.first)}` : it.prize ? `🏆 Win it: ${esc(it.how)}` : "Not earned yet · keep studying to win it"}</span></div></div>`;
 }
 function bakeryKey(k) {
-  const n = PASTRIES.length, cols = 4;
+  const n = PASTRIES.length + PRIZES.length, cols = 4;
   if (k === "left") bakPick = (bakPick + n - 1) % n; else if (k === "right") bakPick = (bakPick + 1) % n;
   else if (k === "up") bakPick = Math.max(0, bakPick - cols); else if (k === "down") bakPick = Math.min(n - 1, bakPick + cols);
   else if (k === "a" || k === "y") { const it = bakeryInfo()[bakPick]; if (it.n) speak(it.p[2]); return; }
@@ -3995,6 +4064,7 @@ function matchFlip(i) {
     const wk = gameWordKey(it[0]); if (statusOf(wk) === 0) setWord(wk, { s: 1, m: FR ? `${it[1]} (${it[0]})` : it[1], t: it[3], l: "game" }, true);
     if (match.done.length === match.cards.length) {
       match.st = "won"; if (match.best[match.lv] == null || match.moves < match.best[match.lv]) { match.best[match.lv] = match.moves; store.set("matchbest2", match.best); }
+      if (match.moves === 0) awardPrize("kouign");
     }
   } else {
     match.moves++; match.bad = [other, i]; match.open = []; match.lock = true;
@@ -4026,7 +4096,10 @@ function matchKey(k, i) {
   }
   if (match.st === "won") { if (k === "a") { const nx = match.lv + 1; if (MATCH_LEVELS[nx] && knownN() >= MATCH_LEVELS[nx].need) matchStart(nx); else { match.st = "menu"; render(); } } else if (k === "b") { match.st = "menu"; render(); } return; }
   const n = match.cards.length, half = n / 2, cols = Math.min(half, 6);
-  if (k === "flip") return matchFlip(+i);
+  if (k === "flip") {   // a tap moves the cursor there (on the Thor, A then links the two)
+    if (DUAL) { if (+i < half) match.cur = +i; else { match.curW = +i - half; speakW(); } render(); return; }
+    match.cur = +i; return matchFlip(+i);
+  }
   if (DUAL) {   // two screens: left stick / D-pad = pictures (top), right stick = words (bottom), A = link them
     const pc = 3, wc = 2, mv = (cur, d, size, c) => { const nx = cur + d; return nx < 0 || nx >= size ? cur : nx; };
     if (k === "left" || k === "right") match.cur = mv(match.cur, k === "right" ? 1 : -1, half, pc);
@@ -4076,7 +4149,7 @@ function actsAnswer(i) {
 function actsGoOn() {
   if (acts.answered == null || acts.st !== "play") return;
   acts.round++;
-  if (acts.round >= ACT_ROUNDS) { acts.st = "over"; if ((acts.best[acts.lv] || 0) < acts.score) { acts.best[acts.lv] = acts.score; store.set("actsbest", acts.best); } render(); }
+  if (acts.round >= ACT_ROUNDS) { acts.st = "over"; if ((acts.best[acts.lv] || 0) < acts.score) { acts.best[acts.lv] = acts.score; store.set("actsbest", acts.best); } if (acts.score >= ACT_ROUNDS) awardPrize("opera"); render(); }
   else actsNext();
 }
 function viewActs() {
@@ -4101,7 +4174,7 @@ function actsKey(k, i) {
     return;
   }
   if (acts.st === "over") { if (k === "a") actsStart(acts.lv); else if (k === "b") { acts.st = "menu"; render(); } return; }
-  if (k === "ans") return actsAnswer(+i);
+  if (k === "ans") { acts.sel = +i; return actsAnswer(+i); }
   if (k === "next" || (acts.answered != null && k === "a")) return actsGoOn();
   if (k === "up" || k === "down") { acts.sel = (acts.sel + (k === "down" ? 1 : 2)) % 3; render(); speak(acts.q.opts[acts.sel][0]); }
   else if (k === "a") actsAnswer(acts.sel);
@@ -4234,6 +4307,7 @@ function bakeAnswer(i) {
     bake.step++;
     if (bake.step >= R[3].length) {   // finished: into the display case
       bake.made.push(R); bake.case[R[0]] = (bake.case[R[0]] || 0) + 1; store.set("vitrine", bake.case);
+      if (bake.made.length >= 5) awardPrize("chou"); if (bake.made.length >= 10) awardPrize("religieuse");
       bake.ri++; bake.next = () => { bake.opts = []; bake.answered = null; bakeRecipeStart(); };
       bakeSay(fillT(BK.done, R));
     } else {
@@ -4325,7 +4399,7 @@ function bakeKey(k, i) {
   if (k === "known") return markKnown(i);
   if (k === "saywbw") { bake.sayWbw = !bake.sayWbw; render(); return; }
   if (k === "sayagain") { speak(bake.say[0]); return; }
-  if (k === "ans") return bakeAnswer(+i);
+  if (k === "ans") { bake.sel = +i; return bakeAnswer(+i); }
   const n = bake.opts.length || 4;
   if (k === "left") bake.sel = (bake.sel + n - 1) % n; else if (k === "right") bake.sel = (bake.sel + 1) % n;
   else if (k === "up" || k === "down") bake.sel = (bake.sel + 2) % n;
@@ -4370,7 +4444,7 @@ function shopAnswer(i) {
 function shopGoOn() {
   if (shop.answered == null || shop.st !== "play") return;
   shop.ci++; shop.answered = null; shop.sel = 0;
-  if (shop.ci >= shop.queue.length) { shop.st = "over"; if ((shop.best[shop.lv] || 0) < shop.money) { shop.best[shop.lv] = shop.money; store.set("shopbest", shop.best); } render(); return; }
+  if (shop.ci >= shop.queue.length) { shop.st = "over"; if ((shop.best[shop.lv] || 0) < shop.money) { shop.best[shop.lv] = shop.money; store.set("shopbest", shop.best); } if (FR && shop.money >= 20) awardPrize("financier"); render(); return; }
   shop.msg = SHOP_TXT.hi; shop.tr = false; shop.wbw = false; render(); sayNow(SHOP_TXT.hi[0]);
 }
 function viewShop() {
@@ -4395,7 +4469,7 @@ function shopKey(k, i) {
     return;
   }
   if (shop.st === "over") { if (k === "a") shopStart(shop.lv); else if (k === "b") { shop.st = "menu"; render(); } return; }
-  if (k === "ans") return shopAnswer(+i);
+  if (k === "ans") { shop.sel = +i; return shopAnswer(+i); }
   if (k === "next" || (shop.answered != null && k === "a")) return shopGoOn();
   if (k === "known") return markKnown(i);
   if (k === "wbw") { if (shop.answered) { shop.wbw = !shop.wbw; render(); } return; }
@@ -4484,6 +4558,7 @@ function txFinish() {   // the boss's verdict, and earnings go to the bank
   taxi.money += bonus; taxi.bank += taxi.money; store.set("taxibank", taxi.bank);
   if (taxi.money > taxi.best) { taxi.best = taxi.money; store.set("taxibest", taxi.best); }
   taxi.end = { tier, bonus, say: pickOne(TXL.end[tier]) }; taxi.trE = false; taxi.wbwE = false;
+  if (tier === "great") awardPrize("parisbrest");
   taxi.st = "over"; render(); speak(taxi.end.say[0]);
 }
 function txNext() {
@@ -4498,7 +4573,7 @@ function txBuy(id) {
   if (taxi.bank < v.price) { toast(`You need ${txCur()}${v.price}. You have ${txCur()}${taxi.bank}.`); return; }
   taxi.bank -= v.price; taxi.own.push(id); taxi.veh = id;
   store.set("taxibank", taxi.bank); store.set("taxiown", taxi.own); store.set("taxiveh", id);
-  toast(`${v.icon} ${v.en} bought!`, 3000); render();
+  toast(`${v.icon} ${v.en} bought!`, 3000); if (id === "plane") awardPrize("galette"); render();
 }
 function txLoop() {
   if (route.view !== "taxi" || taxi.st !== "play") return;
@@ -4635,7 +4710,7 @@ function bottomState() {
     if (w) { const e = V[w] || {}; st.review = { i: rv.i, n: rv.queue.length, shown: rv.shown, w, roman: e.t || roman(w), meaning: e.m || "", ivs: [1, 2, 3, 4].map(g => fmtIv(nextIv(e, g))) }; }
     else st.review = { done: true, did: rv.done, learning: Object.values(V).filter(e => e.s >= 1 && e.s <= 4).length };
   } else if (route.view === "bakery") {
-    st.bak = { pick: bakPick, list: bakeryInfo().map(x => ({ ico: x.p[1] || "", svg: x.p[1] ? "" : PASTRY_SVG[x.p[0]], name: x.p[2], en: x.p[3], n: x.n })), treat: (() => { const p = todaysPastry(), gm = todaysGoal()[0] / 60, got = !!treatsOf()[todayKey()]; return { ico: got ? (p[1] || "🥐") : "🎁", name: got ? p[2] : "a mystery treat", min: Math.min(gm, Math.floor(todaySecs() / 60)), goal: gm, tier: todaysGoal()[1], got }; })() };
+    st.bak = { pick: bakPick, list: bakeryInfo().map(x => ({ ico: x.p[1] || "", svg: x.p[1] ? "" : PASTRY_SVG[x.p[0]], name: x.p[2], en: x.p[3], n: x.n, prize: !!x.prize, how: x.how || "" })), treat: (() => { const p = todaysPastry(), gm = todaysGoal()[0] / 60, got = !!treatsOf()[todayKey()]; return { ico: got ? (p[1] || "🥐") : "🎁", name: got ? p[2] : "a mystery treat", min: Math.min(gm, Math.floor(todaySecs() / 60)), goal: gm, tier: todaysGoal()[1], got }; })() };
   } else if (GAME_VIEWS.includes(route.view)) {
     st.g = gameBottom();
   } else if (route.view === "milestones") {
