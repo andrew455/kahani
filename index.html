@@ -593,7 +593,7 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .gv-ico { font-size: 3rem; line-height: 1.1; } .gv-st { font-weight: 600; color: var(--accent-strong); }
 .dual .hub.taxi-menu { max-width: 1400px; }
 .tx-c { width: 100%; aspect-ratio: 11 / 7; max-height: 62vh; border-radius: 16px; display: block; }
-.dual .hub.taxi { max-width: none; } .dual .tx-c { max-height: none; height: calc(100vh - 70px); aspect-ratio: auto; }
+.dual .hub.taxi { max-width: none; } .dual .tx-c { max-height: none; height: calc(100vh - 56px); aspect-ratio: auto; }
 .dual .hub.taxi .shop-counter { display: none; }   /* the request is on the bottom screen; the map gets the whole top screen */
 .dual main:has(.hub.taxi) { padding-top: 8px !important; } .dual .hub.taxi .ask-row, .dual .hub.taxi .kbd, .dual .hub.taxi .bk-say-btns { display: none; }
 .shop-counter { display: flex; gap: 16px; align-items: center; }
@@ -4387,6 +4387,10 @@ function txDraw() {
   if (taxi.answered) { const d = taxi.fare.dest; g.strokeStyle = taxi.answered.ok ? "#5cc28b" : "#f07b72"; g.lineWidth = T * .08; g.strokeRect(ox + d.x * T + T * .06, oy + d.y * T + T * .06, T * .88, T * .88); }
   const c = taxi.car; g.save(); g.translate(ox + (c.px + .5) * T, oy + (c.py + .5) * T); g.rotate(Math.atan2(c.dy, c.dx));
   txVehicle(g, T, V0.id); g.restore();
+  // keep the car on screen: if it's near or past the edge of the window, scroll the page to it
+  const dpr2 = cv.width / r.width, carX = r.left + (ox + (c.x + .5) * T) / dpr2, carY = r.top + (oy + (c.y + .5) * T) / dpr2, m = T / dpr2 * 1.2;
+  const key = c.x + "," + c.y;
+  if (key !== taxi.seen && (carY > innerHeight - m || carY < m || carX > innerWidth - m || carX < m)) taxi.seen = key, scrollBy({ top: carY > innerHeight - m ? carY - innerHeight + m * 1.5 : carY < m ? carY - m * 1.5 : 0, left: carX > innerWidth - m ? carX - innerWidth + m * 1.5 : carX < m ? carX - m * 1.5 : 0, behavior: "smooth" });
 }
 // A sentence with its own Translate / Word by word / 🔊 buttons (used for the request, the reply and the boss).
 function sayBlock(label, line, tr, wbw, keyTr, keyW, keyHear) {
