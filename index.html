@@ -4104,6 +4104,7 @@ function matchStart(lv) {
   match.items = matchLevelItems(lv);
   match.cards = gShuffle(match.items.map((it, k) => ({ k, kind: "pic" }))).concat(gShuffle(match.items.map((it, k) => ({ k, kind: "word" }))));
   render();
+  if (DUAL) speakW();   // say the word the cursor starts on
 }
 function matchFlip(i) {
   if (match.lock || match.done.includes(i)) return;
