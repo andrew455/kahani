@@ -3867,12 +3867,12 @@ function actsAnswer(i) {
   const w = FR ? gameWordKey(acts.q.target[0]) : acts.q.target[0].split(" ")[0];
   if (statusOf(w) === 0) setWord(w, { s: 1, m: acts.q.target[1].replace(/^is /, "") + (FR ? "s" : " (m.)"), t: FR ? acts.q.target[3] : acts.q.target[3].split(" ")[0], l: "game" }, true);
   render();
-  setTimeout(() => {
-    if (route.view !== "acts" || acts.st !== "play") return;
-    acts.round++;
-    if (acts.round >= ACT_ROUNDS) { acts.st = "over"; if ((acts.best[acts.lv] || 0) < acts.score) { acts.best[acts.lv] = acts.score; store.set("actsbest", acts.best); } render(); }
-    else actsNext();
-  }, ok ? 1500 : 2600);
+}
+function actsGoOn() {
+  if (acts.answered == null || acts.st !== "play") return;
+  acts.round++;
+  if (acts.round >= ACT_ROUNDS) { acts.st = "over"; if ((acts.best[acts.lv] || 0) < acts.score) { acts.best[acts.lv] = acts.score; store.set("actsbest", acts.best); } render(); }
+  else actsNext();
 }
 function viewActs() {
   if (acts.st === "menu") return levelMenu(FR ? "🏃 Que fait-il ? · What's He Doing?" : "🏃 क्या करता है? · What's He Doing?", ACT_LEVELS, acts.pick, acts.best);
@@ -3881,10 +3881,11 @@ function viewActs() {
   const q = acts.q, t = q.target;
   return `<div class="hub acts"><div class="section-h"><span class="muted small">Round ${acts.round + 1} / ${ACT_ROUNDS}</span><span class="muted small">★ ${acts.score}</span></div>
     <div class="act-scene"><span class="act-pic">${t[2]}</span></div>
-    <div class="act-q"><span>${esc(ACTD.question[0])}</span> <span class="muted small">${esc(ACTD.question[1])}</span></div>
+    <div class="act-q"><span>${esc(ACTD.question[0])}</span></div>
     ${acts.answered != null ? `<div class="act-res ${q.opts[acts.answered] === t ? "ok" : "bad"}">${q.opts[acts.answered] === t ? "✓" : "✗"} <span>${esc(ACTD.prefix + t[0])}</span> · he ${esc(t[1])}</div>` : ""}
     <div class="adv-choices act-opts">${q.opts.map((o, i) => `<button class="adv-c ${acts.sel === i ? "pick" : ""} ${acts.answered != null && o === t ? "right" : ""} ${acts.answered === i && o !== t ? "wrong" : ""}" data-gk="ans" data-gi="${i}"><span lang="hi">${esc(o[0])}</span>${acts.answered != null ? `<small>${esc(o[1])}</small>` : ""}</button>`).join("")}</div>
-    <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> answer · <kbd>X</kbd> hear the question · <kbd>B</kbd> levels</div></div>`;
+    ${acts.answered != null ? `<div class="ask-row" style="justify-content:center"><button class="btn primary next-btn" data-gk="next">Next ▶</button></div>` : ""}
+    <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> ${acts.answered != null ? "next" : "answer"} · <kbd>X</kbd> hear the question · <kbd>B</kbd> levels</div></div>`;
 }
 function actsKey(k, i) {
   if (acts.st === "menu") {
@@ -3896,6 +3897,7 @@ function actsKey(k, i) {
   }
   if (acts.st === "over") { if (k === "a") actsStart(acts.lv); else if (k === "b") { acts.st = "menu"; render(); } return; }
   if (k === "ans") return actsAnswer(+i);
+  if (k === "next" || (acts.answered != null && k === "a")) return actsGoOn();
   if (k === "up" || k === "down") { acts.sel = (acts.sel + (k === "down" ? 1 : 2)) % 3; render(); speak(acts.q.opts[acts.sel][0]); }
   else if (k === "a") actsAnswer(acts.sel);
   else if (k === "x") speak(ACTD.question[0]);
@@ -3939,19 +3941,19 @@ function gameBottom() {
     if (shop.st === "menu") return menu(SHOP_TXT.title, SHOP_LEVELS, shop.pick, shop.best);
     if (shop.st === "over") return { type: "shopover", money: SHOP_TXT.cur + shop.money, best: SHOP_TXT.cur + (shop.best[shop.lv] || 0) };
     const q = shop.queue[shop.ci];
-    return { type: "shop", money: SHOP_TXT.cur + shop.money, ci: shop.ci + 1, n: shop.queue.length, want: q.it[2], msg: shop.msg, tr: shop.tr, sel: shop.sel, answered: shop.answered,
+    return { type: "shop", money: SHOP_TXT.cur + shop.money, ci: shop.ci + 1, n: shop.queue.length, want: q.it[2], msg: shop.msg, tr: shop.tr, sel: shop.sel, answered: shop.answered, next: shop.answered != null,
       opts: shopOptions().map(o => o.none ? { none: true, label: SHOP_TXT.no[0] } : { label: o.it[0], price: SHOP_TXT.cur + o.price }) };
   }
   if (v === "bake") {
     if (bake.st !== "play") return { type: "bakemenu", over: bake.st === "over", made: bake.made.length, best: bake.best };
     const R = bkRecipe();
-    return { type: "bake", say: bake.say, tr: bake.tr, lives: bake.lives, made: bake.made.length, recipe: R[0], opts: bake.opts.map(id => ({ pic: BK.items[id][2], name: BK.items[id][0] })), sel: bake.sel, answered: bake.answered, right: bake.opts.indexOf(bake.answered != null ? bake.want : R[3][bake.step]) };
+    return { type: "bake", say: bake.say, tr: bake.tr, lives: bake.lives, made: bake.made.length, recipe: R[0], opts: bake.opts.map(id => ({ pic: BK.items[id][2], name: BK.items[id][0] })), sel: bake.sel, answered: bake.answered, right: bake.opts.indexOf(bake.answered != null ? bake.want : R[3][bake.step]), next: !!bake.next };
   }
   if (v === "acts") {
     if (acts.st === "menu") return menu("🏃 What's He Doing?", ACT_LEVELS, acts.pick, acts.best);
     if (acts.st === "over") return { type: "acts", over: true, score: acts.score, rounds: ACT_ROUNDS };
     const q = acts.q;
-    return { type: "acts", q: ACTD.question, opts: q.opts.map(o => ({ hi: o[0], en: o[1] })), sel: acts.sel, answered: acts.answered, right: q.opts.indexOf(q.target), round: acts.round + 1, rounds: ACT_ROUNDS, score: acts.score };
+    return { type: "acts", q: ACTD.question, opts: q.opts.map(o => ({ hi: o[0], en: o[1] })), sel: acts.sel, answered: acts.answered, next: acts.answered != null, right: q.opts.indexOf(q.target), round: acts.round + 1, rounds: ACT_ROUNDS, score: acts.score };
   }
   return null;
 }
@@ -3980,8 +3982,8 @@ const pickOne = a => a[Math.floor(Math.random() * a.length)];
 function bakeAsk() {
   const R = bkRecipe(), id = R[3][bake.step], it = BK.items[id];
   const others = gShuffle(Object.keys(BK.items).filter(k => k !== id)).slice(0, 3);
-  bake.opts = gShuffle([id, ...others]); bake.sel = 0; bake.answered = null; bake.busy = false;
-  bakeSay(fillT(BK.ask[Math.floor(Math.random() * BK.ask.length)], it)); render();
+  bake.opts = gShuffle([id, ...others]); bake.sel = 0; bake.answered = null; bake.busy = false; bake.next = null;
+  bakeSay([fillT(BK.ask[Math.floor(Math.random() * BK.ask.length)], it)[0], ""]); render();   // requests never get English
 }
 function bakeRecipeStart() {
   bake.step = 0; const R = bkRecipe();
@@ -4000,17 +4002,20 @@ function bakeAnswer(i) {
     bake.step++;
     if (bake.step >= R[3].length) {   // finished: into the display case
       bake.made.push(R); bake.case[R[0]] = (bake.case[R[0]] || 0) + 1; store.set("vitrine", bake.case);
-      bake.opts = []; bake.ri++;
-      bakeSay(fillT(BK.done, R), () => setTimeout(bakeRecipeStart, 600)); render();
-    } else if (BK.praise && Math.random() < .3) { bakeSay(pickOne(BK.praise), bakeAsk); render(); }   // grudging praise, now and then
-    else { render(); setTimeout(bakeAsk, 700); }
+      bake.ri++; bake.next = () => { bake.opts = []; bake.answered = null; bakeRecipeStart(); };
+      bakeSay(fillT(BK.done, R));
+    } else {
+      bake.next = bakeAsk;
+      if (BK.praise && Math.random() < .3) bakeSay(pickOne(BK.praise));   // grudging praise, now and then
+    }
+    render();
   } else {
     bake.lives--;
     bakeSay(BK.insults ? pickOne(BK.insults) : ["", ""], null, fillT(BK.wrong, BK.items[got]));   // a very rude French chef
     if (bake.lives <= 0) {
       if (bake.made.length > bake.best) { bake.best = bake.made.length; store.set("bakebest", bake.best); }
-      setTimeout(() => { bake.st = "over"; render(); }, 1600);
-    } else setTimeout(() => { bake.answered = null; bake.busy = false; bakeSay(fillT(BK.ask[0], BK.items[want])); render(); }, 3600);
+      bake.next = () => { bake.st = "over"; render(); };
+    } else bake.next = () => { bake.answered = null; bake.busy = false; bakeSay([fillT(BK.ask[0], BK.items[want])[0], ""]); render(); };
     render();
   }
 }
@@ -4031,16 +4036,19 @@ function viewBake() {
   const R = bkRecipe(), have = R[3].slice(0, bake.step);
   return `<div class="hub bake">
     <div class="section-h"><span class="muted small">❤️ ${"❤️".repeat(Math.max(0, bake.lives - 1))} · 🥐 ${bake.made.length} made</span><span class="muted small">${esc(R[0])} · ${esc(R[1])}</span></div>
-    <div class="chef"><span class="chef-ico">👨‍🍳</span><div class="bubble"><div class="bubble-fr">${esc(bake.say[0])}</div>${bake.tr ? `<div class="muted">🇬🇧 ${esc(bake.say[1])}</div>` : ""}<button class="linkish bk-tr" data-gk="y">${bake.tr ? "Hide English" : "🇬🇧 Translate"}</button></div></div>
+    <div class="chef"><span class="chef-ico">👨‍🍳</span><div class="bubble"><div class="bubble-fr">${esc(bake.say[0])}</div>${bake.say[1] ? `${bake.tr ? `<div class="muted">🇬🇧 ${esc(bake.say[1])}</div>` : ""}<button class="linkish bk-tr" data-gk="y">${bake.tr ? "Hide English" : "🇬🇧 Translate"}</button>` : ""}</div></div>
     <div class="recipe"><span class="rec-out">${bkIcon(R[2])}</span>${R[3].map((id, i) => `<span class="slot ${i < bake.step ? "got" : i === bake.step ? "now" : ""}">${i < bake.step ? BK.items[id][2] : "?"}</span>`).join("")}</div>
     <div class="bk-opts">${bake.opts.map((id, i) => { const it = BK.items[id], want = bake.answered != null ? bake.want : R[3][bake.step]; const cls = bake.answered == null ? "" : id === want ? "right" : i === bake.answered ? "wrong" : "";
       return `<button class="bk-opt ${bake.sel === i ? "pick" : ""} ${cls}" data-gk="ans" data-gi="${i}"><span class="bk-pic">${it[2]}</span>${bake.answered != null && cls ? `<span class="small">${esc(it[0])}</span>` : ""}</button>`; }).join("")}</div>
-    <div class="kbd"><kbd>D-pad</kbd> choose · <kbd>A</kbd> hand it over · <kbd>X</kbd> hear again · <kbd>Y</kbd> English · <kbd>B</kbd> stop</div>
+    ${bake.next ? `<div class="ask-row" style="justify-content:center"><button class="btn primary next-btn" data-gk="next">Next ▶</button></div>` : ""}
+    <div class="kbd"><kbd>D-pad</kbd> choose · <kbd>A</kbd> ${bake.next ? "next" : "hand it over"} · <kbd>X</kbd> hear again · <kbd>Y</kbd> English · <kbd>B</kbd> stop</div>
     ${bake.made.length ? `<div class="section-h"><span class="muted small">Today's display case</span></div>${vitrineHtml(bake.made)}` : ""}
   </div>`;
 }
+function bakeGoOn() { const f = bake.next; bake.next = null; if (f) { stopPlayer(); f(); } }
 function bakeKey(k, i) {
   if (bake.st !== "play") { if (k === "a") bakeStart(); else if (k === "b") go("games"); return; }
+  if (k === "next" || (bake.next && k === "a")) return bakeGoOn();
   if (k === "ans") return bakeAnswer(+i);
   const n = bake.opts.length || 4;
   if (k === "left") bake.sel = (bake.sel + n - 1) % n; else if (k === "right") bake.sel = (bake.sel + 1) % n;
@@ -4082,12 +4090,12 @@ function shopAnswer(i) {
   else if (ok) { shop.money += SHOP_TXT.tip; shop.msg = SHOP_TXT.ok; speak(SHOP_TXT.ok[0]); }
   else { shop.msg = SHOP_TXT.bad; speak(SHOP_TXT.bad[0]); setTimeout(() => speak(q.it[0]), 1100); }
   render();
-  setTimeout(() => {
-    if (route.view !== "shop" || shop.st !== "play") return;
-    shop.ci++; shop.answered = null; shop.sel = 0;
-    if (shop.ci >= shop.queue.length) { shop.st = "over"; if ((shop.best[shop.lv] || 0) < shop.money) { shop.best[shop.lv] = shop.money; store.set("shopbest", shop.best); } render(); return; }
-    shop.msg = SHOP_TXT.hi; render(); speak(SHOP_TXT.hi[0]);
-  }, ok ? 2000 : 2800);
+}
+function shopGoOn() {
+  if (shop.answered == null || shop.st !== "play") return;
+  shop.ci++; shop.answered = null; shop.sel = 0;
+  if (shop.ci >= shop.queue.length) { shop.st = "over"; if ((shop.best[shop.lv] || 0) < shop.money) { shop.best[shop.lv] = shop.money; store.set("shopbest", shop.best); } render(); return; }
+  shop.msg = SHOP_TXT.hi; render(); speak(SHOP_TXT.hi[0]);
 }
 function viewShop() {
   if (shop.st === "menu") return levelMenu(SHOP_TXT.title + " · The Shop", SHOP_LEVELS, shop.pick, Object.fromEntries(Object.entries(shop.best).map(([k, v]) => [k, SHOP_TXT.cur + v]))) +
@@ -4096,9 +4104,10 @@ function viewShop() {
     <div class="ask-row" style="justify-content:center"><button class="btn primary" data-gk="a">Open the shop again</button><button class="btn" data-gk="b">Levels</button></div></div>`;
   const q = shop.queue[shop.ci], opts = shopOptions(), a = shop.answered;
   return `<div class="hub shop"><div class="section-h"><span class="muted small">Customer ${shop.ci + 1} / ${shop.queue.length}</span><b class="shop-money">💰 ${SHOP_TXT.cur}${shop.money}</b></div>
-    <div class="shop-counter"><span class="shop-who">${q.who}</span><div class="bubble"><div class="bubble-fr">${esc(shop.msg[0])}</div>${shop.tr ? `<div class="muted">${esc(shop.msg[1])}</div>` : ""}<div class="shop-want">${q.it[2]}</div>${a && !a.ok ? `<div class="small">${esc(q.it[0])} · ${esc(q.it[1])}${q.have ? "" : " · not in stock"}</div>` : ""}</div></div>
+    <div class="shop-counter"><span class="shop-who">${q.who}</span><div class="bubble"><div class="bubble-fr">${esc(shop.msg[0])}</div>${shop.tr && shop.msg !== SHOP_TXT.hi ? `<div class="muted">${esc(shop.msg[1])}</div>` : ""}<div class="shop-want">${q.it[2]}</div>${a && !a.ok ? `<div class="small">${esc(q.it[0])} · ${esc(q.it[1])}${q.have ? "" : " · not in stock"}</div>` : ""}</div></div>
     <div class="shop-stock">${opts.map((o, i) => `<button class="shop-item ${shop.sel === i ? "pick" : ""} ${a && a.i === i ? (a.ok ? "right" : "wrong") : ""} ${o.none ? "none" : ""}" data-gk="ans" data-gi="${i}">${o.none ? `<span>🚫 ${esc(SHOP_TXT.no[0])}</span>` : `<span class="si-name">${esc(o.it[0])}</span><span class="muted small">${SHOP_TXT.cur}${o.price}</span>`}</button>`).join("")}</div>
-    <div class="kbd"><kbd>D-pad</kbd> choose · <kbd>A</kbd> sell · <kbd>Y</kbd> English · <kbd>B</kbd> close the shop</div></div>`;
+    ${a ? `<div class="ask-row" style="justify-content:center"><button class="btn primary next-btn" data-gk="next">Next customer ▶</button></div>` : ""}
+    <div class="kbd"><kbd>D-pad</kbd> choose · <kbd>A</kbd> ${a ? "next customer" : "sell"} · <kbd>Y</kbd> English · <kbd>B</kbd> close the shop</div></div>`;
 }
 function shopKey(k, i) {
   if (shop.st === "menu") {
@@ -4109,6 +4118,7 @@ function shopKey(k, i) {
   }
   if (shop.st === "over") { if (k === "a") shopStart(shop.lv); else if (k === "b") { shop.st = "menu"; render(); } return; }
   if (k === "ans") return shopAnswer(+i);
+  if (k === "next" || (shop.answered != null && k === "a")) return shopGoOn();
   const n = shopOptions().length;
   if (k === "down" || k === "right") shop.sel = (shop.sel + 1) % n; else if (k === "up" || k === "left") shop.sel = (shop.sel + n - 1) % n;
   else if (k === "a") return shopAnswer(shop.sel);
