@@ -626,6 +626,9 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .dual .act-pic { font-size: 14rem; } .dual .act-scene { min-height: 55vh; } .dual .act-q { font-size: 2.4rem; }
 .dual .adv-text { background: none; border: 0; padding: 4vh 2vw; }
 .dual .adv-s { font-size: calc(var(--read-size) * 1.7) !important; }
+.adv-winfo { display: flex; align-items: baseline; gap: 18px; justify-content: center; flex-wrap: wrap; padding: 14px 20px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); margin: 0 4vw; }
+.adv-winfo b { font-family: var(--f-display); font-size: 3rem; font-weight: 400; } .adv-winfo i { color: var(--accent); font-size: 1.6rem; }
+.adv-winfo span { font-size: 1.8rem; } .adv-winfo em { color: var(--good); font-style: normal; font-weight: 600; }
 .lang-fr .cj .g { font-family: var(--f-display); font-size: 1.5rem; min-width: 80px; }
 /* Two screens: the top shows only the Hindi; everything else lives on the bottom screen. */
 .dual .top, .dual #banner, .dual .bottom, .dual .reader-bar, .dual #finish, .dual .sref, .dual #panel { display: none !important; }
@@ -3739,6 +3742,7 @@ function viewAdv() {
   return `<div class="adv">
     <div class="adv-head"><span class="muted small">${esc(c.title)} · ${esc(c.en)}</span>${adv.items.length ? `<span class="muted small">🎒 ${adv.items.map(esc).join(", ")}</span>` : ""}</div>
     <div class="adv-text story" lang="${FR ? "fr" : "hi"}">${text}</div>
+    ${DUAL ? (() => { const x = advWordInfo(); return x ? `<div class="adv-winfo"><b>${esc(x.w)}</b><i>${esc(x.say || "")}</i><span>${esc(x.meaning || "—")}</span>${x.s === 5 ? `<em>✓ known</em>` : ""}</div>` : ""; })() : ""}
     ${sc.end ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} Chapter complete. <button class="btn" data-advback="1">Back to chapters</button></div>`
       : `<div class="adv-choices">${ch.map((o, i) => `<button class="adv-c ${adv.pick === i ? "pick" : ""}" data-advpick="${i}"><span lang="hi">${esc(o.hi)}</span>${adv.tr ? `<small>${esc(o.en)}</small>` : ""}</button>`).join("")}</div>
          <div class="ask-row"><button class="btn" data-advtr="1">🇬🇧 ${adv.tr ? "Hide English" : "English"}</button><span class="muted small">Showing English means no 🍏 prize for this chapter.</span></div>
