@@ -486,6 +486,9 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .pastry.pick { box-shadow: 0 0 0 3px var(--accent-strong); }
 .showcase { position: relative; height: 340px; border-radius: 22px; overflow: hidden; background: radial-gradient(ellipse at 50% 30%, #fff6dd, #f1dfb8 55%, #d9bf8a); box-shadow: var(--shadow); }
 .showcase canvas { width: 100%; height: 100%; display: block; }
+.show-mystery { position: absolute; inset: 0; display: grid; place-items: center; font-size: 7rem; opacity: .5; }
+.dual .show-mystery { font-size: 16rem; }
+.treat-tier { font-size: .8rem; font-weight: 700; color: var(--accent); letter-spacing: .04em; }
 .show-label { position: absolute; left: 0; right: 0; top: 14px; display: grid; justify-items: center; gap: 2px; text-align: center; color: #3b2a12; }
 .show-label b { font-family: var(--f-display); font-size: 1.8rem; font-style: italic; } .show-label span { font-size: .9rem; opacity: .8; }
 .dual .bakery > :not(.showcase) { display: none; } .dual .bakery { max-width: none; }
@@ -3537,15 +3540,22 @@ const PASTRIES = [
   ["millefeuille", "🍰", "le mille-feuille", "custard slice"], ["canele", "", "le canelé", "caramel cake from Bordeaux"], ["creme", "🍮", "la crème brûlée", "crème brûlée"],
   ["beignet", "🍩", "le beignet", "doughnut"], ["gateau", "🎂", "le gâteau au chocolat", "chocolate cake"]
 ];
-const TREAT_SECS = 600;   // 10 minutes of study a day
+// Each day's goal is picked at random (the same all day): longer study wins fancier pastries.
+const PASTRY_TIER = { croissant: 0, baguette: 0, crepe: 0, pac: 0, madeleine: 0, macaron: 1, eclair: 1, tarte: 1, brioche: 1, millefeuille: 2, canele: 2, creme: 2, beignet: 2, gateau: 3 };
+const GOALS = [[600, "", 0], [1800, "⭐ Special", 1], [3600, "🌟 Deluxe", 2], [7200, "👑 Legendary", 3]];
+const dayRand = (k, salt = "") => { let h = 2166136261; for (const ch of k + salt) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return h / 4294967296; };
+const todaysTier = () => { const r = dayRand(todayKey()); return r < .5 ? 0 : r < .75 ? 1 : r < .9 ? 2 : 3; };
+const todaysGoal = () => { const p = todaysPastry(); return GOALS[PASTRY_TIER[p[0]] || 0]; };
 const pastryIcon = p => p[1] ? `<span class="emo">${p[1]}</span>` : PASTRY_SVG[p[0]];
 const treatsOf = () => effActivity().treats || {};
 function todaysPastry() {
   const t = treatsOf(), k = todayKey();
   if (t[k]) return PASTRIES.find(p => p[0] === t[k]) || PASTRIES[0];
-  // the next one she hasn't got yet; once she has them all, round again
-  const have = new Set(Object.entries(t).filter(([d]) => d < k).map(([, id]) => id));
-  return PASTRIES.find(p => !have.has(p[0])) || PASTRIES[Object.keys(t).filter(d => d < k).length % PASTRIES.length];
+  // today's tier is random; prefer one she hasn't got yet
+  const tier = todaysTier(), have = new Set(Object.values(t));
+  const inTier = PASTRIES.filter(p => (PASTRY_TIER[p[0]] || 0) === tier), fresh = inTier.filter(p => !have.has(p[0]));
+  const pool = fresh.length ? fresh : inTier;
+  return pool[Math.floor(dayRand(k, "p") * pool.length)];
 }
 const todaySecs = () => ((effActivity().days || {})[todayKey()] || {}).t || 0;
 
@@ -3555,11 +3565,11 @@ let lastUse = Date.now(), useAcc = 0;
 setInterval(() => {
   if (document.hidden || (Date.now() - lastUse > 90000 && !player.playing)) return;
   useAcc += 5;
-  if (useAcc < 30 && todaySecs() + useAcc < TREAT_SECS) return;
+  if (useAcc < 30 && todaySecs() + useAcc < todaysGoal()[0]) return;
   bumpDay("t", useAcc); useAcc = 0;
   if (FR) {
     const k = todayKey();
-    if (!treatsOf()[k] && todaySecs() >= TREAT_SECS) {
+    if (!treatsOf()[k] && todaySecs() >= todaysGoal()[0]) {
       const p = todaysPastry();
       enqueue("stats/activity", { treats: { [k]: p[0] } });
       toast(`${p[1] || "🥐"} Bravo Deb ! Tu as gagné ${p[2]} !`, 6000);
@@ -3569,13 +3579,13 @@ setInterval(() => {
 }, 5000);
 
 function treatCardHtml() {
-  const p = todaysPastry(), got = !!treatsOf()[todayKey()];
-  const min = Math.min(10, Math.floor(todaySecs() / 60));
+  const p = todaysPastry(), got = !!treatsOf()[todayKey()], goal = todaysGoal(), gm = goal[0] / 60;
+  const min = Math.min(gm, Math.floor(todaySecs() / 60)), dur = gm >= 60 ? `${gm / 60} hour${gm > 60 ? "s" : ""}` : `${gm} minutes`;
   return `<button class="treat ${got ? "got" : ""}" id="treatCard" data-go="bakery">
-    <span class="treat-ico">${pastryIcon(p)}</span>
+    <span class="treat-ico">${got ? pastryIcon(p) : `<span class="emo">🎁</span>`}</span>
     <span class="treat-body">${got
       ? `<b>Tu as gagné ${esc(p[2])} !</b><span class="muted small">You earned today's ${esc(p[3])}. Come back tomorrow for another.</span>`
-      : `<b>Study 10 minutes to earn this ${esc(p[3])} today</b><span class="treat-bar"><i style="width:${(min / 10) * 100}%"></i></span><span class="muted small">${min} / 10 minutes today</span>`}</span>
+      : `${goal[1] ? `<span class="treat-tier">${goal[1]}</span>` : ""}<b>Study ${dur} to earn a mystery treat today</b><span class="treat-bar"><i style="width:${(min / gm) * 100}%"></i></span><span class="muted small">${min} / ${gm} minutes today</span>`}</span>
   </button>`;
 }
 function debHeader() {
@@ -3591,13 +3601,13 @@ function viewBakery() {
   const total = Object.keys(t).length;
   const fmt = d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
   return `<div class="bakery">
-    <div class="bakery-sign"><h2>La boulangerie de Deb</h2><p class="muted">${total ? `${total} pâtisserie${total > 1 ? "s" : ""} gagnée${total > 1 ? "s" : ""} · ${total} treat${total > 1 ? "s" : ""} earned` : "Study 10 minutes a day to fill your bakery."}</p></div>
+    <div class="bakery-sign"><h2>La boulangerie de Deb</h2><p class="muted">${total ? `${total} pâtisserie${total > 1 ? "s" : ""} gagnée${total > 1 ? "s" : ""} · ${total} treat${total > 1 ? "s" : ""} earned` : "Study every day to fill your bakery. Some days need 10 minutes, some need more for a fancier treat."}</p></div>
     ${showcaseHtml()}
     ${treatCardHtml()}
     <div class="pastries">${PASTRIES.map((p, pi) => {
       const n = count[p[0]] || 0;
       return `<button class="pastry ${n ? "on" : ""} ${pi === bakPick ? "pick" : ""}" data-bak="${pi}">
-        <div class="pastry-ico">${pastryIcon(p)}${n > 1 ? `<span class="pastry-n">×${n}</span>` : ""}</div>
+        <div class="pastry-ico">${n ? pastryIcon(p) : `<span class="emo">❔</span>`}${n > 1 ? `<span class="pastry-n">×${n}</span>` : ""}</div>
         <div class="pastry-fr">${n ? esc(p[2]) : "?"}</div>
         <div class="muted small">${n ? `${esc(p[3])} · ${fmt(first[p[0]])}` : "pas encore · not yet"}</div>
       </button>`; }).join("")}</div>
@@ -3785,9 +3795,9 @@ function bakeryInfo() {
 function showcaseHtml() {
   const info = bakeryInfo(), it = info[bakPick] || info[0], p = it.p;
   const fmt = d => new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-  setTimeout(() => loadThree(() => bakShow(document.getElementById("bak3d"), p[0], !it.n)), 0);
-  return `<div class="showcase"><canvas id="bak3d" aria-label="${esc(p[3])}"></canvas>
-    <div class="show-label"><b>${it.n ? esc(p[2]) : "?"}</b><span>${it.n ? `${esc(p[3])} · ${it.n > 1 ? `×${it.n} · ` : ""}first earned ${fmt(it.first)}` : "Not earned yet · study 10 minutes a day to win more"}</span></div></div>`;
+  if (it.n) setTimeout(() => loadThree(() => bakShow(document.getElementById("bak3d"), p[0], false)), 0);
+  return `<div class="showcase">${it.n ? `<canvas id="bak3d" aria-label="${esc(p[3])}"></canvas>` : `<div class="show-mystery">❔</div>`}
+    <div class="show-label"><b>${it.n ? esc(p[2]) : "?"}</b><span>${it.n ? `${esc(p[3])} · ${it.n > 1 ? `×${it.n} · ` : ""}first earned ${fmt(it.first)}` : "Not earned yet · keep studying to win it"}</span></div></div>`;
 }
 function bakeryKey(k) {
   const n = PASTRIES.length, cols = 4;
@@ -4611,7 +4621,7 @@ function pushBottom() {
   setTimeout(() => { pushQueued = false; try { NATIVE.send(JSON.stringify(bottomState())); } catch (e) { console.error(e); } }, 40);
 }
 function bottomState() {
-  const st = { lang: LANG, sync: gh ? ghStatusText() : "", treat: FR ? (() => { const p = todaysPastry(); return { ico: p[1] || "🥐", name: p[2], min: Math.min(10, Math.floor(todaySecs() / 60)), got: !!treatsOf()[todayKey()] }; })() : null, view: route.view, due: dueWords().length, playing: player.playing, rate: settings.rate, size: settings.size, sentMode: !!settings.sentMode };
+  const st = { lang: LANG, sync: gh ? ghStatusText() : "", treat: FR ? (() => { const p = todaysPastry(), gm = todaysGoal()[0] / 60, got = !!treatsOf()[todayKey()]; return { ico: got ? (p[1] || "🥐") : "🎁", name: got ? p[2] : "a mystery treat", min: Math.min(gm, Math.floor(todaySecs() / 60)), goal: gm, tier: todaysGoal()[1], got }; })() : null, view: route.view, due: dueWords().length, playing: player.playing, rate: settings.rate, size: settings.size, sentMode: !!settings.sentMode };
   if (route.view === "reader") {
     const L = currentLesson();
     if (L) {
@@ -4625,7 +4635,7 @@ function bottomState() {
     if (w) { const e = V[w] || {}; st.review = { i: rv.i, n: rv.queue.length, shown: rv.shown, w, roman: e.t || roman(w), meaning: e.m || "", ivs: [1, 2, 3, 4].map(g => fmtIv(nextIv(e, g))) }; }
     else st.review = { done: true, did: rv.done, learning: Object.values(V).filter(e => e.s >= 1 && e.s <= 4).length };
   } else if (route.view === "bakery") {
-    st.bak = { pick: bakPick, list: bakeryInfo().map(x => ({ ico: x.p[1] || "", svg: x.p[1] ? "" : PASTRY_SVG[x.p[0]], name: x.p[2], en: x.p[3], n: x.n })), treat: (() => { const p = todaysPastry(); return { ico: p[1] || "🥐", name: p[2], min: Math.min(10, Math.floor(todaySecs() / 60)), got: !!treatsOf()[todayKey()] }; })() };
+    st.bak = { pick: bakPick, list: bakeryInfo().map(x => ({ ico: x.p[1] || "", svg: x.p[1] ? "" : PASTRY_SVG[x.p[0]], name: x.p[2], en: x.p[3], n: x.n })), treat: (() => { const p = todaysPastry(), gm = todaysGoal()[0] / 60, got = !!treatsOf()[todayKey()]; return { ico: got ? (p[1] || "🥐") : "🎁", name: got ? p[2] : "a mystery treat", min: Math.min(gm, Math.floor(todaySecs() / 60)), goal: gm, tier: todaysGoal()[1], got }; })() };
   } else if (GAME_VIEWS.includes(route.view)) {
     st.g = gameBottom();
   } else if (route.view === "milestones") {
