@@ -446,7 +446,7 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .lang-fr .top { border-bottom: 0; box-shadow: 0 1px 0 var(--line); }
 .lang-fr .top::before { content: ""; display: block; height: 5px; background: linear-gradient(90deg, #2c58b8 0 33.3%, #fffdf8 33.3% 66.6%, #b3303d 66.6%); }
 .lang-fr .brand .display { font-style: italic; font-weight: 700; color: var(--ink); font-size: 1.75rem; }
-.lang-fr .brand .small { font-family: var(--f-display); font-style: italic; color: var(--accent); }
+.lang-fr .brand .small { font-family: var(--f-display); font-style: italic; color: var(--accent); white-space: nowrap; }
 .lang-fr .lesson { border-radius: 4px 18px 4px 18px; }
 .lang-fr .lesson .t, .lang-fr .reader-bar .title .display, .lang-fr .section-h h2 { font-family: var(--f-display); }
 .lang-fr .lesson .t { font-size: 1.5rem; font-weight: 500; }
@@ -533,7 +533,41 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .act-res.ok { color: var(--good); } .act-res.bad { color: var(--bad); }
 .adv-c.right { border-color: var(--good); box-shadow: 0 0 0 2px var(--good); }
 .adv-c.wrong { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad); }
-.dual .hub:has(.mgrid), .dual .hub.acts { max-width: 1500px; }
+.dual .hub:has(.mgrid), .dual .hub.acts, .dual .hub.bake { max-width: 1500px; }
+.chef { display: flex; gap: 16px; align-items: center; }
+.chef-ico { font-size: 5rem; line-height: 1; }
+.bubble { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 14px 20px; box-shadow: var(--shadow); flex: 1; }
+.bubble::before { content: ""; position: absolute; left: -10px; top: 50%; width: 18px; height: 18px; background: inherit; border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: translateY(-50%) rotate(45deg); }
+.bubble-fr { font-family: var(--f-display); font-size: 1.7rem; line-height: 1.3; }
+.recipe { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.rec-out { width: 64px; height: 64px; display: grid; place-items: center; border-radius: 50%; background: #fff6e2; box-shadow: inset 0 0 0 2px rgba(217,164,65,.4); margin-right: 8px; }
+.rec-out svg { width: 72%; height: 72%; }
+.slot { width: 54px; height: 54px; border-radius: 14px; border: 2px dashed var(--line); display: grid; place-items: center; font-size: 1.8rem; color: var(--muted); }
+.slot.got { border-style: solid; border-color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--surface)); }
+.slot.now { border-color: var(--accent-strong); }
+.bk-opts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.bk-opt { display: grid; gap: 4px; justify-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 8px; font: inherit; color: inherit; }
+.bk-opt.pick { border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-strong); }
+.bk-opt.right { border-color: var(--good); box-shadow: 0 0 0 3px var(--good); } .bk-opt.wrong { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad); }
+.bk-pic { font-size: 3.6rem; line-height: 1.1; }
+.vitrine { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(217,164,65,.08)); border: 1px solid var(--line); border-radius: 18px; padding: 12px; }
+.vit { display: grid; justify-items: center; gap: 4px; text-align: center; }
+.vit-ico { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--sunk); position: relative; filter: grayscale(1); opacity: .35; }
+.vit.on .vit-ico { filter: none; opacity: 1; background: radial-gradient(circle at 40% 35%, #fffaf0, #f7e6c4); }
+.vit-ico svg { width: 72%; height: 72%; } .vit-ico .emo { font-size: 2.2rem; }
+@media (max-width: 600px) { .bk-opts { grid-template-columns: repeat(2, 1fr); } .bubble-fr { font-size: 1.3rem; } .chef-ico { font-size: 3.4rem; } }
+.shop-money { font-size: 1.4rem; }
+.shop-counter { display: flex; gap: 16px; align-items: center; }
+.shop-who { font-size: 5rem; line-height: 1; }
+.shop-want { font-size: 5rem; line-height: 1.1; margin-top: 6px; }
+.shop-stock { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.shop-item { display: grid; gap: 2px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font: inherit; color: inherit; }
+.shop-item .si-name { font-family: var(--f-display); font-size: 1.4rem; }
+.shop-item.none { grid-column: 1 / -1; text-align: center; }
+.shop-item.pick { border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-strong); }
+.shop-item.right { border-color: var(--good); box-shadow: 0 0 0 3px var(--good); } .shop-item.wrong { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad); }
+.dual .shop-stock, .dual .hub.shop .kbd { display: none; } .dual .shop-who { font-size: 10rem; } .dual .shop-want { font-size: 11rem; } .dual .hub.shop { max-width: 1500px; }
+.dual .bk-opts { display: none; } .dual .bubble-fr { font-size: 2.6rem; } .dual .chef-ico { font-size: 8rem; } .dual .slot { width: 90px; height: 90px; font-size: 3rem; }
 @media (max-width: 600px) { .mgrid { gap: 6px; } .memo { font-size: 2.2rem; } .mword { font-size: 1.2rem; } .act-pic { font-size: 5rem; } }
 .dual .act-pic { font-size: 14rem; } .dual .act-scene { min-height: 55vh; } .dual .act-q { font-size: 2.4rem; }
 .dual .adv-text { background: none; border: 0; padding: 4vh 2vw; }
@@ -643,6 +677,7 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#11131d">
 <script>window.KAHANI_SITE = true;</script>
+<script src="seed.js"></script>
 <script>
 (() => {
 "use strict";
@@ -650,6 +685,8 @@ const NATIVE = window.KahaniNative || null;            // the Thor app
 const SITE = !!window.KAHANI_SITE;                      // the browser version on GitHub Pages
 const STANDALONE = !!NATIVE || SITE;
 // 🇮🇳 / 🇫🇷: each language has its own words, progress and stories (French keys start "kahani:fr:").
+// A link can choose the language: …/kahani/?lang=fr (remembered from then on).
+try { const q = new URLSearchParams(location.search).get("lang"); if (q === "fr" || q === "hi") localStorage.setItem("kahani:lang", q); } catch (e) {}
 const LANG = (() => { try { return localStorage.getItem("kahani:lang") === "fr" ? "fr" : "hi"; } catch (e) { return "hi"; } })();
 const FR = LANG === "fr";
 const KP = FR ? "kahani:fr:" : "kahani:";
@@ -662,9 +699,10 @@ if (window.KAHANI_SEED && window.KAHANI_SEED[LANG]) {
   try {
     if (localStorage.getItem(KP + "seedv") !== String(S.version)) {
       if (!localStorage.getItem(KP + "seeded")) {
-        localStorage.setItem(KP + "vocab", JSON.stringify(S.vocab));
-        localStorage.setItem(KP + "activity", JSON.stringify(S.activity));
-        localStorage.setItem(KP + "abc", JSON.stringify(S.abc));
+        // never replace words or progress already on this device
+        if (S.vocab && !localStorage.getItem(KP + "vocab")) localStorage.setItem(KP + "vocab", JSON.stringify(S.vocab));
+        if (S.activity && !localStorage.getItem(KP + "activity")) localStorage.setItem(KP + "activity", JSON.stringify(S.activity));
+        if (S.abc && !localStorage.getItem(KP + "abc")) localStorage.setItem(KP + "abc", JSON.stringify(S.abc));
         localStorage.setItem(KP + "seeded", "1");
       }
       localStorage.setItem(KP + "lessons", JSON.stringify(S.lessons));
@@ -1069,6 +1107,8 @@ function render() {
   else if (route.view === "fly") v.innerHTML = viewFly();
   else if (route.view === "match") v.innerHTML = viewMatch();
   else if (route.view === "acts") v.innerHTML = viewActs();
+  else if (route.view === "bake") v.innerHTML = viewBake();
+  else if (route.view === "shop") v.innerHTML = viewShop();
   else if (route.view === "talk") v.innerHTML = viewTalk();
   else v.innerHTML = viewLibrary();
   if (route.view === "reader") {
@@ -3145,6 +3185,8 @@ function onActivity(snap) {
 const GAME_HI = {"chapters": [{"id": "c1", "title": "दादी की चाबी", "en": "Grandma's Key", "need": 0, "start": "start", "summary": "Grandma's key is missing. Find it before tea time!", "gloss": {"देखता": {"m": "look / see (m.)", "t": "dekhta"}, "खेलती": {"m": "plays (f.)", "t": "kheltee"}, "भागती": {"m": "runs (f.)", "t": "bhaagtee"}, "लेता": {"m": "take (m.)", "t": "leta"}, "वापस": {"m": "back (वापस आती = comes back)", "t": "vaapas"}, "मिनी": {"m": "Mini (name)", "t": "minee"}, "हाल": {"m": "state (क्या हाल है? = how's it going?)", "t": "haal"}, "पकड़ना": {"m": "to catch", "t": "pakadna"}, "मुश्किल": {"m": "difficult", "t": "mushkil"}, "करता": {"m": "do (m.) (बात करता = talk)", "t": "karta"}, "चीज़": {"m": "thing", "t": "cheez"}, "लीजिए": {"m": "please take", "t": "leejiye"}}, "scenes": {"start": {"hi": [["सुबह है। मैं घर में हूँ।", "It's morning. I'm at home."], ["दादी कहती हैं, \"रवि, मेरी चाबी कहाँ है?\"", "Grandma says, \"Ravi, where is my key?\""], ["चाबी नहीं है!", "The key isn't there!"]], "choices": [{"hi": "मैं कमरे में देखता हूँ।", "en": "I look in the room.", "go": "room"}, {"hi": "मैं बाहर जाता हूँ।", "en": "I go outside.", "go": "outside"}]}, "room": {"hi": [["कमरे में एक बड़ा संदूक है।", "In the room there is a big chest."], ["संदूक पर एक किताब है।", "There is a book on the chest."], ["चाबी यहाँ नहीं है।", "The key isn't here."]], "choices": [{"hi": "मैं किताब पढ़ता हूँ।", "en": "I read the book.", "go": "book"}, {"hi": "मैं बाहर जाता हूँ।", "en": "I go outside.", "go": "outside"}]}, "book": {"hi": [["किताब में एक कहानी है।", "In the book there is a story."], ["कहानी में एक बिल्ली चाबी के साथ खेलती है।", "In the story a cat plays with a key."], ["अरे! मिनी भी चाबी के साथ खेलती है!", "Oh! Mini plays with keys too!"]], "choices": [{"hi": "मैं मिनी को देखता हूँ।", "en": "I look for Mini.", "go": "outside"}]}, "outside": {"hi": [["बाहर बहुत धूप है।", "Outside it's very sunny."], ["पेड़ के नीचे अमन है।", "Aman is under the tree."], ["पेड़ के ऊपर एक बिल्ली है। यह मिनी है!", "Up in the tree there's a cat. It's Mini!"]], "choices": [{"hi": "मैं अमन से बात करता हूँ।", "en": "I talk to Aman.", "go": "aman"}, {"hi": "मैं पेड़ पर जाता हूँ।", "en": "I climb the tree.", "go": "tree"}, {"hi": "मैं बाज़ार जाता हूँ।", "en": "I go to the market.", "go": "market"}]}, "aman": {"hi": [["\"नमस्ते रवि! क्या हाल है?\"", "\"Hello Ravi! How's it going?\""], ["\"अमन, दादी की चाबी कहाँ है?\"", "\"Aman, where is Grandma's key?\""], ["अमन कहता है, \"मिनी के पास एक चीज़ है।\"", "Aman says, \"Mini has something.\""]], "choices": [{"hi": "मैं पेड़ पर जाता हूँ।", "en": "I climb the tree.", "go": "tree"}, {"hi": "मैं बाज़ार जाता हूँ।", "en": "I go to the market.", "go": "market"}]}, "tree": {"hi": [["मैं पेड़ पर जाता हूँ।", "I climb the tree."], ["मिनी भागती है!", "Mini runs away!"], ["पेड़ पर चाबी नहीं है।", "The key isn't in the tree."], ["मिनी बाज़ार जाती है।", "Mini goes to the market."]], "choices": [{"hi": "मैं भी बाज़ार जाता हूँ।", "en": "I go to the market too.", "go": "market"}]}, "market": {"hi": [["बाज़ार में बहुत लोग हैं।", "There are lots of people in the market."], ["मीना की दुकान पर मिठाई है।", "There are sweets at Meena's shop."], ["राजू चाय बनाता है।", "Raju is making tea."]], "choices": [{"hi": "मैं मीना से बात करता हूँ।", "en": "I talk to Meena.", "go": "meena"}, {"hi": "मैं राजू से बात करता हूँ।", "en": "I talk to Raju.", "go": "raju"}]}, "meena": {"hi": [["मीना कहती है, \"मिनी? नहीं, मिनी यहाँ नहीं है।\"", "Meena says, \"Mini? No, Mini isn't here.\""], ["\"लेकिन मिठाई लीजिए!\"", "\"But have some sweets!\""], ["मीना मुझे मिठाई देती है।", "Meena gives me some sweets."]], "choices": [{"hi": "धन्यवाद! मैं राजू से बात करता हूँ।", "en": "Thank you! I talk to Raju.", "go": "raju", "get": "मिठाई"}]}, "raju": {"hi": [["राजू कहता है, \"मिनी यहाँ है, दुकान के नीचे!\"", "Raju says, \"Mini is here, under the shop!\""], ["मिनी के पास चाबी है!", "Mini has the key!"], ["राजू के पास दूध है।", "Raju has some milk."]], "choices": [{"hi": "मैं मिनी को पकड़ता हूँ।", "en": "I catch Mini.", "go": "run"}, {"hi": "मैं राजू से दूध लेता हूँ।", "en": "I take some milk from Raju.", "go": "milk"}]}, "run": {"hi": [["मिनी भागती है!", "Mini runs away!"], ["फिर मिनी वापस आती है।", "Then Mini comes back."], ["बिल्ली को पकड़ना बहुत मुश्किल है!", "Catching a cat is very hard!"]], "choices": [{"hi": "मैं राजू से दूध लेता हूँ।", "en": "I take some milk from Raju.", "go": "milk"}]}, "milk": {"hi": [["मैं मिनी को दूध देता हूँ।", "I give Mini the milk."], ["मिनी दूध पीती है।", "Mini drinks the milk."], ["चाबी नीचे है! मैं चाबी लाता हूँ।", "The key is on the ground! I bring the key."]], "choices": [{"hi": "मैं घर जाता हूँ।", "en": "I go home.", "go": "home"}]}, "home": {"hi": [["मैं दादी को चाबी देता हूँ।", "I give Grandma the key."], ["दादी कहती हैं, \"धन्यवाद, रवि! आप बहुत अच्छे हैं!\"", "Grandma says, \"Thank you, Ravi! You're very good!\""], ["फिर हम चाय पीते हैं और मिठाई खाते हैं।", "Then we drink tea and eat sweets."]], "end": true}}}, {"id": "c2", "title": "दिल्ली की ट्रेन", "en": "The Train to Delhi", "need": 150, "soon": true, "summary": "Ravi and Priya take the train to visit Sonu's old city."}, {"id": "c3", "title": "निंजा का राज़", "en": "The Ninja's Secret", "need": 200, "soon": true, "summary": "The ninja has a secret. Can you work it out?"}]};
 const GAME_OBJ = {"note": "Object Match levels: picture + Hindi name. Levels 1-3 use words from the stories; later levels teach new everyday objects (nouns only). need = known words to unlock.", "levels": [{"need": 0, "items": [["चाय", "tea", "☕", "chaay"], ["पानी", "water", "💧", "paanee"], ["दूध", "milk", "🥛", "doodh"], ["आम", "mango", "🥭", "aam"], ["सेब", "apple", "🍎", "seb"], ["फूल", "flower", "🌸", "phool"]]}, {"need": 0, "items": [["किताब", "book", "📖", "kitaab"], ["गेंद", "ball", "⚽", "gend"], ["पतंग", "kite", "🪁", "patang"], ["बिल्ली", "cat", "🐈", "billee"], ["चाबी", "key", "🔑", "chaabee"], ["घर", "house", "🏠", "ghar"]]}, {"need": 0, "items": [["पेड़", "tree", "🌳", "ped"], ["ट्रेन", "train", "🚆", "tren"], ["रोटी", "roti (bread)", "🫓", "rotee"], ["केक", "cake", "🎂", "kek"], ["कुत्ता", "dog", "🐕", "kutta"], ["टमाटर", "tomato", "🍅", "tamaatar"]]}, {"need": 125, "items": [["कुर्सी", "chair", "🪑", "kursee"], ["दरवाज़ा", "door", "🚪", "darvaaza"], ["घड़ी", "clock / watch", "⏰", "ghadee"], ["बिस्तर", "bed", "🛏️", "bistar"], ["मिठाई", "sweets", "🍬", "mithaee"], ["चावल", "rice", "🍚", "chaaval"]]}, {"need": 135, "items": [["जूता", "shoe", "👟", "joota"], ["टोपी", "hat / cap", "🧢", "topee"], ["फ़ोन", "phone", "📱", "fon"], ["चम्मच", "spoon", "🥄", "chammach"], ["समोसा", "samosa", "🥟", "samosa"], ["संदूक", "chest", "🧰", "sandook"]]}, {"need": 145, "items": [["गाड़ी", "car", "🚗", "gaadee"], ["बस", "bus", "🚌", "bas"], ["साइकिल", "bicycle", "🚲", "saaikil"], ["सूरज", "sun", "☀️", "sooraj"], ["चाँद", "moon", "🌙", "chaand"], ["तारा", "star", "⭐", "taara"]]}, {"need": 160, "items": [["मछली", "fish", "🐟", "machhlee"], ["चिड़िया", "bird", "🐦", "chidiya"], ["गाय", "cow", "🐄", "gaay"], ["घोड़ा", "horse", "🐎", "ghoda"], ["केला", "banana", "🍌", "kela"], ["अंडा", "egg", "🥚", "anda"]]}, {"need": 180, "items": [["बादल", "cloud", "☁️", "baadal"], ["छाता", "umbrella", "☂️", "chhaata"], ["पैसे", "money", "💰", "paise"], ["खिड़की", "window", "🪟", "khidkee"], ["चश्मा", "glasses", "👓", "chashma"], ["बैग", "bag", "🎒", "baig"]]}]};
 const GAME_ACTS = {"note": "What's He Doing? Each act: [Hindi verb phrase, English, picture, sounds-like]. need = known words to unlock the level.", "question": ["वह क्या करता है?", "What is he doing?"], "gloss": {"वह": {"m": "he / she / that", "t": "vah"}}, "levels": [{"need": 0, "name": "Everyday", "acts": [["खाता है", "is eating", "🧔🍛", "khaata hai"], ["पीता है", "is drinking", "🧔☕", "peeta hai"], ["सोता है", "is sleeping", "😴🛏️", "sota hai"], ["पढ़ता है", "is reading", "🧔📖", "padhta hai"], ["भागता है", "is running", "🏃‍♂️💨", "bhaagta hai"], ["जाता है", "is going", "🚶‍♂️🏠", "jaata hai"], ["बनाता है", "is making (cooking)", "🧑‍🍳🍲", "banaata hai"], ["उठता है", "is getting up", "🛏️⏰", "uthta hai"], ["फेंकता है", "is throwing", "🧔⚽", "phenkta hai"], ["खेलता है", "is playing", "⛹️‍♂️🏀", "khelta hai"], ["लाता है", "is bringing", "🧔🍎", "laata hai"], ["पकड़ता है", "is catching", "🧤⚾", "pakadta hai"]]}, {"need": 140, "name": "Fun", "acts": [["नाचता है", "is dancing", "🕺🎶", "naachta hai"], ["गाता है", "is singing", "🧔🎤", "gaata hai"], ["लिखता है", "is writing", "✍️📝", "likhta hai"], ["तैरता है", "is swimming", "🏊‍♂️🌊", "tairta hai"], ["हँसता है", "is laughing", "😂", "hansta hai"], ["रोता है", "is crying", "😢", "rota hai"]]}, {"need": 170, "name": "Busy", "acts": [["चलाता है", "is driving", "🧔🚗", "chalaata hai"], ["धोता है", "is washing", "🧼🍽️", "dhota hai"], ["खरीदता है", "is buying", "🛒🧔", "khareedta hai"], ["बैठता है", "is sitting down", "🧔🪑", "baithta hai"], ["देखता है", "is watching", "🧔📺", "dekhta hai"], ["सुनता है", "is listening", "🎧🎶", "sunta hai"]]}]};
+const GAME_FR = {"chapters": [{"id": "f1", "title": "Le croissant de Léa", "en": "Léa's Croissant", "need": 0, "start": "start", "summary": "Léa is hungry and there's no bread. Can she get a croissant?", "gloss": {"il": {"m": "he, it", "t": "eel"}, "n'": {"m": "not (before a vowel; with pas)", "t": "n"}, "y": {"m": "there (il y a = there is)", "t": "ee"}, "veut": {"m": "wants", "t": "vuh"}, "voici": {"m": "here is", "t": "vwah-SEE"}, "un": {"m": "a, one", "t": "uhn"}, "euro": {"m": "euro", "t": "uh-ROH"}, "pour": {"m": "for", "t": "poor"}, "boulangerie": {"m": "bakery", "t": "boo-lahn-zhuh-REE"}, "lait": {"m": "milk", "t": "leh"}, "encore": {"m": "still, again", "t": "ahn-KOR"}, "rue": {"m": "street", "t": "rew"}, "son": {"m": "his, her", "t": "sohn"}, "vas-tu": {"m": "are you going", "t": "vah-TEW"}, "vais": {"m": "go (I)", "t": "veh"}, "joue": {"m": "plays", "t": "zhoo"}, "jouer": {"m": "to play", "t": "zhoo-AY"}, "jouent": {"m": "play (they)", "t": "zhoo"}, "toujours": {"m": "still, always", "t": "too-ZHOOR"}, "jolie": {"m": "pretty", "t": "zho-LEE"}, "croissants": {"m": "croissants", "t": "krwah-SAHN"}, "croissant": {"m": "croissant", "t": "krwah-SAHN"}, "gâteaux": {"m": "cakes", "t": "gah-TOH"}, "boulangère": {"m": "baker (woman)", "t": "boo-lahn-ZHAIR"}, "s'il": {"m": "if it (s'il vous plaît = please)", "t": "seel"}, "vous": {"m": "you (polite)", "t": "voo"}, "plaît": {"m": "pleases (s'il vous plaît = please)", "t": "pleh"}, "baguette": {"m": "baguette", "t": "bah-GET"}, "regarde": {"m": "looks", "t": "ruh-GARD"}, "poche": {"m": "pocket", "t": "posh"}, "donne": {"m": "gives", "t": "dun"}, "très": {"m": "very", "t": "treh"}, "rentre": {"m": "goes back home", "t": "rahntr"}, "d'euro": {"m": "of euro (pas d'euro = no euro)", "t": "duh-ROH"}, "où": {"m": "where", "t": "oo"}, "max": {"m": "Max (name)", "t": "max"}, "minou": {"m": "Minou (name)", "t": "mee-NOO"}, "léa": {"m": "Léa (name)", "t": "lay-AH"}, "hugo": {"m": "Hugo (name)", "t": "ew-GOH"}}, "scenes": {"start": {"hi": [["C’est le matin. Léa a faim.", "It's morning. Léa is hungry."], ["Maman dit : « Il n’y a pas de pain ! »", "Mum says: \"There's no bread!\""], ["Léa veut un croissant.", "Léa wants a croissant."], ["Maman dit : « Voici un euro pour la boulangerie. »", "Mum says: \"Here's a euro for the bakery.\""]], "choices": [{"hi": "Merci, maman ! Léa va à la boulangerie.", "en": "Thank you, Mum! Léa goes to the bakery.", "go": "street", "get": "un euro"}, {"hi": "Léa regarde dans la cuisine.", "en": "Léa looks in the kitchen.", "go": "kitchen"}]}, "kitchen": {"hi": [["Dans la cuisine, il y a du lait et des pommes.", "In the kitchen there's milk and some apples."], ["Il n’y a pas de croissant.", "There's no croissant."], ["Minou dort sur la table.", "Minou is asleep on the table."]], "choices": [{"hi": "Léa mange une pomme.", "en": "Léa eats an apple.", "go": "apple"}, {"hi": "Léa va à la boulangerie.", "en": "Léa goes to the bakery.", "go": "street"}]}, "apple": {"hi": [["La pomme est bonne.", "The apple is good."], ["Mais Léa a encore faim !", "But Léa is still hungry!"]], "choices": [{"hi": "Léa va à la boulangerie.", "en": "Léa goes to the bakery.", "go": "street"}]}, "street": {"hi": [["Léa est dans la rue.", "Léa is in the street."], ["Hugo est là avec son chien Max.", "Hugo is there with his dog Max."], ["« Bonjour Léa ! Où vas-tu ? »", "\"Hello Léa! Where are you going?\""]], "choices": [{"hi": "« Je vais à la boulangerie ! »", "en": "\"I'm going to the bakery!\"", "go": "bakery"}, {"hi": "Léa joue avec Max.", "en": "Léa plays with Max.", "go": "play"}]}, "play": {"hi": [["Max aime jouer !", "Max loves to play!"], ["Léa et Max jouent dans la rue.", "Léa and Max play in the street."], ["Oh ! Léa a toujours faim.", "Oh! Léa is still hungry."]], "choices": [{"hi": "Léa va à la boulangerie.", "en": "Léa goes to the bakery.", "go": "bakery"}]}, "bakery": {"hi": [["Voici la boulangerie. Elle est petite et jolie.", "Here's the bakery. It's small and pretty."], ["Il y a des croissants, du pain et des gâteaux.", "There are croissants, bread and cakes."], ["La boulangère dit : « Bonjour ! »", "The baker says: \"Hello!\""]], "choices": [{"hi": "« Un croissant, s’il vous plaît. »", "en": "\"A croissant, please.\"", "go": "pay"}, {"hi": "« Une baguette, s’il vous plaît. »", "en": "\"A baguette, please.\"", "go": "baguette"}]}, "baguette": {"hi": [["« Voici la baguette ! »", "\"Here's the baguette!\""], ["Mais Léa veut un croissant…", "But Léa wants a croissant…"]], "choices": [{"hi": "« Un croissant aussi, s’il vous plaît. »", "en": "\"A croissant too, please.\"", "go": "pay"}]}, "pay": {"hi": [["« Un euro, s’il vous plaît. »", "\"One euro, please.\""], ["Léa regarde dans sa poche…", "Léa looks in her pocket…"]], "choices": [{"hi": "Léa donne un euro.", "en": "Léa gives one euro.", "go": "end", "need": "un euro"}, {"hi": "Oh non ! Léa n’a pas d’euro. Elle rentre à la maison.", "en": "Oh no! Léa has no euro. She goes back home.", "go": "home"}]}, "home": {"hi": [["Léa est à la maison.", "Léa is at home."], ["Maman dit : « Voici un euro pour la boulangerie. »", "Mum says: \"Here's a euro for the bakery.\""]], "choices": [{"hi": "Merci, maman ! Léa va à la boulangerie.", "en": "Thank you, Mum! Léa goes to the bakery.", "go": "bakery", "get": "un euro"}]}, "end": {"hi": [["Léa mange le croissant.", "Léa eats the croissant."], ["Il est chaud et très bon !", "It's warm and very good!"], ["« Merci ! Au revoir ! »", "\"Thank you! Goodbye!\""]], "end": true}}}, {"id": "f2", "title": "Le marché du samedi", "en": "Saturday Market", "need": 40, "soon": true, "summary": "Léa and Maman shop at the market."}, {"id": "f3", "title": "Minou à Paris", "en": "Minou in Paris", "need": 80, "soon": true, "summary": "Minou gets lost in the big city!"}], "objects": [{"need": 0, "items": [["le café", "coffee", "☕", "luh kah-FAY"], ["le thé", "tea", "🍵", "luh tay"], ["le lait", "milk", "🥛", "luh leh"], ["le pain", "bread", "🥖", "luh pan"], ["la pomme", "apple", "🍎", "lah pum"], ["la fleur", "flower", "🌸", "lah flur"]]}, {"need": 0, "items": [["le chat", "cat", "🐈", "luh shah"], ["le chien", "dog", "🐕", "luh shyan"], ["la maison", "house", "🏠", "lah may-ZOHN"], ["le livre", "book", "📖", "luh LEE-vruh"], ["le croissant", "croissant", "🥐", "luh krwah-SAHN"], ["le gâteau", "cake", "🎂", "luh gah-TOH"]]}, {"need": 0, "items": [["la chaise", "chair", "🪑", "lah shez"], ["la porte", "door", "🚪", "lah port"], ["le lit", "bed", "🛏️", "luh lee"], ["la clé", "key", "🔑", "lah klay"], ["le vélo", "bike", "🚲", "luh vay-LOH"], ["la voiture", "car", "🚗", "lah vwah-TEWR"]]}, {"need": 15, "items": [["le soleil", "sun", "☀️", "luh soh-LAY"], ["la lune", "moon", "🌙", "lah lewn"], ["l'étoile", "star", "⭐", "lay-TWAHL"], ["le nuage", "cloud", "☁️", "luh new-AHZH"], ["la pluie", "rain", "🌧️", "lah plwee"], ["l'arbre", "tree", "🌳", "LAR-bruh"]]}, {"need": 30, "items": [["le poisson", "fish", "🐟", "luh pwah-SOHN"], ["l'oiseau", "bird", "🐦", "lwah-ZOH"], ["la vache", "cow", "🐄", "lah vash"], ["le cheval", "horse", "🐎", "luh shuh-VAL"], ["la banane", "banana", "🍌", "lah bah-NAN"], ["l'œuf", "egg", "🥚", "luf"]]}, {"need": 50, "items": [["le chapeau", "hat", "🎩", "luh shah-POH"], ["la chaussure", "shoe", "👟", "lah shoh-SEWR"], ["le téléphone", "phone", "📱", "luh tay-lay-FUN"], ["la cuillère", "spoon", "🥄", "lah kwee-YAIR"], ["le parapluie", "umbrella", "☂️", "luh pah-rah-PLWEE"], ["le sac", "bag", "🎒", "luh sak"]]}], "acts": {"question": ["Que fait-il ?", "What is he doing?"], "prefix": "", "levels": [{"need": 0, "name": "Tous les jours", "acts": [["il mange", "is eating", "🧔🍛", "eel mahnzh"], ["il boit", "is drinking", "🧔☕", "eel bwah"], ["il dort", "is sleeping", "😴🛏️", "eel dor"], ["il lit", "is reading", "🧔📖", "eel lee"], ["il court", "is running", "🏃‍♂️💨", "eel koor"], ["il joue", "is playing", "⛹️‍♂️🏀", "eel zhoo"], ["il cuisine", "is cooking", "🧑‍🍳🍲", "eel kwee-ZEEN"], ["il regarde", "is watching", "🧔📺", "eel ruh-GARD"], ["il marche", "is walking", "🚶‍♂️🌳", "eel marsh"]]}, {"need": 25, "name": "Pour s'amuser", "acts": [["il danse", "is dancing", "🕺🎶", "eel dahns"], ["il chante", "is singing", "🧔🎤", "eel shahnt"], ["il écrit", "is writing", "✍️📝", "eel ay-KREE"], ["il nage", "is swimming", "🏊‍♂️🌊", "eel nahzh"], ["il rit", "is laughing", "😂", "eel ree"], ["il pleure", "is crying", "😢", "eel plur"]]}]}};
+const GAME_BAKERY = {"note": "Bakery Shift (French only). Debbie is the chef's assistant: he asks for things in French, she hands him the right picture. items: [French with article, English, picture, sounds-like]. recipes: [French, English, picture or svg id, item ids].", "items": {"farine": ["la farine", "flour", "🌾", "lah fah-REEN"], "beurre": ["le beurre", "butter", "🧈", "luh bur"], "sucre": ["le sucre", "sugar", "🍬", "luh SEW-kruh"], "sel": ["le sel", "salt", "🧂", "luh sel"], "oeufs": ["les œufs", "eggs", "🥚", "layz uh"], "lait": ["le lait", "milk", "🥛", "luh leh"], "chocolat": ["le chocolat", "chocolate", "🍫", "luh shoh-koh-LAH"], "fraises": ["les fraises", "strawberries", "🍓", "lay frez"], "pommes": ["les pommes", "apples", "🍎", "lay pum"], "creme": ["la crème", "cream", "🍦", "lah krem"], "miel": ["le miel", "honey", "🍯", "luh myel"], "citron": ["le citron", "lemon", "🍋", "luh see-TROHN"], "eau": ["l'eau", "water", "💧", "loh"], "four": ["le four", "oven", "🔥", "luh foor"], "poele": ["la poêle", "frying pan", "🍳", "lah pwahl"], "bol": ["le bol", "bowl", "🥣", "luh bol"], "couteau": ["le couteau", "knife", "🔪", "luh koo-TOH"], "cuillere": ["la cuillère", "spoon", "🥄", "lah kwee-YAIR"]}, "recipes": [["le croissant", "croissant", "🥐", ["farine", "beurre", "sucre", "four"]], ["la baguette", "baguette", "🥖", ["farine", "eau", "sel", "four"]], ["la crêpe", "crêpe", "🥞", ["bol", "farine", "oeufs", "lait", "poele"]], ["le pain au chocolat", "chocolate pastry", "svg:pac", ["farine", "beurre", "chocolat", "four"]], ["la tarte aux pommes", "apple tart", "🥧", ["farine", "beurre", "pommes", "couteau", "four"]], ["le gâteau au chocolat", "chocolate cake", "🎂", ["bol", "oeufs", "sucre", "chocolat", "four"]], ["les madeleines", "madeleines", "svg:madeleine", ["oeufs", "sucre", "citron", "beurre", "four"]], ["la tarte aux fraises", "strawberry tart", "🍓", ["farine", "beurre", "creme", "fraises", "couteau"]], ["l'éclair au chocolat", "chocolate éclair", "svg:eclair", ["farine", "oeufs", "creme", "chocolat", "four"]], ["la brioche", "brioche", "🍞", ["farine", "oeufs", "lait", "miel", "four"]]], "ask": [["Passe-moi {x}, s'il te plaît !", "Pass me {e}, please!"], ["Donne-moi {x} !", "Give me {e}!"], ["Vite ! {X} !", "Quick! {E}!"]], "start": ["Maintenant, on fait {x} !", "Now we're making {e}!"], "done": ["Voilà ! {X} ! Dans la vitrine !", "There we go! {E}! Into the display case!"], "wrong": ["Non, ça, c'est {x} !", "No, that's {e}!"], "hello": ["Bonjour Debbie ! Au travail !", "Hello Debbie! Let's get to work!"]};
 /* ===================== standalone: GitHub sync ===================== */
 // The Thor app and the browser version keep their data on the device and sync it with a private GitHub repo
 // (default andrew455/kahani-data). The repo mirrors the online database: lessons/<id>.json, vocab/bNN.json,
@@ -3508,7 +3550,7 @@ if (FR) TABS.splice(TABS.length - 1, 0, ["bakery", "Boulangerie", "🥐"]);
 /* ===================== Adventure: a choose-your-path game for the controller (Hindi) ===================== */
 // Chapters live in game-hi.json (built in as GAME_HI). Each scene is a few Hindi sentences and 1–3 choices.
 // Chapters unlock as known words grow. Words are tappable like in stories, and new ones go into Learning 1.
-const ADV = (typeof GAME_HI !== "undefined" && !FR) ? GAME_HI.chapters : [];
+const ADV = FR ? (typeof GAME_FR !== "undefined" ? GAME_FR.chapters : []) : (typeof GAME_HI !== "undefined" ? GAME_HI.chapters : []);
 let adv = store.get("adv", { ch: null, scene: null, items: [], done: {}, pick: 0, tr: false });
 const saveAdv = () => store.set("adv", adv);
 const advCh = () => ADV.find(c => c.id === adv.ch) || null;
@@ -3559,8 +3601,8 @@ function viewAdv() {
   const known = advKnown();
   if (!adv.ch) {
     return `<div class="adv">
-      <div class="section-h"><h2 class="display" style="font-size:1.9rem">🗺️ रोमांच <span class="muted" style="font-family:var(--f-body);font-size:1rem">Adventure</span></h2><span class="muted small">${known} known words</span></div>
-      <p class="muted">Choose your path through the village. Read the Hindi, then pick what Ravi does next. New chapters open as you learn more words.</p>
+      <div class="section-h"><h2 class="display" style="font-size:1.9rem">🗺️ ${FR ? "L’aventure" : "रोमांच"} <span class="muted" style="font-family:var(--f-body);font-size:1rem">Adventure</span></h2><span class="muted small">${known} known words</span></div>
+      <p class="muted">${FR ? "Read the French, then pick what Léa does next." : "Choose your path through the village. Read the Hindi, then pick what Ravi does next."} New chapters open as you learn more words.</p>
       <div class="adv-chs">${ADV.map((c, i) => {
         const open = !c.soon && known >= c.need, locked = known < c.need;
         return `<button class="adv-ch ${open ? "" : "locked"} ${adv.pick === i ? "pick" : ""}" data-advch="${c.id}" ${open ? "" : "disabled"}>
@@ -3576,8 +3618,8 @@ function viewAdv() {
   const ch = advChoices();
   return `<div class="adv">
     <div class="adv-head"><span class="muted small">${esc(c.title)} · ${esc(c.en)}</span>${adv.items.length ? `<span class="muted small">🎒 ${adv.items.map(esc).join(", ")}</span>` : ""}</div>
-    <div class="adv-text story" lang="hi">${text}</div>
-    ${sc.end ? `<div class="adv-end">⭐ शाबाश! Chapter complete. <button class="btn" data-advback="1">Back to chapters</button></div>`
+    <div class="adv-text story" lang="${FR ? "fr" : "hi"}">${text}</div>
+    ${sc.end ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} Chapter complete. <button class="btn" data-advback="1">Back to chapters</button></div>`
       : `<div class="adv-choices">${ch.map((o, i) => `<button class="adv-c ${adv.pick === i ? "pick" : ""}" data-advpick="${i}"><span lang="hi">${esc(o.hi)}</span>${adv.tr ? `<small>${esc(o.en)}</small>` : ""}</button>`).join("")}</div>
          <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> go · <kbd>Y</kbd> English · <kbd>X</kbd> hear again · <kbd>B</kbd> chapters</div>`}
   </div>`;
@@ -3592,7 +3634,12 @@ function advBottom() {
 /* ===================== Games hub (Hindi; made for the Thor's controller, also works by touch and keyboard) ===================== */
 // Views: games (the hub), adv (Adventure, in standalone.js), fly (Sky Words), match (Object Match), acts (What's He Doing?).
 const GAME_VIEWS = ["games", "adv", "fly", "match", "acts"];
-const GAMES = FR ? [] : [
+const GAMES = FR ? [
+  ["adv", "🗺️", "L’aventure", "Adventure", "Help Léa get a croissant."],
+  ["fly", "✈️", "Dans le ciel", "Sky Words", "Fly through the ring with the right word."],
+  ["match", "🧩", "Les paires", "Object Match", "Match pictures to their French names (with le / la)."],
+  ["acts", "🏃", "Que fait-il ?", "What's He Doing?", "Pick the verb for what he's doing."]
+] : [
   ["adv", "🗺️", "रोमांच", "Adventure", "Choose Ravi's path through the village."],
   ["fly", "✈️", "आसमान", "Sky Words", "Fly through the ring with the right word."],
   ["match", "🧩", "जोड़ी", "Object Match", "Match pictures to their Hindi names. Teaches everyday things."],
@@ -3605,7 +3652,7 @@ const gShuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { 
 const lockNote = need => `🔒 Unlocks at ${need} known words · ${need - knownN()} to go`;
 
 function viewGames() {
-  return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.9rem">🎮 खेल <span class="muted" style="font-family:var(--f-body);font-size:1rem">Games</span></h2><span class="muted small">${knownN()} known words</span></div>
+  return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.9rem">🎮 ${FR ? "Les jeux" : "खेल"} <span class="muted" style="font-family:var(--f-body);font-size:1rem">Games</span></h2><span class="muted small">${knownN()} known words</span></div>
     <div class="hub-grid">${GAMES.map(([id, ico, hi, en, about], i) => `<button class="hub-card ${hub.pick === i ? "pick" : ""}" data-gk="open" data-gi="${i}">
       <span class="hub-ico">${ico}</span><b class="display">${esc(hi)}</b><span class="hub-en">${esc(en)}</span><span class="muted small">${esc(about)}</span></button>`).join("")}</div>
     <div class="kbd"><kbd>◀ ▶</kbd> choose · <kbd>A</kbd> play · <kbd>Select</kbd> menu</div></div>`;
@@ -3629,9 +3676,9 @@ const fly = { st: "menu", pick: 0, lv: 0, score: 0, lives: 3, lane: 0, x: 0, gat
 // Little grammar words (of, to, is…) make poor targets: keep things you can picture or say on their own.
 const FLY_SKIP = /^(is|are|am|was|were|of|to|in|on|at|and|or|the|a|an|also|too|so|then|from|with|for|his|her|my|your|our|their|this|these|that|polite|but|not|no|yes|very|if|what|who|where|how|which|here|there|now|oh|hey|wow|please|let's|\(|'s|marker|question)\b/i;
 function flyPool() {
-  const seenM = new Set(), out = [];
+  const seenM = new Set(), out = [], fewKnown = knownN() < 12;   // early on, learning words count too
   for (const [w, e] of Object.entries(V)) {
-    if (e.s !== 5 || !e.m || isNameWord(w) || w.length > 9) continue;
+    if (!(e.s === 5 || (fewKnown && e.s >= 1 && e.s <= 4)) || !e.m || isNameWord(w) || w.length > 12) continue;
     const m = String(e.m).replace(/\s*\(.*?\)\s*/g, " ").split(/[;/,]/)[0].trim();
     if (!m || m.length > 22 || seenM.has(m) || FLY_SKIP.test(m)) continue;
     seenM.add(m); out.push({ w, m });
@@ -3716,7 +3763,7 @@ function flyDraw(t) {
   if (fly.flash) { x.fillStyle = fly.fcol; x.globalAlpha = fly.flash; x.fillRect(0, 0, W, H); x.globalAlpha = 1; }
 }
 function viewFly() {
-  if (fly.st === "menu") return levelMenu("✈️ आसमान · Sky Words", FLY_LEVELS, fly.pick, fly.best) + `<p class="muted small" style="text-align:center">Fly through the ring with the Hindi word for the English at the top. Uses only words you know (${flyPool().length} right now).</p>`;
+  if (fly.st === "menu") return levelMenu(FR ? "✈️ Dans le ciel · Sky Words" : "✈️ आसमान · Sky Words", FLY_LEVELS, fly.pick, fly.best) + `<p class="muted small" style="text-align:center">Fly through the ring with the ${FR ? "French" : "Hindi"} word for the English at the top. Uses only words you know (${flyPool().length} right now).</p>`;
   if (fly.st === "over") return `<div class="hub" style="text-align:center"><h2 class="display" style="font-size:2rem">✈️ Landed!</h2><p style="font-size:1.4rem">★ ${fly.score} · best ${fly.best[fly.lv] || 0}</p><p class="muted">${esc(fly.msg)}</p>
     <div class="ask-row" style="justify-content:center"><button class="btn primary" data-gk="a">Fly again</button><button class="btn" data-gk="b">Levels</button></div></div>`;
   setTimeout(() => flyDraw(performance.now() / 1000), 0);
@@ -3739,7 +3786,9 @@ function flyKey(k, i) {
 }
 
 /* ---------- 🧩 Object Match: memory pairs, picture ↔ Hindi name. Later levels teach new everyday objects ---------- */
-const MATCH_LEVELS = (typeof GAME_OBJ !== "undefined" ? GAME_OBJ.levels : []).map((L, i) => Object.assign({ name: i < 3 ? "From your stories" : "New things", about: L.items.map(x => x[2]).join(" ") }, L));
+const MATCH_LEVELS = (FR ? (typeof GAME_FR !== "undefined" ? GAME_FR.objects : []) : (typeof GAME_OBJ !== "undefined" ? GAME_OBJ.levels : [])).map((L, i) => Object.assign({ name: i < (FR ? 2 : 3) ? "From your stories" : "New things", about: L.items.map(x => x[2]).join(" ") }, L));
+// The word saved to your list: Hindi as is; French without le / la / l' ("le chat" → chat).
+const gameWordKey = phrase => FR ? norm(phrase.split(/[\s’']/).filter(Boolean).pop()) : phrase;
 const match = { st: "menu", pick: 0, lv: 0, cards: [], cur: 0, open: [], done: [], moves: 0, lock: false, found: [], best: store.get("matchbest", {}) };
 function matchStart(lv) {
   const L = MATCH_LEVELS[lv]; if (!L || knownN() < L.need) return;
@@ -3757,7 +3806,7 @@ function matchFlip(i) {
     if (a.k === b.k) {
       match.done.push(...match.open); match.open = []; match.found.unshift(c.k);
       speak(it[0]); toast(`${it[2]} ${it[0]} = ${it[1]}`, 2500);
-      if (statusOf(it[0]) === 0) setWord(it[0], { s: 1, m: it[1], t: it[3], l: "game" }, true);
+      const wk = gameWordKey(it[0]); if (statusOf(wk) === 0) setWord(wk, { s: 1, m: FR ? `${it[1]} (${it[0]})` : it[1], t: it[3], l: "game" }, true);
       if (match.done.length === match.cards.length) {
         match.st = "won"; if (match.best[match.lv] == null || match.moves < match.best[match.lv]) { match.best[match.lv] = match.moves; store.set("matchbest", match.best); }
       }
@@ -3766,14 +3815,14 @@ function matchFlip(i) {
   render();
 }
 function viewMatch() {
-  if (match.st === "menu") return levelMenu("🧩 जोड़ी · Object Match", MATCH_LEVELS, match.pick, match.best) + `<p class="muted small" style="text-align:center">Turn over two cards: find each picture and its Hindi name. New words go into Learning.</p>`;
+  if (match.st === "menu") return levelMenu(FR ? "🧩 Les paires · Object Match" : "🧩 जोड़ी · Object Match", MATCH_LEVELS, match.pick, match.best) + `<p class="muted small" style="text-align:center">Turn over two cards: find each picture and its ${FR ? "French" : "Hindi"} name. New words go into Learning.</p>`;
   const L = MATCH_LEVELS[match.lv];
   const grid = match.cards.map((c, i) => {
     const it = L.items[c.k], up = match.open.includes(i) || match.done.includes(i);
-    return `<button class="mcard ${up ? "up" : ""} ${match.done.includes(i) ? "done" : ""} ${match.cur === i ? "pick" : ""}" data-gk="flip" data-gi="${i}">${up ? (c.kind === "pic" ? `<span class="memo">${it[2]}</span>` : `<span class="mword" lang="hi">${esc(it[0])}</span>`) : `<span class="mback">?</span>`}</button>`;
+    return `<button class="mcard ${up ? "up" : ""} ${match.done.includes(i) ? "done" : ""} ${match.cur === i ? "pick" : ""}" data-gk="flip" data-gi="${i}">${up ? (c.kind === "pic" ? `<span class="memo">${it[2]}</span>` : `<span class="mword">${esc(it[0])}</span>`) : `<span class="mback">?</span>`}</button>`;
   }).join("");
   return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.4rem">🧩 Level ${match.lv + 1}</h2><span class="muted small">${match.done.length / 2} / ${L.items.length} pairs · ${match.moves} moves</span></div>
-    ${match.st === "won" ? `<div class="adv-end">⭐ शाबाश! All pairs in ${match.moves} moves. <button class="btn primary" data-gk="a">Next level</button><button class="btn" data-gk="b">Levels</button></div>` : ""}
+    ${match.st === "won" ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} All pairs in ${match.moves} moves. <button class="btn primary" data-gk="a">Next level</button><button class="btn" data-gk="b">Levels</button></div>` : ""}
     <div class="mgrid">${grid}</div>
     <div class="kbd"><kbd>D-pad</kbd> move · <kbd>A</kbd> turn over · <kbd>B</kbd> levels</div></div>`;
 }
@@ -3796,7 +3845,8 @@ function matchKey(k, i) {
 }
 
 /* ---------- 🏃 What's He Doing?: a picture of him doing something, pick the right verb from three ---------- */
-const ACT_LEVELS = (typeof GAME_ACTS !== "undefined" ? GAME_ACTS.levels : []).map(L => Object.assign({ about: L.acts.map(a => a[1].replace("is ", "")).join(", ") }, L));
+const ACTD = FR ? (typeof GAME_FR !== "undefined" ? GAME_FR.acts : { levels: [], question: ["", ""] }) : (typeof GAME_ACTS !== "undefined" ? Object.assign({ prefix: "वह " }, GAME_ACTS) : { levels: [], question: ["", ""] });
+const ACT_LEVELS = ACTD.levels.map(L => Object.assign({ about: L.acts.map(a => a[1].replace("is ", "")).join(", ") }, L));
 const acts = { st: "menu", pick: 0, lv: 0, round: 0, score: 0, q: null, sel: 0, answered: null, best: store.get("actsbest", {}) };
 const ACT_ROUNDS = 10;
 function actsPool(lv) { return ACT_LEVELS.slice(0, lv + 1).flatMap(L => L.acts); }
@@ -3805,16 +3855,16 @@ function actsNext() {
   const target = L.acts[Math.floor(Math.random() * L.acts.length)];
   const others = gShuffle(pool.filter(a => a !== target)).slice(0, 2);
   acts.q = { target, opts: gShuffle([target, ...others]) }; acts.sel = 0; acts.answered = null;
-  render(); speak(GAME_ACTS.question[0]);
+  render(); speak(ACTD.question[0]);
 }
 function actsStart(lv) { if (knownN() < ACT_LEVELS[lv].need) return; acts.lv = lv; acts.round = 0; acts.score = 0; acts.st = "play"; actsNext(); }
 function actsAnswer(i) {
   if (acts.answered != null) return;
   const o = acts.q.opts[i], ok = o === acts.q.target; acts.answered = i;
   if (ok) acts.score++;
-  speak("वह " + acts.q.target[0]);
-  const w = acts.q.target[0].split(" ")[0];
-  if (statusOf(w) === 0) setWord(w, { s: 1, m: acts.q.target[1].replace(/^is /, "") + " (m.)", t: acts.q.target[3].split(" ")[0], l: "game" }, true);
+  speak(ACTD.prefix + acts.q.target[0]);
+  const w = FR ? gameWordKey(acts.q.target[0]) : acts.q.target[0].split(" ")[0];
+  if (statusOf(w) === 0) setWord(w, { s: 1, m: acts.q.target[1].replace(/^is /, "") + (FR ? "s" : " (m.)"), t: FR ? acts.q.target[3] : acts.q.target[3].split(" ")[0], l: "game" }, true);
   render();
   setTimeout(() => {
     if (route.view !== "acts" || acts.st !== "play") return;
@@ -3824,14 +3874,14 @@ function actsAnswer(i) {
   }, ok ? 1500 : 2600);
 }
 function viewActs() {
-  if (acts.st === "menu") return levelMenu("🏃 क्या करता है? · What's He Doing?", ACT_LEVELS, acts.pick, acts.best);
+  if (acts.st === "menu") return levelMenu(FR ? "🏃 Que fait-il ? · What's He Doing?" : "🏃 क्या करता है? · What's He Doing?", ACT_LEVELS, acts.pick, acts.best);
   if (acts.st === "over") return `<div class="hub" style="text-align:center"><h2 class="display" style="font-size:2rem">🏃 ${acts.score} / ${ACT_ROUNDS}</h2><p class="muted">best ${acts.best[acts.lv] || 0}</p>
     <div class="ask-row" style="justify-content:center"><button class="btn primary" data-gk="a">Play again</button><button class="btn" data-gk="b">Levels</button></div></div>`;
   const q = acts.q, t = q.target;
   return `<div class="hub acts"><div class="section-h"><span class="muted small">Round ${acts.round + 1} / ${ACT_ROUNDS}</span><span class="muted small">★ ${acts.score}</span></div>
     <div class="act-scene"><span class="act-pic">${t[2]}</span></div>
-    <div class="act-q"><span lang="hi">${esc(GAME_ACTS.question[0])}</span> <span class="muted small">${esc(GAME_ACTS.question[1])}</span></div>
-    ${acts.answered != null ? `<div class="act-res ${q.opts[acts.answered] === t ? "ok" : "bad"}">${q.opts[acts.answered] === t ? "✓" : "✗"} <span lang="hi">वह ${esc(t[0])}</span> · he ${esc(t[1])}</div>` : ""}
+    <div class="act-q"><span>${esc(ACTD.question[0])}</span> <span class="muted small">${esc(ACTD.question[1])}</span></div>
+    ${acts.answered != null ? `<div class="act-res ${q.opts[acts.answered] === t ? "ok" : "bad"}">${q.opts[acts.answered] === t ? "✓" : "✗"} <span>${esc(ACTD.prefix + t[0])}</span> · he ${esc(t[1])}</div>` : ""}
     <div class="adv-choices act-opts">${q.opts.map((o, i) => `<button class="adv-c ${acts.sel === i ? "pick" : ""} ${acts.answered != null && o === t ? "right" : ""} ${acts.answered === i && o !== t ? "wrong" : ""}" data-gk="ans" data-gi="${i}"><span lang="hi">${esc(o[0])}</span>${acts.answered != null ? `<small>${esc(o[1])}</small>` : ""}</button>`).join("")}</div>
     <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> answer · <kbd>X</kbd> hear the question · <kbd>B</kbd> levels</div></div>`;
 }
@@ -3847,7 +3897,7 @@ function actsKey(k, i) {
   if (k === "ans") return actsAnswer(+i);
   if (k === "up" || k === "down") { acts.sel = (acts.sel + (k === "down" ? 1 : 2)) % 3; render(); speak(acts.q.opts[acts.sel][0]); }
   else if (k === "a") actsAnswer(acts.sel);
-  else if (k === "x") speak(GAME_ACTS.question[0]);
+  else if (k === "x") speak(ACTD.question[0]);
   else if (k === "b") { acts.st = "menu"; render(); }
 }
 
@@ -3867,6 +3917,8 @@ function gameKey(k, i) {
   if (v === "fly") return flyKey(k, i);
   if (v === "match") return matchKey(k, i);
   if (v === "acts") return actsKey(k, i);
+  if (v === "bake") return bakeKey(k, i);
+  if (v === "shop") return shopKey(k, i);
 }
 function gameBottom() {
   const v = route.view, k = knownN();
@@ -3882,11 +3934,23 @@ function gameBottom() {
     const L = MATCH_LEVELS[match.lv];
     return { type: "match", level: match.lv + 1, won: match.st === "won", moves: match.moves, pairs: L.items.length, found: match.found.map(j => L.items[j]) };
   }
+  if (v === "shop") {
+    if (shop.st === "menu") return menu(SHOP_TXT.title, SHOP_LEVELS, shop.pick, shop.best);
+    if (shop.st === "over") return { type: "shopover", money: SHOP_TXT.cur + shop.money, best: SHOP_TXT.cur + (shop.best[shop.lv] || 0) };
+    const q = shop.queue[shop.ci];
+    return { type: "shop", money: SHOP_TXT.cur + shop.money, ci: shop.ci + 1, n: shop.queue.length, want: q.it[2], msg: shop.msg, tr: shop.tr, sel: shop.sel, answered: shop.answered,
+      opts: shopOptions().map(o => o.none ? { none: true, label: SHOP_TXT.no[0] } : { label: o.it[0], price: SHOP_TXT.cur + o.price }) };
+  }
+  if (v === "bake") {
+    if (bake.st !== "play") return { type: "bakemenu", over: bake.st === "over", made: bake.made.length, best: bake.best };
+    const R = bkRecipe();
+    return { type: "bake", say: bake.say, tr: bake.tr, lives: bake.lives, made: bake.made.length, recipe: R[0], opts: bake.opts.map(id => ({ pic: BK.items[id][2], name: BK.items[id][0] })), sel: bake.sel, answered: bake.answered, right: bake.opts.indexOf(bake.answered != null ? bake.want : R[3][bake.step]) };
+  }
   if (v === "acts") {
     if (acts.st === "menu") return menu("🏃 What's He Doing?", ACT_LEVELS, acts.pick, acts.best);
     if (acts.st === "over") return { type: "acts", over: true, score: acts.score, rounds: ACT_ROUNDS };
     const q = acts.q;
-    return { type: "acts", q: GAME_ACTS.question, opts: q.opts.map(o => ({ hi: o[0], en: o[1] })), sel: acts.sel, answered: acts.answered, right: q.opts.indexOf(q.target), round: acts.round + 1, rounds: ACT_ROUNDS, score: acts.score };
+    return { type: "acts", q: ACTD.question, opts: q.opts.map(o => ({ hi: o[0], en: o[1] })), sel: acts.sel, answered: acts.answered, right: q.opts.indexOf(q.target), round: acts.round + 1, rounds: ACT_ROUNDS, score: acts.score };
   }
   return null;
 }
@@ -3896,6 +3960,160 @@ addEventListener("keydown", e => {
   const k = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", Enter: "a", " ": "a", Escape: "b", y: "y", x: "x" }[e.key];
   if (k) { e.preventDefault(); gameKey(k); }
 });
+
+/* ---------- 🥐 Bakery Shift (French): Debbie hands the chef what he asks for; finished pastries go into the display case ---------- */
+const BK = typeof GAME_BAKERY !== "undefined" ? GAME_BAKERY : null;
+const bake = { st: "menu", order: [], ri: 0, step: 0, opts: [], sel: 0, lives: 3, made: [], say: ["", ""], tr: false, answered: null, busy: false,
+  best: store.get("bakebest", 0), case: store.get("vitrine", {}) };
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const fillT = (t, it) => [t[0].replace("{x}", it[0]).replace("{X}", cap(it[0])), t[1].replace("{e}", "the " + it[1]).replace("{E}", cap("the " + it[1]))];
+const bkIcon = ico => ico.startsWith("svg:") ? PASTRY_SVG[ico.slice(4)] : `<span class="emo">${ico}</span>`;
+const bkRecipe = () => BK.recipes[bake.order[bake.ri % bake.order.length]];
+function bakeSay(line, then) {   // the chef speaks; carry on when he's done (or after a while, if there's no voice)
+  bake.say = line; let done = false;
+  const next = () => { if (done) return; done = true; if (then) setTimeout(then, 200); };
+  speak(line[0], { onend: next }); setTimeout(next, 1200 + line[0].length * 75);
+}
+function bakeAsk() {
+  const R = bkRecipe(), id = R[3][bake.step], it = BK.items[id];
+  const others = gShuffle(Object.keys(BK.items).filter(k => k !== id)).slice(0, 3);
+  bake.opts = gShuffle([id, ...others]); bake.sel = 0; bake.answered = null; bake.busy = false;
+  bakeSay(fillT(BK.ask[Math.floor(Math.random() * BK.ask.length)], it)); render();
+}
+function bakeRecipeStart() {
+  bake.step = 0; const R = bkRecipe();
+  bakeSay(fillT(BK.start, R), bakeAsk); render();
+}
+function bakeStart() {
+  Object.assign(bake, { st: "play", order: gShuffle(BK.recipes.map((_, i) => i)), ri: 0, step: 0, lives: 3, made: [], tr: false });
+  bakeSay(BK.hello, bakeRecipeStart); render();
+}
+function bakeAnswer(i) {
+  if (bake.busy || bake.st !== "play" || !bake.opts.length) return;
+  const R = bkRecipe(), want = R[3][bake.step], got = bake.opts[i];
+  bake.answered = i; bake.busy = true; bake.want = want;
+  if (got === want) {
+    const wk = gameWordKey(BK.items[got][0]); if (statusOf(wk) === 0) setWord(wk, { s: 1, m: `${BK.items[got][1]} (${BK.items[got][0]})`, t: BK.items[got][3], l: "game" }, true);
+    bake.step++;
+    if (bake.step >= R[3].length) {   // finished: into the display case
+      bake.made.push(R); bake.case[R[0]] = (bake.case[R[0]] || 0) + 1; store.set("vitrine", bake.case);
+      bake.opts = []; bake.ri++;
+      bakeSay(fillT(BK.done, R), () => setTimeout(bakeRecipeStart, 600)); render();
+    } else { render(); setTimeout(bakeAsk, 700); }
+  } else {
+    bake.lives--;
+    bakeSay(fillT(BK.wrong, BK.items[got]));
+    if (bake.lives <= 0) {
+      if (bake.made.length > bake.best) { bake.best = bake.made.length; store.set("bakebest", bake.best); }
+      setTimeout(() => { bake.st = "over"; render(); }, 1600);
+    } else setTimeout(() => { bake.answered = null; bake.busy = false; bakeSay(fillT(BK.ask[0], BK.items[want])); render(); }, 1800);
+    render();
+  }
+}
+function vitrineHtml(only) {
+  const list = BK.recipes.map(R => ({ R, n: only ? only.filter(x => x === R).length : (bake.case[R[0]] || 0) }));
+  return `<div class="vitrine">${list.map(({ R, n }) => `<div class="vit ${n ? "on" : ""}" title="${esc(R[1])}"><div class="vit-ico">${bkIcon(R[2])}${n > 1 ? `<span class="pastry-n">×${n}</span>` : ""}</div><div class="small">${n ? esc(R[0]) : "?"}</div></div>`).join("")}</div>`;
+}
+function viewBake() {
+  if (!BK) return "";
+  if (bake.st === "menu" || bake.st === "over") {
+    const total = Object.values(bake.case).reduce((a, b) => a + b, 0);
+    return `<div class="hub bake"><div class="section-h"><h2 class="display" style="font-size:1.9rem">👨‍🍳 Au travail, Debbie !</h2><button class="btn ghost" data-gk="b">← Jeux</button></div>
+      ${bake.st === "over" ? `<div class="adv-end">🥐 Fin de la journée ! You made <b>${bake.made.length}</b> today · best ${bake.best}</div>${vitrineHtml(bake.made)}` : `<p class="muted">You're the chef's assistant. He asks for things in French, and you hand him the right one. Every pastry you finish goes into the display case. Three wrong answers and the shift is over!</p>`}
+      <div class="ask-row"><button class="btn primary" data-gk="a">${bake.st === "over" ? "Another shift" : "Start the shift"}</button></div>
+      <div class="section-h" style="margin-top:10px"><h3 class="display" style="margin:0">La vitrine</h3><span class="muted small">${total} made in all · best shift ${bake.best}</span></div>
+      ${vitrineHtml()}</div>`;
+  }
+  const R = bkRecipe(), have = R[3].slice(0, bake.step);
+  return `<div class="hub bake">
+    <div class="section-h"><span class="muted small">❤️ ${"❤️".repeat(Math.max(0, bake.lives - 1))} · 🥐 ${bake.made.length} made</span><span class="muted small">${esc(R[0])} · ${esc(R[1])}</span></div>
+    <div class="chef"><span class="chef-ico">👨‍🍳</span><div class="bubble"><div class="bubble-fr">${esc(bake.say[0])}</div>${bake.tr ? `<div class="muted">${esc(bake.say[1])}</div>` : ""}</div></div>
+    <div class="recipe"><span class="rec-out">${bkIcon(R[2])}</span>${R[3].map((id, i) => `<span class="slot ${i < bake.step ? "got" : i === bake.step ? "now" : ""}">${i < bake.step ? BK.items[id][2] : "?"}</span>`).join("")}</div>
+    <div class="bk-opts">${bake.opts.map((id, i) => { const it = BK.items[id], want = bake.answered != null ? bake.want : R[3][bake.step]; const cls = bake.answered == null ? "" : id === want ? "right" : i === bake.answered ? "wrong" : "";
+      return `<button class="bk-opt ${bake.sel === i ? "pick" : ""} ${cls}" data-gk="ans" data-gi="${i}"><span class="bk-pic">${it[2]}</span>${bake.answered != null && (cls || bake.tr) ? `<span class="small">${esc(it[0])}</span>` : ""}</button>`; }).join("")}</div>
+    <div class="kbd"><kbd>D-pad</kbd> choose · <kbd>A</kbd> hand it over · <kbd>X</kbd> hear again · <kbd>Y</kbd> English · <kbd>B</kbd> stop</div>
+    ${bake.made.length ? `<div class="section-h"><span class="muted small">Today's display case</span></div>${vitrineHtml(bake.made)}` : ""}
+  </div>`;
+}
+function bakeKey(k, i) {
+  if (bake.st !== "play") { if (k === "a") bakeStart(); else if (k === "b") go("games"); return; }
+  if (k === "ans") return bakeAnswer(+i);
+  const n = bake.opts.length || 4;
+  if (k === "left") bake.sel = (bake.sel + n - 1) % n; else if (k === "right") bake.sel = (bake.sel + 1) % n;
+  else if (k === "up" || k === "down") bake.sel = (bake.sel + 2) % n;
+  else if (k === "a") return bakeAnswer(bake.sel);
+  else if (k === "x") { speak(bake.say[0]); return; }
+  else if (k === "y") bake.tr = !bake.tr;
+  else if (k === "b") { if (bake.made.length > bake.best) { bake.best = bake.made.length; store.set("bakebest", bake.best); } bake.st = "over"; }
+  render();
+}
+if (FR && BK) { GAMES.push(["bake", "👨‍🍳", "Au travail !", "Bakery Shift", "Help the chef: hand him what he asks for, in French."]); GAME_VIEWS.push("bake"); }
+
+/* ---------- 🛒 The Shop (both languages): a customer shows a picture, you pick that thing from your stock list ---------- */
+// A level = 10 customers. Your stock is 8 of the things they'll want plus a few others; 2 customers want something
+// you don't have (answer "we don't have it"). Earn as much money as you can. Things come from Object Match's lists.
+const SHOP_TXT = FR
+  ? { hi: ["Bonjour ! Je voudrais ça, s'il vous plaît.", "Hello! I'd like this, please."], thanks: ["Merci ! Au revoir !", "Thank you! Goodbye!"], no: ["Désolé, je n'en ai pas.", "Sorry, I don't have any."], ok: ["Ah, d'accord. Au revoir !", "Ah, okay. Goodbye!"], bad: ["Non, ce n'est pas ça !", "No, that's not it!"], cur: "€", price: () => 1 + Math.floor(Math.random() * 5), tip: 1, title: "🛒 Le magasin", name: "Le magasin" }
+  : { hi: ["नमस्ते! मुझे यह चाहिए।", "Hello! I need this."], thanks: ["धन्यवाद!", "Thank you!"], no: ["माफ़ कीजिए, यह नहीं है।", "Sorry, we don't have it."], ok: ["ठीक है, धन्यवाद!", "Okay, thank you!"], bad: ["नहीं, यह नहीं!", "No, not this!"], cur: "₹", price: () => 10 * (1 + Math.floor(Math.random() * 5)), tip: 5, title: "🛒 दुकान", name: "दुकान" };
+const SHOP_LEVELS = MATCH_LEVELS.slice(1).map((L, i) => ({ need: L.need, name: i === 0 ? "Small shop" : i === 1 ? "Corner shop" : "Big shop " + (i - 1), about: "Things up to Object Match level " + (i + 2), upto: i + 2 }));
+const PEOPLE = ["🧑", "👩", "👴", "👵", "👦", "👧", "🧔", "👨‍🦱", "👩‍🦰", "🧕"];
+const shop = { st: "menu", pick: 0, lv: 0, stock: [], queue: [], ci: 0, sel: 0, money: 0, msg: ["", ""], answered: null, tr: false, best: store.get("shopbest", {}) };
+function shopStart(lv) {
+  const L = SHOP_LEVELS[lv]; if (!L || knownN() < L.need) return;
+  const pool = gShuffle(MATCH_LEVELS.slice(0, L.upto + 1).filter(x => knownN() >= x.need).flatMap(x => x.items));
+  const wanted = pool.slice(0, 8), extra = pool.slice(8, 10), missing = pool.slice(10, 12);
+  shop.stock = gShuffle(wanted.concat(extra)).map(it => ({ it, sold: false, price: SHOP_TXT.price() }));
+  shop.queue = gShuffle(wanted.map(it => ({ it, have: true })).concat(missing.map(it => ({ it, have: false })))).map(q => Object.assign(q, { who: PEOPLE[Math.floor(Math.random() * PEOPLE.length)] }));
+  Object.assign(shop, { st: "play", lv, ci: 0, sel: 0, money: 0, answered: null, msg: SHOP_TXT.hi });
+  render(); speak(SHOP_TXT.hi[0]);
+}
+const shopOptions = () => shop.stock.filter(s => !s.sold).concat([{ none: true }]);
+function shopAnswer(i) {
+  if (shop.answered != null || shop.st !== "play") return;
+  const q = shop.queue[shop.ci], o = shopOptions()[i]; if (!o) return;
+  const ok = o.none ? !q.have : (q.have && o.it === q.it);
+  shop.answered = { i, ok };
+  if (ok && !o.none) { o.sold = true; shop.money += o.price; shop.msg = SHOP_TXT.thanks; speak(q.it[0]); setTimeout(() => speak(SHOP_TXT.thanks[0]), 900);
+    const wk = gameWordKey(q.it[0]); if (statusOf(wk) === 0) setWord(wk, { s: 1, m: FR ? `${q.it[1]} (${q.it[0]})` : q.it[1], t: q.it[3], l: "game" }, true); }
+  else if (ok) { shop.money += SHOP_TXT.tip; shop.msg = SHOP_TXT.ok; speak(SHOP_TXT.ok[0]); }
+  else { shop.msg = SHOP_TXT.bad; speak(SHOP_TXT.bad[0]); setTimeout(() => speak(q.it[0]), 1100); }
+  render();
+  setTimeout(() => {
+    if (route.view !== "shop" || shop.st !== "play") return;
+    shop.ci++; shop.answered = null; shop.sel = 0;
+    if (shop.ci >= shop.queue.length) { shop.st = "over"; if ((shop.best[shop.lv] || 0) < shop.money) { shop.best[shop.lv] = shop.money; store.set("shopbest", shop.best); } render(); return; }
+    shop.msg = SHOP_TXT.hi; render(); speak(SHOP_TXT.hi[0]);
+  }, ok ? 2000 : 2800);
+}
+function viewShop() {
+  if (shop.st === "menu") return levelMenu(SHOP_TXT.title + " · The Shop", SHOP_LEVELS, shop.pick, Object.fromEntries(Object.entries(shop.best).map(([k, v]) => [k, SHOP_TXT.cur + v]))) +
+    `<p class="muted small" style="text-align:center">Customers show you a picture of what they want. Pick it from your stock (in ${FR ? "French" : "Hindi"}), or say you don't have it. Earn as much as you can from 10 customers.</p>`;
+  if (shop.st === "over") return `<div class="hub" style="text-align:center"><h2 class="display" style="font-size:2rem">🛒 ${SHOP_TXT.cur}${shop.money}</h2><p class="muted">best ${SHOP_TXT.cur}${shop.best[shop.lv] || 0}</p>
+    <div class="ask-row" style="justify-content:center"><button class="btn primary" data-gk="a">Open the shop again</button><button class="btn" data-gk="b">Levels</button></div></div>`;
+  const q = shop.queue[shop.ci], opts = shopOptions(), a = shop.answered;
+  return `<div class="hub shop"><div class="section-h"><span class="muted small">Customer ${shop.ci + 1} / ${shop.queue.length}</span><b class="shop-money">💰 ${SHOP_TXT.cur}${shop.money}</b></div>
+    <div class="shop-counter"><span class="shop-who">${q.who}</span><div class="bubble"><div class="bubble-fr">${esc(shop.msg[0])}</div>${shop.tr ? `<div class="muted">${esc(shop.msg[1])}</div>` : ""}<div class="shop-want">${q.it[2]}</div>${a && !a.ok ? `<div class="small">${esc(q.it[0])} · ${esc(q.it[1])}${q.have ? "" : " · not in stock"}</div>` : ""}</div></div>
+    <div class="shop-stock">${opts.map((o, i) => `<button class="shop-item ${shop.sel === i ? "pick" : ""} ${a && a.i === i ? (a.ok ? "right" : "wrong") : ""} ${o.none ? "none" : ""}" data-gk="ans" data-gi="${i}">${o.none ? `<span>🚫 ${esc(SHOP_TXT.no[0])}</span>` : `<span class="si-name">${esc(o.it[0])}</span><span class="muted small">${SHOP_TXT.cur}${o.price}</span>`}</button>`).join("")}</div>
+    <div class="kbd"><kbd>D-pad</kbd> choose · <kbd>A</kbd> sell · <kbd>Y</kbd> English · <kbd>B</kbd> close the shop</div></div>`;
+}
+function shopKey(k, i) {
+  if (shop.st === "menu") {
+    if (k === "level") return shopStart(+i);
+    if (k === "up" || k === "down") { shop.pick = Math.max(0, Math.min(SHOP_LEVELS.length - 1, shop.pick + (k === "down" ? 1 : -1))); render(); }
+    else if (k === "a") shopStart(shop.pick); else if (k === "b") go("games");
+    return;
+  }
+  if (shop.st === "over") { if (k === "a") shopStart(shop.lv); else if (k === "b") { shop.st = "menu"; render(); } return; }
+  if (k === "ans") return shopAnswer(+i);
+  const n = shopOptions().length;
+  if (k === "down" || k === "right") shop.sel = (shop.sel + 1) % n; else if (k === "up" || k === "left") shop.sel = (shop.sel + n - 1) % n;
+  else if (k === "a") return shopAnswer(shop.sel);
+  else if (k === "y") shop.tr = !shop.tr;
+  else if (k === "x") speak(shop.msg[0]);
+  else if (k === "b") { shop.st = "menu"; }
+  render();
+}
+if (MATCH_LEVELS.length > 1) { GAMES.push(["shop", "🛒", SHOP_TXT.name, "The Shop", "Sell customers what they point at. Earn as much as you can."]); GAME_VIEWS.push("shop"); }
 
 /* ===================== Thor: second screen and controller ===================== */
 var DUAL = !!NATIVE && NATIVE.hasBottom();
