@@ -3070,6 +3070,7 @@ document.addEventListener("click", e => {
     if (t.dataset.advch) { adv.pick = ADV.findIndex(c => c.id === t.dataset.advch); advStart(t.dataset.advch); return; }
     if (t.dataset.advpick != null) { advPick(+t.dataset.advpick); return; }
     if (t.dataset.advback) { adv.ch = null; adv.pick = 0; saveAdv(); render(); return; }
+    if (t.dataset.advtr) { advKey("translate"); return; }
   }
   if (t.classList.contains("w")) {
     if (sel && sel.k === +t.dataset.k) { speak(t.dataset.w); return; }
@@ -3544,12 +3545,12 @@ const PASTRIES = [
 const PRIZES = [
   ["chou", "🧁", "le chou à la crème", "cream puff", "Bakery Shift: make 5 pastries in one shift"],
   ["religieuse", "⛄", "la religieuse", "double cream puff", "Bakery Shift: make 10 pastries in one shift"],
-  ["parisbrest", "🥯", "le paris-brest", "praline ring", "Taxi: get the boss's best verdict (7+ right)"],
+  ["parisbrest", "🥯", "le paris-brest", "praline ring", "Taxi: get the boss's best verdict (7+ right) driving the bus or plane"],
   ["galette", "👑", "la galette des rois", "king cake", "Taxi: buy the plane"],
-  ["kouign", "🥮", "le kouign-amann", "Breton butter cake", "Object Match: finish a level with no mistakes"],
-  ["tatin", "🍏", "la tarte Tatin", "upside-down apple tart", "Adventure: finish a chapter"],
-  ["opera", "🍫", "l'opéra", "opera cake", "What's He Doing?: get 10 out of 10"],
-  ["financier", "🧈", "le financier", "almond butter cake", "The Shop: earn €20 in one day"]
+  ["kouign", "🥮", "le kouign-amann", "Breton butter cake", "Object Match: finish level 4 or higher with no mistakes"],
+  ["tatin", "🍏", "la tarte Tatin", "upside-down apple tart", "Adventure: finish a chapter without showing any English"],
+  ["opera", "🍫", "l'opéra", "opera cake", "What's He Doing?: 10 out of 10 on level 2 or higher"],
+  ["financier", "🧈", "le financier", "almond butter cake", "The Shop: earn €25 in one day on level 2 or higher"]
 ];
 const prizesOf = () => effActivity().prizes || {};
 function awardPrize(id) {
@@ -3650,14 +3651,14 @@ const advKnown = () => Object.values(V).filter(e => e.s === 5).length;
 const advChoices = () => { const sc = advScene(); return sc ? (sc.choices || []).filter(o => !o.need || adv.items.includes(o.need)) : []; };
 function advStart(id) {
   const c = ADV.find(x => x.id === id); if (!c || c.soon || advKnown() < c.need) return;
-  adv = Object.assign(adv, { ch: id, scene: c.start, items: [], pick: 0, wi: 0, tr: false }); saveAdv(); render(); advSay();
+  adv = Object.assign(adv, { ch: id, scene: c.start, items: [], pick: 0, wi: 0, tr: false, usedEn: false }); saveAdv(); render(); advSay();
 }
 function advPick(i) {
   adv.pick = i;
   const o = advChoices()[i]; if (!o) return;
   if (o.get && !adv.items.includes(o.get)) adv.items.push(o.get);
   adv.scene = o.go; adv.pick = 0; adv.wi = 0; adv.tr = false; saveAdv();
-  if (advScene() && advScene().end) { adv.done[adv.ch] = Date.now(); saveAdv(); awardPrize("tatin"); }
+  if (advScene() && advScene().end) { adv.done[adv.ch] = Date.now(); saveAdv(); if (!adv.usedEn) awardPrize("tatin"); }
   render(); scrollTo(0, 0); advSay();
 }
 function advSay() {   // reads the scene aloud, sentence by sentence
@@ -3708,7 +3709,7 @@ function advKey(k) {
   if (k === "up") advMove(-1); else if (k === "down") advMove(1);
   else if (k === "a") advPick(adv.pick);
   else if (k === "y") { const o = advChoices()[adv.pick]; if (o) speak(o.hi); }   // hear the highlighted choice
-  else if (k === "translate") { adv.tr = !adv.tr; saveAdv(); render(); }
+  else if (k === "translate") { adv.tr = !adv.tr; if (adv.tr) adv.usedEn = true; saveAdv(); render(); }
   else if (k === "x") advSay();
   else if (k === "b") { adv.ch = null; adv.pick = 0; saveAdv(); render(); }
   else if (k === "select") go("library");
@@ -3738,6 +3739,7 @@ function viewAdv() {
     <div class="adv-text story" lang="${FR ? "fr" : "hi"}">${text}</div>
     ${sc.end ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} Chapter complete. <button class="btn" data-advback="1">Back to chapters</button></div>`
       : `<div class="adv-choices">${ch.map((o, i) => `<button class="adv-c ${adv.pick === i ? "pick" : ""}" data-advpick="${i}"><span lang="hi">${esc(o.hi)}</span>${adv.tr ? `<small>${esc(o.en)}</small>` : ""}</button>`).join("")}</div>
+         <div class="ask-row"><button class="btn" data-advtr="1">🇬🇧 ${adv.tr ? "Hide English" : "English"}</button><span class="muted small">Showing English means no 🍏 prize for this chapter.</span></div>
          <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> go · <kbd>Y</kbd> hear the choice · <kbd>X</kbd> hear the scene · <kbd>B</kbd> chapters</div>`}
   </div>`;
 }
@@ -4064,7 +4066,7 @@ function matchFlip(i) {
     const wk = gameWordKey(it[0]); if (statusOf(wk) === 0) setWord(wk, { s: 1, m: FR ? `${it[1]} (${it[0]})` : it[1], t: it[3], l: "game" }, true);
     if (match.done.length === match.cards.length) {
       match.st = "won"; if (match.best[match.lv] == null || match.moves < match.best[match.lv]) { match.best[match.lv] = match.moves; store.set("matchbest2", match.best); }
-      if (match.moves === 0) awardPrize("kouign");
+      if (match.moves === 0 && match.lv >= 3) awardPrize("kouign");   // level 4+
     }
   } else {
     match.moves++; match.bad = [other, i]; match.open = []; match.lock = true;
@@ -4149,7 +4151,7 @@ function actsAnswer(i) {
 function actsGoOn() {
   if (acts.answered == null || acts.st !== "play") return;
   acts.round++;
-  if (acts.round >= ACT_ROUNDS) { acts.st = "over"; if ((acts.best[acts.lv] || 0) < acts.score) { acts.best[acts.lv] = acts.score; store.set("actsbest", acts.best); } if (acts.score >= ACT_ROUNDS) awardPrize("opera"); render(); }
+  if (acts.round >= ACT_ROUNDS) { acts.st = "over"; if ((acts.best[acts.lv] || 0) < acts.score) { acts.best[acts.lv] = acts.score; store.set("actsbest", acts.best); } if (acts.score >= ACT_ROUNDS && acts.lv >= 1) awardPrize("opera"); render(); }
   else actsNext();
 }
 function viewActs() {
@@ -4444,7 +4446,7 @@ function shopAnswer(i) {
 function shopGoOn() {
   if (shop.answered == null || shop.st !== "play") return;
   shop.ci++; shop.answered = null; shop.sel = 0;
-  if (shop.ci >= shop.queue.length) { shop.st = "over"; if ((shop.best[shop.lv] || 0) < shop.money) { shop.best[shop.lv] = shop.money; store.set("shopbest", shop.best); } if (FR && shop.money >= 20) awardPrize("financier"); render(); return; }
+  if (shop.ci >= shop.queue.length) { shop.st = "over"; if ((shop.best[shop.lv] || 0) < shop.money) { shop.best[shop.lv] = shop.money; store.set("shopbest", shop.best); } if (FR && shop.money >= 25 && shop.lv >= 1) awardPrize("financier"); render(); return; }
   shop.msg = SHOP_TXT.hi; shop.tr = false; shop.wbw = false; render(); sayNow(SHOP_TXT.hi[0]);
 }
 function viewShop() {
@@ -4558,7 +4560,7 @@ function txFinish() {   // the boss's verdict, and earnings go to the bank
   taxi.money += bonus; taxi.bank += taxi.money; store.set("taxibank", taxi.bank);
   if (taxi.money > taxi.best) { taxi.best = taxi.money; store.set("taxibest", taxi.best); }
   taxi.end = { tier, bonus, say: pickOne(TXL.end[tier]) }; taxi.trE = false; taxi.wbwE = false;
-  if (tier === "great") awardPrize("parisbrest");
+  if (tier === "great" && taxi.veh !== "taxi") awardPrize("parisbrest");   // only with the bus or plane
   taxi.st = "over"; render(); speak(taxi.end.say[0]);
 }
 function txNext() {
