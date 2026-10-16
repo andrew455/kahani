@@ -593,7 +593,9 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .gv-ico { font-size: 3rem; line-height: 1.1; } .gv-st { font-weight: 600; color: var(--accent-strong); }
 .dual .hub.taxi-menu { max-width: 1400px; }
 .tx-c { width: 100%; aspect-ratio: 11 / 7; max-height: 62vh; border-radius: 16px; display: block; }
-.dual .hub.taxi { max-width: none; } .dual .tx-c { max-height: 74vh; } .dual .hub.taxi .ask-row, .dual .hub.taxi .kbd, .dual .hub.taxi .bk-say-btns { display: none; }
+.dual .hub.taxi { max-width: none; } .dual .tx-c { max-height: none; height: calc(100vh - 70px); aspect-ratio: auto; }
+.dual .hub.taxi .shop-counter { display: none; }   /* the request is on the bottom screen; the map gets the whole top screen */
+.dual main:has(.hub.taxi) { padding-top: 8px !important; } .dual .hub.taxi .ask-row, .dual .hub.taxi .kbd, .dual .hub.taxi .bk-say-btns { display: none; }
 .shop-counter { display: flex; gap: 16px; align-items: center; }
 .shop-who { font-size: 5rem; line-height: 1; }
 .shop-want { font-size: 5rem; line-height: 1.1; margin-top: 6px; }
