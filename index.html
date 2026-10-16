@@ -539,6 +539,8 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .mcard.bad { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad); animation: chefshake .3s; }
 .mcard.done { opacity: .55; }
 .dual .mwords { display: none; } .dual .mpics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } .dual .mpics .memo { font-size: 7rem; }
+.dual .mpics.big { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; } .dual .mpics.big .memo { font-size: 4.6rem; } .dual .mpics.big .mcard { aspect-ratio: 4 / 2.6; }
+.mpics.big, .mwords.big { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 @media (max-width: 700px) { .mpics, .mwords { grid-template-columns: repeat(3, 1fr); } }
 .mback { font-size: 2rem; font-weight: 700; opacity: .8; }
 .memo { font-size: 3.4rem; line-height: 1; }
@@ -4036,7 +4038,7 @@ function flyKey(k, i) {
 }
 
 /* ---------- 🧩 Object Match: memory pairs, picture ↔ Hindi name. Later levels teach new everyday objects ---------- */
-const MATCH_LEVELS = (FR ? (typeof GAME_FR !== "undefined" ? GAME_FR.objects : []) : (typeof GAME_OBJ !== "undefined" ? GAME_OBJ.levels : [])).map((L, i) => Object.assign({ name: i < (FR ? 2 : 3) ? "From your stories" : "New things", about: L.items.map(x => x[2]).join(" ") }, L));
+const MATCH_LEVELS = (FR ? (typeof GAME_FR !== "undefined" ? GAME_FR.objects : []) : (typeof GAME_OBJ !== "undefined" ? GAME_OBJ.levels : [])).map((L, i) => Object.assign({ name: `${Math.min(12, 6 + 2 * i)} pairs · ${i < (FR ? 2 : 3) ? "from your stories" : "new things"}`, about: L.items.map(x => x[2]).join(" ") }, L));
 // The word saved to your list: Hindi as is; French without le / la / l' ("le chat" → chat).
 const gameWordKey = phrase => FR ? norm(phrase.split(/[\s’']/).filter(Boolean).pop()) : phrase;
 // Quick spoken feedback for right and wrong answers.
@@ -4050,18 +4052,26 @@ const match = { st: "menu", pick: 0, lv: 0, cards: [], cur: 0, curW: 0, open: []
 function matchStart(lv) {
   const L = MATCH_LEVELS[lv]; if (!L || knownN() < L.need) return;
   match.lv = lv; match.st = "play"; match.cur = 0; match.curW = 0; match.open = []; match.done = []; match.bad = []; match.moves = 0; match.found = []; match.lock = false;
-  match.cards = gShuffle(L.items.map((it, k) => ({ k, kind: "pic" }))).concat(gShuffle(L.items.map((it, k) => ({ k, kind: "word" }))));
+  // more pairs each level (6, 8, 10, 12): this level's new things plus some from earlier levels to review
+  const want = Math.min(12, 6 + 2 * lv), earlier = gShuffle(MATCH_LEVELS.slice(0, lv).flatMap(x => x.items));
+  match.items = L.items.concat(earlier.slice(0, Math.max(0, want - L.items.length)));
+  match.cards = gShuffle(match.items.map((it, k) => ({ k, kind: "pic" }))).concat(gShuffle(match.items.map((it, k) => ({ k, kind: "word" }))));
   render();
 }
 function matchFlip(i) {
   if (match.lock || match.done.includes(i)) return;
-  const L = MATCH_LEVELS[match.lv], c = match.cards[i], it = L.items[c.k];
+  const c = match.cards[i], it = match.items[c.k];
   const other = match.open.find(j => match.cards[j].kind !== c.kind);
   if (c.kind === "word" && other == null) speak(it[0]);   // tapping a word says it
   if (other == null) { match.open = [i]; render(); return; }   // first pick (or a new pick of the same kind)
   const o = match.cards[other];
   if (o.k === c.k) {
     match.done.push(other, i); match.open = []; match.found.unshift(c.k);
+    { // hover a random word that's still waiting, ready for the next match
+      const half = match.cards.length / 2, left = [...Array(half).keys()].filter(j => !match.done.includes(half + j));
+      if (left.length) match.curW = left[Math.floor(Math.random() * left.length)];
+      const picsLeft = [...Array(half).keys()].filter(j => !match.done.includes(j)); if (picsLeft.length && match.done.includes(match.cur)) match.cur = picsLeft[0];
+    }
     sayThen(it[0], pickOne(SAY_GOOD)); toast(`${it[2]} ${it[0]} = ${it[1]}`, 2500);
     const wk = gameWordKey(it[0]); if (statusOf(wk) === 0) setWord(wk, { s: 1, m: FR ? `${it[1]} (${it[0]})` : it[1], t: it[3], l: "game" }, true);
     if (match.done.length === match.cards.length) {
@@ -4077,17 +4087,17 @@ function matchFlip(i) {
 }
 function viewMatch() {
   if (match.st === "menu") return levelMenu(FR ? "🧩 Les paires · Object Match" : "🧩 जोड़ी · Object Match", MATCH_LEVELS, match.pick, match.best) + `<p class="muted small" style="text-align:center">Link each picture to its ${FR ? "French" : "Hindi"} name: pick a picture, then its word. New words go into Learning.</p>`;
-  const L = MATCH_LEVELS[match.lv];
+  const L = { items: match.items };
   const card = i => { const c = match.cards[i], it = L.items[c.k], pickHere = DUAL ? (i < L.items.length ? i === match.cur : i - L.items.length === match.curW) : match.cur === i;
     return `<button class="mcard up ${match.done.includes(i) ? "done" : ""} ${match.open.includes(i) ? "sel" : ""} ${match.bad.includes(i) ? "bad" : ""} ${pickHere ? "pick" : ""}" data-gk="flip" data-gi="${i}">${c.kind === "pic" ? `<span class="memo">${it[2]}</span>` : `<span class="mword">${esc(it[0])}</span>`}</button>`; };
   const n = L.items.length, idx = [...Array(match.cards.length).keys()];
   return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.4rem">🧩 Level ${match.lv + 1}</h2><span class="muted small">${match.done.length / 2} / ${n} linked · ${match.moves} mistake${match.moves === 1 ? "" : "s"}</span></div>
     ${match.st === "won" ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} All linked with ${match.moves} mistake${match.moves === 1 ? "" : "s"}. <button class="btn primary" data-gk="a">Next level</button><button class="btn" data-gk="b">Levels</button></div>` : ""}
-    <div class="mgrid mpics">${idx.slice(0, n).map(card).join("")}</div>
-    <div class="mgrid mwords">${idx.slice(n).map(card).join("")}</div>
+    <div class="mgrid mpics ${n > 6 ? "big" : ""}">${idx.slice(0, n).map(card).join("")}</div>
+    <div class="mgrid mwords ${n > 6 ? "big" : ""}">${idx.slice(n).map(card).join("")}</div>
     <div class="kbd"><kbd>D-pad</kbd> move · <kbd>A</kbd> pick a picture, then its word · <kbd>B</kbd> levels</div></div>`;
 }
-function speakW() { const c = match.cards[match.cards.length / 2 + match.curW]; if (c) sayNow(MATCH_LEVELS[match.lv].items[c.k][0]); }
+function speakW() { const c = match.cards[match.cards.length / 2 + match.curW]; if (c) sayNow(match.items[c.k][0]); }
 function matchKey(k, i) {
   if (match.st === "menu") {
     if (k === "level") return matchStart(+i);
@@ -4103,7 +4113,7 @@ function matchKey(k, i) {
     match.cur = +i; return matchFlip(+i);
   }
   if (DUAL) {   // two screens: left stick / D-pad = pictures (top), right stick = words (bottom), A = link them
-    const pc = 3, wc = 2, mv = (cur, d, size, c) => { const nx = cur + d; return nx < 0 || nx >= size ? cur : nx; };
+    const pc = match.items.length > 6 ? 4 : 3, wc = 2, mv = (cur, d, size, c) => { const nx = cur + d; return nx < 0 || nx >= size ? cur : nx; };
     if (k === "left" || k === "right") match.cur = mv(match.cur, k === "right" ? 1 : -1, half, pc);
     else if (k === "up" || k === "down") match.cur = mv(match.cur, k === "down" ? pc : -pc, half, pc);
     else if (k === "rleft" || k === "rright") { match.curW = mv(match.curW, k === "rright" ? 1 : -1, half, wc); speakW(); }
@@ -4120,7 +4130,7 @@ function matchKey(k, i) {
   if (k === "left") match.cur = (match.cur + n - 1) % n; else if (k === "right") match.cur = (match.cur + 1) % n;
   else if (k === "up" || k === "down") match.cur = (match.cur + half) % n;   // jump between pictures and words
   else if (k === "a") return matchFlip(match.cur);
-  else if (k === "y") { const c = match.cards[match.cur]; if (c && c.kind === "word") sayNow(MATCH_LEVELS[match.lv].items[c.k][0]); return; }
+  else if (k === "y") { const c = match.cards[match.cur]; if (c && c.kind === "word") sayNow(match.items[c.k][0]); return; }
   else if (k === "b") { match.st = "menu"; render(); return; }
   void cols; render();
 }
@@ -4216,7 +4226,7 @@ function gameBottom() {
   }
   if (v === "match") {
     if (match.st === "menu") return menu("🧩 Object Match", MATCH_LEVELS, match.pick, match.best);
-    const L = MATCH_LEVELS[match.lv];
+    const L = { items: match.items };
     const half = match.cards.length / 2;
     return { type: "match", level: match.lv + 1, won: match.st === "won", moves: match.moves, pairs: L.items.length, found: match.found.map(j => L.items[j]),
       words: match.cards.slice(half).map((c, j) => ({ label: L.items[c.k][0], done: match.done.includes(half + j), cur: j === match.curW, bad: match.bad.includes(half + j) })), linked: match.done.length / 2 };
