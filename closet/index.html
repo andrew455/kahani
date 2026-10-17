@@ -71,7 +71,9 @@
   .panel { display: grid; gap: 12px; min-width: 0; grid-template-columns: minmax(0, 1fr); }
   .panel .card { padding: 14px; }
   .design-bar { position: sticky; top: 0; z-index: 8; background: var(--bg); padding: 8px 0 10px; margin-top: -8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .design-bar select { flex: 1 1 220px; min-width: 0; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 9px 10px; font-weight: 600; }
+  .design-bar .iters { flex: 1 1 260px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .design-bar .iters::-webkit-scrollbar { display: none; }
+  .design-bar select { flex: 0 1 340px; min-width: 0; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 9px 10px; font-weight: 600; }
   .iters, .seg { display: flex; gap: 3px; background: var(--chip); border-radius: 10px; padding: 3px; }
   .iters button, .seg button { border: 0; background: transparent; border-radius: 8px; padding: 6px 11px; font-size: 14px; font-weight: 600; color: var(--muted); white-space: nowrap; }
   .iters button.on, .seg button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
@@ -81,6 +83,11 @@
   .iters .lbl-v { font-size: 12px; color: var(--muted); padding: 6px 4px 6px 8px; font-weight: 600; }
   .summary { white-space: pre-wrap; font-size: 15px; }
   .left-col { min-width: 0; display: grid; gap: 12px; }
+  /* on a phone: 3D view, then the tapped cupboard + colours, then photos and the write-up */
+  @media (max-width: 899px) {
+    .left-col { display: contents; }
+    .stage { order: 1; } .panel { order: 2; } .gallery { order: 3; } .about { order: 4; } #ikeaCard { order: 5; }
+  }
   .palette { padding: 12px; display: grid; gap: 10px; }
   .paint-to { display: flex; gap: 3px; background: var(--chip); border-radius: 10px; padding: 3px; flex-wrap: wrap; }
   .paint-to button { border: 0; background: transparent; border-radius: 8px; padding: 6px 11px; font-size: 14px; font-weight: 600; color: var(--muted); }
@@ -88,11 +95,17 @@
   .paint-to button:disabled { opacity: .45; }
   .sw-group .label { margin-bottom: 6px; }
   .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
-  .sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); padding: 0; cursor: pointer; }
+  .about { padding: 14px; }
+  .sw-name { font-size: 13px; color: var(--muted); min-height: 1.2em; margin-top: -4px; }
+  .palette .swatches { gap: 5px; }
+  .palette .pal-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .palette .pal-foot .ghost { padding: 7px 8px; font-size: 13px; }
+  .palette .pal-foot #renderBtn { grid-column: span 2; }
+  .sw { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); padding: 0; cursor: pointer; }
   .sw.on { box-shadow: 0 0 0 2px var(--ink); }
   .sw.named { width: auto; height: auto; border-radius: 999px; padding: 4px 10px 4px 4px; display: inline-flex; align-items: center; gap: 6px; background: var(--chip); border: 0; font-size: 12px; font-weight: 600; color: var(--ink); }
   .sw.named i { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
-  .sw-custom { width: 30px; height: 30px; border: 0; padding: 0; background: none; cursor: pointer; }
+  .sw-custom { width: 26px; height: 26px; border: 0; padding: 0; background: none; cursor: pointer; }
   .pal-foot { display: flex; gap: 8px; flex-wrap: wrap; }
   .pal-foot .ghost { flex: 1; }
   .gallery { padding: 12px; }
@@ -198,8 +211,8 @@
 
     <section id="designsView">
       <div class="design-bar" id="designBar">
-        <select id="familyPick" aria-label="Design"></select>
         <div class="iters" id="iters"></div>
+        <select id="familyPick" aria-label="Design"></select>
         <div class="seg" id="ikeaSeg"></div>
       </div>
       <div class="viewer-layout">
@@ -221,27 +234,29 @@
           </div>
           <div class="stage-hint" id="hint">Drag to turn · pinch or scroll to zoom · two fingers to move · tap a cupboard</div>
         </div>
-        <div class="card palette" id="palette">
-          <div class="label" style="margin:0">Try colours</div>
-          <div class="paint-to" id="paintTo"></div>
-          <div class="sw-group"><div class="label">IKEA finishes</div><div class="swatches" id="swIkea"></div></div>
-          <div class="sw-group"><div class="label">Colours</div><div class="swatches" id="swAll"></div></div>
-          <div class="pal-foot"><button class="ghost" id="paintReset">Original colours</button><button class="ghost" id="paintAsk">Ask Claude for these colours</button><button class="ghost" id="renderBtn">📷 Render</button></div>
-          <div class="muted" id="renderNote" style="font-size:13px">Colours here are just a preview. Tap Render to get photo-style pictures of this design in the colours shown.</div>
-        </div>
         <div class="card gallery" id="gallery" hidden>
           <div class="label">Photos · tap to look closer</div>
           <div class="strip" id="strip"></div>
         </div>
+        <div class="card about">
+          <div class="label">About this design</div>
+          <div class="summary" id="summary"></div>
+          <div class="stats" id="stats"></div>
+        </div>
+        <div class="card" id="ikeaCard" hidden></div>
         </div>
 
         <div class="panel">
-          <div class="card">
-            <div class="summary" id="summary" style="margin-top:10px"></div>
-            <div class="stats" id="stats"></div>
-          </div>
-          <div class="card" id="ikeaCard" hidden></div>
           <div class="card unit-info" id="unitInfo"><div class="muted">Tap a cupboard to see what's in it and its sizes.</div></div>
+          <div class="card palette" id="palette">
+          <div class="label" style="margin:0">Try colours</div>
+          <div class="paint-to" id="paintTo"></div>
+          <div class="sw-group"><div class="label">IKEA finishes</div><div class="swatches" id="swIkea"></div></div>
+          <div class="sw-group"><div class="label">Colours</div><div class="swatches" id="swAll"></div></div>
+          <div class="sw-name" id="swName"></div>
+          <div class="pal-foot"><button class="ghost" id="paintReset">Original colours</button><button class="ghost" id="paintAsk">Ask Claude for these colours</button><button class="ghost" id="renderBtn">📷 Render</button></div>
+          <div class="muted" id="renderNote" style="font-size:12px">Just a preview. 📷 Render makes photos in these colours.</div>
+        </div>
           <button class="primary" id="askChanges">Ask for changes to this design</button>
         </div>
       </div>
@@ -617,6 +632,8 @@ function renderBar(d) {
   }).join('');
   $('iters').hidden = fam.iters.length < 2;
   $('iters').innerHTML = `<span class="lbl-v">Version</span>` + fam.iters.map((x, i) => `<button data-go="${x.version}" class="${x === orig ? 'on' : ''}">v${i + 1}</button>`).join('');
+  const on = $('iters').querySelector('.on');   // keep the chosen version in view when there are lots
+  if (on) $('iters').scrollLeft = Math.max(0, on.offsetLeft - $('iters').clientWidth / 2 + on.offsetWidth / 2);
   const ikeaV = fam.ikea.filter(x => x.ikeaOf === orig.version).pop();
   const waiting = db.requests.some(r => r.type === 'ikea' && r.base === orig.version && r.status !== 'done');
   $('ikeaSeg').innerHTML = `<button data-go="${orig.version}" class="${d.ikeaOf ? '' : 'on'}">Original</button>` + (ikeaV
@@ -672,7 +689,8 @@ function renderPalette() {
     <button data-to="walls" class="${ui.paintTo === 'walls' ? 'on' : ''}">Walls</button>
     <button data-to="unit" class="${ui.paintTo === 'unit' ? 'on' : ''}" ${sel ? '' : 'disabled title="Tap a cupboard in the 3D view first"'}>${sel ? esc(sel.name || 'This cupboard') : 'Tapped cupboard'}</button>`;
   const cur = ui.paintTo === 'walls' ? ui.look.walls : ui.paintTo === 'unit' ? ui.look.units[ui.paintUnit] : ui.look.cupboard;
-  $('swIkea').innerHTML = IKEA_FINISHES.map(([n, c]) => `<button class="sw named ${cur === c ? 'on' : ''}" data-paint="${c}" title="${n}"><i style="background:${c}"></i>${n}</button>`).join('');
+  $('swIkea').innerHTML = IKEA_FINISHES.map(([n, c]) => `<button class="sw ${cur === c ? 'on' : ''}" data-paint="${c}" title="${n}" style="background:${c}"></button>`).join('');
+  $('swName').textContent = cur ? `Now: ${nameOf(cur)}` : 'Tap a colour to try it';
   $('swAll').innerHTML = COLOURS.map(([n, c]) => `<button class="sw ${cur === c ? 'on' : ''}" data-paint="${c}" title="${n}" style="background:${c}"></button>`).join('')
     + `<input type="color" class="sw-custom" id="swCustom" title="Any colour" value="${cur || '#c5d0bb'}">`;
   $('paintAsk').disabled = !ui.look.cupboard && !ui.look.walls && !Object.keys(ui.look.units).length;
@@ -697,6 +715,8 @@ $('palette').addEventListener('click', e => {
   if (b.dataset.to) { ui.paintTo = b.dataset.to; renderPalette(); }
   else if (b.dataset.paint) paint(b.dataset.paint);
 });
+$('palette').addEventListener('mouseover', e => { const b = e.target.closest('[data-paint]'); if (b) $('swName').textContent = b.title; });
+$('palette').addEventListener('mouseleave', () => renderPalette());
 $('palette').addEventListener('input', e => { if (e.target.id === 'swCustom') paint(e.target.value); });
 // Render: asks Claude for Blender photos of this design in the colours currently shown (added as an extra photo set)
 function lookFor(d) {
@@ -758,7 +778,7 @@ function showUnit(u) {
     <div class="label">Top to bottom</div>
     <div class="parts">${parts.map(p => `<div><span>${esc(partLabel(p))}</span><span>${p.height} mm</span></div>`).join('')}</div>
     ${u.note ? `<div class="muted" style="margin-top:8px">${esc(u.note)}</div>` : ''}
-    <button class="ghost" data-hide="${esc(u.id)}" style="margin-top:10px;width:100%">Hide this cupboard</button>`;
+    <button class="ghost" data-hide="${esc(u.id)}" style="margin-top:10px;width:100%">Hide this cupboard <span class="muted">(H)</span></button>`;
 }
 // hiding: tap a cupboard → Hide; "Show hidden" at the top of the 3D view brings them all back
 ui.hidden = new Set();
@@ -766,6 +786,10 @@ function renderHidden() {
   const n = scene3d.design ? scene3d.design.units.filter(u => ui.hidden.has(u.id)).length : 0;
   $('unhideBtn').hidden = !n; $('unhideBtn').textContent = `Show hidden (${n})`;
 }
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName)) return;
+  if ((e.key === 'h' || e.key === 'H') && ui.tab === 'designs' && ui.paintUnit) { e.preventDefault(); hideUnit(ui.paintUnit); }
+});
 $('hideSelBtn').onclick = () => { if (ui.paintUnit) hideUnit(ui.paintUnit); };
 function hideUnit(id) { ui.hidden.add(id); scene3d.selectById(null); scene3d.setHidden(ui.hidden); renderHidden(); }
 document.addEventListener('click', e => {
