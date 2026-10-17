@@ -1018,6 +1018,13 @@ function speechProblem(msg) {
 let ttsSeq = 0, ttsCb = null;
 // The Thor has no text-to-speech engine, so the app ships recorded clips (audio/index.js) and uses Android TTS only as a fallback.
 const AUDIO = window.KAHANI_AUDIO || {};
+// Lines with no recording get noted in the synced activity file, so the next build records them.
+const noAudioSeen = new Set();
+function noAudio(t) {
+  if (!t.trim() || noAudioSeen.has(t) || t.length > 300) return; noAudioSeen.add(t);
+  let h = 0; for (let i = 0; i < t.length; i++) h = (Math.imul(h, 31) + t.charCodeAt(i)) >>> 0;
+  try { ghQueue("stats/activity", { noaudio: { ["a" + h.toString(36)]: t } }); } catch (e) {}
+}
 function nativeTTS(text, opts) {
   const id = "u" + (++ttsSeq);
   ttsCb = { id, onend: opts.onend };
@@ -1028,7 +1035,7 @@ function speak(text, opts = {}) {
   if (!NATIVE) return webSpeak(text, opts);
   synth.cancel(); ttsCb = null;
   const t = String(text); const clip = AUDIO[t] || AUDIO[norm(t)];
-  if (!clip) { nativeTTS(t, opts); return; }
+  if (!clip) { noAudio(t); nativeTTS(t, opts); return; }
   const a = new Audio("audio/" + clip); audioEl = a;
   a.playbackRate = Math.max(0.5, Math.min(1.5, opts.rate || settings.rate));
   let ended = false;
@@ -4867,7 +4874,7 @@ function gameBottom() {
     if (shop.st === "menu") return menu(SHOP_TXT.title, SHOP_LEVELS, shop.pick, shop.best, SHOP_LEVELS.map((_, i) => (shop.bestOk[i] || 0) / 10));
     if (shop.st === "over") return { type: "shopover", money: SHOP_TXT.cur + shop.money, best: SHOP_TXT.cur + (shop.best[shop.lv] || 0) };
     const q = shop.queue[shop.ci];
-    return { type: "shop", money: SHOP_TXT.cur + shop.money, ci: shop.ci + 1, n: shop.queue.length, want: q.it[2], msg: shop.msg, tr: shop.tr, sel: shop.sel, answered: shop.answered, next: shop.answered != null,
+    return { type: "shop", cols: shopCols(), money: SHOP_TXT.cur + shop.money, ci: shop.ci + 1, n: shop.queue.length, want: q.it[2], msg: shop.msg, tr: shop.tr, sel: shop.sel, answered: shop.answered, next: shop.answered != null,
       comment: shop.answered ? { fr: shop.msg[0], en: shop.tr ? shop.msg[1] : "", words: shop.wbw ? gameWords(shop.msg[0], SHOP_GLOSS) : null } : null,
       know: shop.answered && shop.answered.ok && q.have ? { w: gameWordKey(q.it[0]), label: q.it[0], known: statusOf(gameWordKey(q.it[0])) === 5 } : null,
       opts: shopOptions().map(o => o.none ? { none: true, label: SHOP_TXT.no[0] } : { label: o.it[0], price: SHOP_TXT.cur + o.price, sold: o.sold }) };
@@ -5053,6 +5060,8 @@ const SHOP_TXT = FR
   : { hi: ["नमस्ते! मुझे यह चाहिए।", "Hello! I need this."], thanks: ["धन्यवाद!", "Thank you!"], no: ["माफ़ कीजिए, यह नहीं है।", "Sorry, we don't have it."], ok: ["ठीक है, धन्यवाद!", "Okay, thank you!"], bad: ["नहीं, यह नहीं!", "No, not this!"], cur: "₹", price: () => 10 * (1 + Math.floor(Math.random() * 5)), tip: 5, title: "🛒 दुकान", name: "दुकान" };
 const SHOP_LEVELS = MATCH_LEVELS.slice(1).map((L, i) => ({ need: L.need, name: i === 0 ? "Small shop" : i === 1 ? "Corner shop" : i === 2 ? "Supermarket" : "Hypermarket " + (i - 2), about: `up to ${10 * (i + 1)} things in stock`, upto: i + 2 }));
 const PEOPLE = ["🧑", "👩", "👴", "👵", "👦", "👧", "🧔", "👨‍🦱", "👩‍🦰", "🧕"];
+// The Thor's bottom screen shows the stock in 2 columns, or 3 once the shop gets big.
+const shopCols = () => (shopOptions().length - 1 > 16 ? 3 : 2);
 const shop = { bestOk: store.get("shopbestok", {}), ok: 0, st: "menu", pick: 0, lv: 0, stock: [], queue: [], ci: 0, sel: 0, money: 0, msg: ["", ""], answered: null, tr: false, best: store.get("shopbest", {}) };
 function shopStart(lv) {
   const L = SHOP_LEVELS[lv]; if (!L || knownN() < L.need) return;
@@ -5115,7 +5124,7 @@ function shopKey(k, i) {
   if (k === "down" || k === "right" || k === "up" || k === "left") {   // move around the grid, skipping sold things
     // columns: 2 on the Thor's bottom screen, otherwise however many the page shows
     const grid = document.querySelector(".shop-stock");
-    const cols = DUAL ? 2 : grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 2;
+    const cols = DUAL ? shopCols() : grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 2;
     const o = shopOptions(), last = n - 1;   // the last option ("don't have it") is a full-width row
     let at = shop.sel;
     for (let t = 0; t < n; t++) {
