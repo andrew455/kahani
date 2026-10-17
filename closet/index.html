@@ -81,6 +81,20 @@
   .iters .lbl-v { font-size: 12px; color: var(--muted); padding: 6px 4px 6px 8px; font-weight: 600; }
   .summary { white-space: pre-wrap; font-size: 15px; }
   .left-col { min-width: 0; display: grid; gap: 12px; }
+  .palette { padding: 12px; display: grid; gap: 10px; }
+  .paint-to { display: flex; gap: 3px; background: var(--chip); border-radius: 10px; padding: 3px; flex-wrap: wrap; }
+  .paint-to button { border: 0; background: transparent; border-radius: 8px; padding: 6px 11px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .paint-to button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+  .paint-to button:disabled { opacity: .45; }
+  .sw-group .label { margin-bottom: 6px; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); padding: 0; cursor: pointer; }
+  .sw.on { box-shadow: 0 0 0 2px var(--ink); }
+  .sw.named { width: auto; height: auto; border-radius: 999px; padding: 4px 10px 4px 4px; display: inline-flex; align-items: center; gap: 6px; background: var(--chip); border: 0; font-size: 12px; font-weight: 600; color: var(--ink); }
+  .sw.named i { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+  .sw-custom { width: 30px; height: 30px; border: 0; padding: 0; background: none; cursor: pointer; }
+  .pal-foot { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pal-foot .ghost { flex: 1; }
   .gallery { padding: 12px; }
   .gallery .strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
   .shot { flex: none; height: 150px; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--chip); position: relative; }
@@ -204,6 +218,14 @@
             <button class="exit-full" id="exitFullBtn">Done</button>
           </div>
           <div class="stage-hint" id="hint">Drag to turn · pinch or scroll to zoom · two fingers to move · tap a cupboard</div>
+        </div>
+        <div class="card palette" id="palette">
+          <div class="label" style="margin:0">Try colours</div>
+          <div class="paint-to" id="paintTo"></div>
+          <div class="sw-group"><div class="label">IKEA finishes</div><div class="swatches" id="swIkea"></div></div>
+          <div class="sw-group"><div class="label">Colours</div><div class="swatches" id="swAll"></div></div>
+          <div class="pal-foot"><button class="ghost" id="paintReset">Original colours</button><button class="ghost" id="paintAsk">Ask Claude for these colours</button><button class="ghost" id="renderBtn">📷 Render</button></div>
+          <div class="muted" id="renderNote" style="font-size:13px">Colours here are just a preview. Tap Render to get photo-style pictures of this design in the colours shown.</div>
         </div>
         <div class="card gallery" id="gallery" hidden>
           <div class="label">Photos · tap to look closer</div>
@@ -384,7 +406,7 @@ function showShot(i) {
   box.i = (i + box.list.length) % box.list.length;
   const p = box.list[box.i];
   $('photoImg').src = '';
-  $('photoCap').textContent = `${VIEW_NAMES[p.view] || 'Photo'} · ${box.i + 1} of ${box.list.length}`;
+  $('photoCap').textContent = `${p.label ? p.label + ' · ' : ''}${VIEW_NAMES[p.view] || 'Photo'} · ${box.i + 1} of ${box.list.length}`;
   rawUrl(p.path).then(u => { if (box.list[box.i] === p) $('photoImg').src = u; }).catch(e => toast(errText(e)));
 }
 function openShots(list, i) {
@@ -439,7 +461,7 @@ function renderAsk() {
   $('reqs').innerHTML = reqs.length ? reqs.map(r => {
     const st = r.status === 'done' ? `<span class="pill done">Done</span>` : r.status === 'working' ? `<span class="pill working">Claude is working on it</span>` : `<span class="pill new">Waiting for Claude</span>`;
     return `<div class="card req">
-      ${r.type === 'ikea' ? `<div class="muted"><span class="ikea-tag">IKEA</span>Make ${labelOf(r.base)} from real IKEA Australia parts</div>` : r.base ? `<div class="muted">Changes to ${labelOf(r.base)}</div>` : ''}
+      ${r.type === 'render' ? `<div class="muted">📷 Photos of ${labelOf(r.base)}</div>` : r.type === 'ikea' ? `<div class="muted"><span class="ikea-tag">IKEA</span>Make ${labelOf(r.base)} from real IKEA Australia parts</div>` : r.base ? `<div class="muted">Changes to ${labelOf(r.base)}</div>` : ''}
       ${r.text ? `<div class="text">${esc(r.text)}</div>` : ''}
       ${r.images?.length ? `<div class="thumbs">${r.images.map(n => `<button class="thumb" data-photo="${esc(n)}"><img data-src="${esc(n)}" alt=""></button>`).join('')}</div>` : ''}
       <div class="meta">${st}<span>${ago(r.created)}</span><span class="spacer"></span>${r.design ? `<button class="ghost" data-show="${r.design}">See ${labelOf(r.design)}</button>` : ''}</div>
@@ -620,8 +642,93 @@ function renderDesigns() {
   renderShots(d);
   renderIkea(d);
   $('stats').innerHTML = stats(d).map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
-  if (scene3d.design !== d) scene3d.show(d);
+  if (scene3d.design !== d) scene3d.show(d, ui.look);
+  renderPalette();
 }
+// ---- colour palette: repaints the 3D model live (all cupboards, the walls, or one tapped cupboard).
+// The ceiling stays white. Nothing is saved; "Ask Claude for these colours" turns the choice into a request.
+const IKEA_FINISHES = [
+  ['White', '#f5f5f2'], ['White stained oak effect', '#e3dccf'], ['Oak effect', '#c49a6c'], ['Beige', '#d8cdb8'],
+  ['Grey-beige', '#b9b0a2'], ['Grey-green', '#8f9a88'], ['Dark grey', '#55585a'], ['Black-brown', '#3a2f2a'],
+];
+const COLOURS = [
+  ['Pure white', '#ffffff'], ['Warm white', '#efe8dd'], ['Cream', '#f1e6cf'], ['Linen', '#e8dccb'], ['Greige', '#cfc6b8'], ['Stone', '#b8b0a4'],
+  ['Light grey', '#d6d6d4'], ['Mid grey', '#9a9a98'], ['Charcoal', '#3a3a3a'], ['Black', '#1e1e1e'],
+  ['Sage', '#a9b59b'], ['Soft sage', '#c5d0bb'], ['Olive', '#7c7f4e'], ['Forest green', '#3f5446'], ['Emerald', '#2e6b54'], ['Teal', '#2f6f73'],
+  ['Duck egg', '#bcd3d0'], ['Powder blue', '#cfdbe3'], ['Denim', '#5f7a99'], ['Navy', '#2f3e55'], ['Lavender', '#cbbfdc'], ['Plum', '#6b4a63'],
+  ['Blush', '#efd9d6'], ['Dusty pink', '#e3c0bf'], ['Rose', '#c98d93'], ['Terracotta', '#c98a6b'], ['Rust', '#a4532f'], ['Mustard', '#d2a33c'],
+  ['Butter yellow', '#f1df9c'], ['Caramel', '#b8834f'], ['Walnut', '#7a5236'], ['Espresso', '#4a3427'],
+];
+ui.look = { units: {} };
+ui.paintTo = 'cupboard';
+const nameOf = hex => ([...IKEA_FINISHES, ...COLOURS].find(c => c[1] === hex) || [hex])[0];
+function renderPalette() {
+  const sel = scene3d.design && ui.paintUnit && scene3d.design.units.find(u => u.id === ui.paintUnit);
+  if (ui.paintTo === 'unit' && !sel) ui.paintTo = 'cupboard';
+  $('paintTo').innerHTML = `<button data-to="cupboard" class="${ui.paintTo === 'cupboard' ? 'on' : ''}">All cupboards</button>
+    <button data-to="walls" class="${ui.paintTo === 'walls' ? 'on' : ''}">Walls</button>
+    <button data-to="unit" class="${ui.paintTo === 'unit' ? 'on' : ''}" ${sel ? '' : 'disabled title="Tap a cupboard in the 3D view first"'}>${sel ? esc(sel.name || 'This cupboard') : 'Tapped cupboard'}</button>`;
+  const cur = ui.paintTo === 'walls' ? ui.look.walls : ui.paintTo === 'unit' ? ui.look.units[ui.paintUnit] : ui.look.cupboard;
+  $('swIkea').innerHTML = IKEA_FINISHES.map(([n, c]) => `<button class="sw named ${cur === c ? 'on' : ''}" data-paint="${c}" title="${n}"><i style="background:${c}"></i>${n}</button>`).join('');
+  $('swAll').innerHTML = COLOURS.map(([n, c]) => `<button class="sw ${cur === c ? 'on' : ''}" data-paint="${c}" title="${n}" style="background:${c}"></button>`).join('')
+    + `<input type="color" class="sw-custom" id="swCustom" title="Any colour" value="${cur || '#c5d0bb'}">`;
+  $('paintAsk').disabled = !ui.look.cupboard && !ui.look.walls && !Object.keys(ui.look.units).length;
+  const d = scene3d.design, busy = d && db.requests.some(r => r.type === 'render' && r.base === d.version && r.status !== 'done');
+  $('renderBtn').disabled = !d || busy;
+  $('renderBtn').textContent = busy ? '📷 Rendering…' : '📷 Render';
+}
+function applyLook() {
+  const keep = scene3d.selectedId();
+  scene3d.show(scene3d.design, ui.look);
+  if (keep) scene3d.selectById(keep);
+  renderPalette();
+}
+function paint(c) {
+  if (ui.paintTo === 'walls') ui.look.walls = c;
+  else if (ui.paintTo === 'unit') ui.look.units[ui.paintUnit] = c;
+  else { ui.look.cupboard = c; ui.look.units = {}; }   // a whole-room colour replaces single-cupboard ones
+  applyLook();
+}
+$('palette').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.to) { ui.paintTo = b.dataset.to; renderPalette(); }
+  else if (b.dataset.paint) paint(b.dataset.paint);
+});
+$('palette').addEventListener('input', e => { if (e.target.id === 'swCustom') paint(e.target.value); });
+// Render: asks Claude for Blender photos of this design in the colours currently shown (added as an extra photo set)
+function lookFor(d) {
+  const units = Object.fromEntries(Object.entries(ui.look.units).filter(([id]) => d.units.some(u => u.id === id)));
+  const look = { ...(ui.look.cupboard ? { cupboard: ui.look.cupboard } : {}), ...(ui.look.walls ? { walls: ui.look.walls } : {}), ...(Object.keys(units).length ? { units } : {}) };
+  return Object.keys(look).length ? look : null;
+}
+function describeLook(d, look) {
+  if (!look) return 'its own colours';
+  const bits = [];
+  if (look.cupboard) bits.push(`cupboards ${nameOf(look.cupboard)}`);
+  for (const [id, c] of Object.entries(look.units || {})) bits.push(`${(d.units.find(u => u.id === id) || {}).name || id} ${nameOf(c)}`);
+  if (look.walls) bits.push(`walls ${nameOf(look.walls)}`);
+  return bits.join(', ');
+}
+$('renderBtn').onclick = async () => {
+  const d = scene3d.design, look = lookFor(d);
+  $('renderBtn').disabled = true; $('renderBtn').textContent = 'Sending…';
+  try {
+    const req = { id: uid(), type: 'render', base: d.version, look, text: `Render ${labelOf(d.version)} with ${describeLook(d, look)}`, images: [], status: 'new', created: Date.now() };
+    await update('Robe request: render', x => x.requests.push(req));
+    toast('Sent — photos will appear under the 3D view ✓');
+  } catch (e) { toast(errText(e)); }
+  renderAll();
+};
+$('paintReset').onclick = () => { ui.look = { units: {} }; applyLook(); };
+$('paintAsk').onclick = () => {
+  const d = scene3d.design, bits = [];
+  if (ui.look.cupboard) bits.push(`cupboards in ${nameOf(ui.look.cupboard)} (${ui.look.cupboard})`);
+  for (const [id, c] of Object.entries(ui.look.units)) { const u = d.units.find(x => x.id === id); if (u) bits.push(`${u.name || id} in ${nameOf(c)} (${c})`); }
+  if (ui.look.walls) bits.push(`walls in ${nameOf(ui.look.walls)} (${ui.look.walls})`);
+  ui.base = d.version; setTab('ask');
+  $('text').value = `Please use these colours: ${bits.join(', ')}.`;
+  renderAsk(); $('text').focus(); scrollTo({ top: 0, behavior: 'smooth' });
+};
 const VIEW_NAMES = { door: 'From the doorway', back: 'From the back', right: 'Right wall', left: 'Left wall', high: 'Overview' };
 const shotsOf = d => d.photos || (d.photo ? [{ path: d.photo, view: 'door' }] : []);
 function renderShots(d) {
@@ -629,7 +736,7 @@ function renderShots(d) {
   $('gallery').hidden = !shots.length;
   if ($('strip').dataset.key === key) return;
   $('strip').dataset.key = key;
-  $('strip').innerHTML = shots.map((p, i) => `<button class="shot ${p.view === 'left' || p.view === 'right' ? 'wide' : 'tall'}" data-shot="${i}"><img alt=""><span>${VIEW_NAMES[p.view] || 'Photo'}</span></button>`).join('');
+  $('strip').innerHTML = shots.map((p, i) => `<button class="shot ${p.view === 'left' || p.view === 'right' ? 'wide' : 'tall'}" data-shot="${i}"><img alt=""><span>${p.label ? esc(p.label) + ' · ' : ''}${VIEW_NAMES[p.view] || 'Photo'}</span></button>`).join('');
   shots.forEach((p, i) => rawUrl(p.path).then(u => { const img = $('strip').querySelector(`[data-shot="${i}"] img`); if (img && $('strip').dataset.key === key) img.src = u; }).catch(() => {}));
 }
 $('strip').addEventListener('click', e => {
@@ -637,6 +744,9 @@ $('strip').addEventListener('click', e => {
   openShots(shotsOf(scene3d.design), +b.dataset.shot);
 });
 function showUnit(u) {
+  ui.paintUnit = u ? u.id : null;
+  if (u) ui.paintTo = 'unit'; else if (ui.paintTo === 'unit') ui.paintTo = 'cupboard';
+  if (typeof renderPalette === 'function' && $('swIkea')) renderPalette();
   if (!u) { $('unitInfo').innerHTML = `<div class="muted">Tap a cupboard to see what's in it and its sizes.</div>`; return; }
   const parts = [...(u.parts || [])].reverse();
   $('unitInfo').innerHTML = `<h3>${esc(u.name || 'Cupboard')}</h3>
@@ -838,17 +948,26 @@ const scene3d = (() => {
     labelsEl.append(el); list.push({ pos, el });
   }
 
-  function show(design) {
-    api.design = design;
+  // look: colours picked from the palette ({ cupboard, walls }); it repaints the model without changing the design
+  function show(design, look = api.look) {
+    api.design = design; api.look = look || {};
     if (root) { scene.remove(root); root.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
     labelsEl.innerHTML = ''; labels = []; partLabels = []; selected = null; box = null; showUnit(null);
     seed = 7;
     const R = design.room || { width: 1500, depth: 3100, height: 2400 };
-    const f = design.finish || {};
+    const f = { ...(design.finish || {}) };
+    let unitData = design.units || [];
+    if (api.look.cupboard) {
+      f.carcass = f.fronts = api.look.cupboard;
+      unitData = unitData.map(u => ({ ...u, color: undefined, fronts: undefined, parts: (u.parts || []).map(p => ({ ...p, color: undefined })) }));
+    }
+    const per = api.look.units || {};
+    unitData = unitData.map(u => per[u.id] ? { ...u, color: per[u.id], fronts: per[u.id], parts: (u.parts || []).map(p => ({ ...p, color: undefined })) } : u);
+    if (api.look.walls) f.walls = api.look.walls;
     room.w = R.width * S; room.d = R.depth * S; room.h = R.height * S;
     root = new THREE.Group(); scene.add(root);
     buildRoom(R, f, root);
-    units = (design.units || []).map(u => { const g = buildUnit(u, f, R); root.add(g); return g; });
+    units = unitData.map(u => { const g = buildUnit(u, f, R); root.add(g); return g; });
 
     // sizes: the room, each cupboard's width, and any extra ones the design asks for
     const dg = new THREE.Group(); dg.userData.dims = true; root.add(dg);
@@ -1002,12 +1121,14 @@ const scene3d = (() => {
 
   document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => view(b.dataset.view));
   $('tMeasure').onclick = () => { opts.sizes = !opts.sizes; $('tMeasure').classList.toggle('on', opts.sizes); applyOpts(); };
-  $('tClothes').onclick = () => { opts.clothes = !opts.clothes; $('tClothes').classList.toggle('on', opts.clothes); const sel = selected?.userData.unit; show(api.design); if (sel) select(units.find(g => g.userData.unit === sel)); };
+  $('tClothes').onclick = () => { opts.clothes = !opts.clothes; $('tClothes').classList.toggle('on', opts.clothes); const sel = selected?.userData.unit; show(api.design); if (sel) select(units.find(g => g.userData.unit.id === sel.id)); };
   $('fullBtn').onclick = () => { stage.classList.add('full'); resize(); };
   $('exitFullBtn').onclick = () => { stage.classList.remove('full'); resize(); };
   addEventListener('keydown', e => { if (e.key === 'Escape') { stage.classList.remove('full'); $('photo').hidden = true; resize(); } });
 
-  const api = { design: null, show, resize };
+  const api = { design: null, look: {}, show, resize,
+    selectedId: () => selected?.userData.unit.id || null,
+    selectById: id => select(units.find(g => g.userData.unit.id === id) || null) };
   return api;
 })();
 
