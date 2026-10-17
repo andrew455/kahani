@@ -214,6 +214,7 @@
             <span class="spacer"></span>
             <button id="tMeasure" class="on">Sizes</button>
             <button id="tClothes" class="on">Clothes</button>
+            <button id="unhideBtn" hidden></button>
             <button class="enter-full" id="fullBtn">⤢</button>
             <button class="exit-full" id="exitFullBtn">Done</button>
           </div>
@@ -642,7 +643,8 @@ function renderDesigns() {
   renderShots(d);
   renderIkea(d);
   $('stats').innerHTML = stats(d).map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
-  if (scene3d.design !== d) scene3d.show(d, ui.look);
+  if (scene3d.design !== d) { scene3d.setHidden(ui.hidden); scene3d.show(d, ui.look); }
+  renderHidden();
   renderPalette();
 }
 // ---- colour palette: repaints the 3D model live (all cupboards, the walls, or one tapped cupboard).
@@ -753,8 +755,19 @@ function showUnit(u) {
     <div class="sub">${WALL_NAMES[u.wall] || ''} · ${u.width} wide × ${u.depth} deep × ${u.height || scene3d.design.room.height} high</div>
     <div class="label">Top to bottom</div>
     <div class="parts">${parts.map(p => `<div><span>${esc(partLabel(p))}</span><span>${p.height} mm</span></div>`).join('')}</div>
-    ${u.note ? `<div class="muted" style="margin-top:8px">${esc(u.note)}</div>` : ''}`;
+    ${u.note ? `<div class="muted" style="margin-top:8px">${esc(u.note)}</div>` : ''}
+    <button class="ghost" data-hide="${esc(u.id)}" style="margin-top:10px;width:100%">Hide this cupboard</button>`;
 }
+// hiding: tap a cupboard → Hide; "Show hidden" at the top of the 3D view brings them all back
+ui.hidden = new Set();
+function renderHidden() {
+  const n = scene3d.design ? scene3d.design.units.filter(u => ui.hidden.has(u.id)).length : 0;
+  $('unhideBtn').hidden = !n; $('unhideBtn').textContent = `Show hidden (${n})`;
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-hide]'); if (!b) return;
+  ui.hidden.add(b.dataset.hide); scene3d.selectById(null); scene3d.setHidden(ui.hidden); renderHidden();
+});
 
 // ---------------- 3D ----------------
 const scene3d = (() => {
@@ -968,6 +981,7 @@ const scene3d = (() => {
     root = new THREE.Group(); scene.add(root);
     buildRoom(R, f, root);
     units = unitData.map(u => { const g = buildUnit(u, f, R); root.add(g); return g; });
+    applyHidden();
 
     // sizes: the room, each cupboard's width, and any extra ones the design asks for
     const dg = new THREE.Group(); dg.userData.dims = true; root.add(dg);
@@ -1087,7 +1101,7 @@ const scene3d = (() => {
   function pick(e, focus) {
     const r = canvas.getBoundingClientRect();
     ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), camera);
-    const hit = ray.intersectObjects(units, true).find(h => h.object.visible && h.face && h.face.normal.clone().transformDirection(h.object.matrixWorld).dot(ray.ray.direction) < 0.5);
+    const hit = ray.intersectObjects(units.filter(g => g.visible), true).find(h => h.object.visible && h.face && h.face.normal.clone().transformDirection(h.object.matrixWorld).dot(ray.ray.direction) < 0.5);
     let g = hit && hit.object; while (g && !g.userData.unit) g = g.parent;
     if (focus && hit) { ctl.target.copy(hit.point); apply(); return; }
     select(g && g !== selected ? g : null);
@@ -1126,7 +1140,10 @@ const scene3d = (() => {
   $('exitFullBtn').onclick = () => { stage.classList.remove('full'); resize(); };
   addEventListener('keydown', e => { if (e.key === 'Escape') { stage.classList.remove('full'); $('photo').hidden = true; resize(); } });
 
-  const api = { design: null, look: {}, show, resize,
+  let hiddenIds = new Set();
+  function applyHidden() { for (const g of units) g.visible = !hiddenIds.has(g.userData.unit.id); needs = true; }
+  $('unhideBtn').onclick = () => { ui.hidden.clear(); hiddenIds = ui.hidden; applyHidden(); renderHidden(); };
+  const api = { design: null, look: {}, show, resize, setHidden: ids => { hiddenIds = ids; applyHidden(); },
     selectedId: () => selected?.userData.unit.id || null,
     selectById: id => select(units.find(g => g.userData.unit.id === id) || null) };
   return api;
