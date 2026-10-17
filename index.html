@@ -541,7 +541,7 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .mcard.sel { border-color: var(--new); box-shadow: 0 0 0 3px var(--new); }
 .mcard.bad { border-color: var(--bad); box-shadow: 0 0 0 3px var(--bad); animation: chefshake .3s; }
 .mcard.done { opacity: .55; }
-.dual .mwords { display: none; } .dual .mpics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } .dual .mpics .memo { font-size: 7rem; }
+.dual .mwords { display: none; } .dual .mpics { grid-template-columns: repeat(var(--mpc, 3), minmax(0, 1fr)); gap: 14px; } .dual .mpics .memo { font-size: var(--memo, 7rem); }
 .dual .mpics.big { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; } .dual .mpics.big .memo { font-size: 4.6rem; } .dual .mpics.big .mcard { aspect-ratio: 4 / 2.6; }
 .mpics.big, .mwords.big { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 @media (max-width: 700px) { .mpics, .mwords { grid-template-columns: repeat(3, 1fr); } }
@@ -740,6 +740,25 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .trophy .tr-bar, .trophy .tr-count { width: 100%; }
 .trophy.on { border-color: rgba(200,144,26,.55); background: linear-gradient(180deg, var(--gold-bg), transparent 60%), var(--surface); }
 .trophy.on .tr-medal { filter: none; opacity: 1; background: radial-gradient(circle at 35% 30%, #fff6d6, var(--gold-2) 55%, var(--gold)); box-shadow: 0 4px 14px rgba(200,144,26,.35); }
+.books { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.book-card { display: flex; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; align-items: flex-start; }
+.book-open { border: 0; background: none; padding: 0; }
+.book-meta { display: grid; gap: 6px; min-width: 0; flex: 1; }
+.book-cover { position: relative; width: 110px; aspect-ratio: 2 / 3; border-radius: 6px 12px 12px 6px; background: linear-gradient(160deg, var(--b1), var(--b2)); box-shadow: inset 6px 0 0 rgba(0,0,0,.18), 0 6px 18px rgba(0,0,0,.25); display: grid; place-items: center; overflow: hidden; flex: none; color: #1d1400; }
+.book-cover.big { width: 220px; }
+.book-cover.locked { filter: grayscale(.9); opacity: .7; }
+.bc-ico { font-size: 2.6rem; } .book-cover.big .bc-ico { font-size: 5.5rem; }
+.bc-title { position: absolute; top: 8%; left: 8%; right: 8%; text-align: center; font-size: .95rem; line-height: 1.2; } .book-cover.big .bc-title { font-size: 1.6rem; }
+.bc-auth { position: absolute; bottom: 6%; left: 0; right: 0; text-align: center; font-size: .6rem; opacity: .8; } .book-cover.big .bc-auth { font-size: .85rem; }
+.bc-s { position: absolute; font-size: 1.4rem; } .book-cover.big .bc-s { font-size: 2.6rem; }
+.bc-s0 { left: 10%; bottom: 22%; } .bc-s1 { right: 10%; bottom: 24%; } .bc-s2 { left: 42%; bottom: 14%; } .bc-s3 { right: 14%; top: 30%; }
+.book-page { max-width: 860px; }
+.book-title { display: flex; gap: 26px; align-items: center; flex-wrap: wrap; margin: 6px 0 22px; }
+.book-head { display: grid; gap: 8px; min-width: 240px; flex: 1; } .book-head h1 { margin: 0; font-size: 2.6rem; line-height: 1.15; }
+.book-sec { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; margin-bottom: 14px; } .book-sec h2 { font-size: 1.05rem; margin: 0 0 6px; } .book-sec p { margin: 0 0 8px; line-height: 1.6; }
+.book-toc { display: grid; gap: 6px; }
+.book-ch { display: flex; gap: 12px; align-items: center; text-align: left; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font: inherit; color: inherit; }
+.book-ch:hover { border-color: var(--muted); } .bch-n { font-weight: 700; width: 28px; text-align: center; color: var(--muted); } .bch-t { display: grid; flex: 1; min-width: 0; } .bch-t b { font-family: var(--f-display); font-weight: 400; font-size: 1.2rem; }
 .tr-date { font-size: .8rem; font-weight: 600; color: var(--gold); }
 </style>
 
@@ -909,7 +928,7 @@ rebuildVocab();
 
 // Names (people, places) are spotted from their gloss: {name: true} or a meaning like "Ravi (name)" / "Delhi (city)".
 // With no saved entry they behave as ignored (-1): not new, not counted. Setting a level on one overrides that.
-const NAME_RE = /\((name|city|place|town|village|country|state|river)\)\s*$/i;
+const NAME_RE = /\((name|city|place|town|village|country|state|river)\b[^)]*\)\s*$/i;   // "Ravi (name)", "Andrew (name, said the ninja way)"
 const isNameGloss = g => !!g && (g.name === true || NAME_RE.test(String(g.m ?? g)));
 const extraNames = new Set();
 let nameCache = null;
@@ -921,7 +940,8 @@ function nameSet() {
   return nameCache;
 }
 const isNameWord = w => nameSet().has(w) || (V[w] && NAME_RE.test(V[w].m || ""));
-const statusOf = w => { const e = V[w]; return e && typeof e.s === "number" ? e.s : (isNameWord(w) ? -1 : 0); };
+// Names are always shown in teal and never counted as words, even if one was once given a level.
+const statusOf = w => { if (isNameWord(w)) return -1; const e = V[w]; return e && typeof e.s === "number" ? e.s : 0; };
 
 /* ----- write queue: merges patches per document, writes one at a time ----- */
 let flushing = false, retryTimer = null;
@@ -1176,7 +1196,7 @@ function dueWords() {
 function renderTabs() {
   const due = dueWords().length;
   const html = TABS.map(([id, label, ico]) => {
-    const cur = route.view === id || (id === "library" && route.view === "reader") || (id === "study" && isStudy(route.view));
+    const cur = route.view === id || (id === "library" && (route.view === "reader" || route.view === "book")) || (id === "study" && isStudy(route.view));
     const badge = id === "study" && due ? `<span class="badge">${due}</span>` : "";
     return `<button class="tab" data-go="${id}" ${cur ? 'aria-current="page"' : ""}><span class="ico" aria-hidden="true">${ico}</span><span>${label}</span>${badge}</button>`;
   }).join("");
@@ -1207,6 +1227,7 @@ function render() {
   else if (route.view === "taxi") v.innerHTML = viewTaxi();
   else if (route.view === "ani") v.innerHTML = viewAni();
   else if (route.view === "talk") v.innerHTML = viewTalk();
+  else if (route.view === "book") v.innerHTML = viewBook();
   else v.innerHTML = viewLibrary();
   if (route.view === "reader") {
     if (sel) { const el = $(`#story .w[data-k="${sel.k}"]`); if (el) el.classList.add("sel"); else sel = null; }
@@ -1250,15 +1271,77 @@ function streak() {
   while (days[todayKey(d)]) { c++; d = new Date(d.getTime() - DAY); }
   return c;
 }
+/* ===================== books ===================== */
+// A book is a set of chapter lessons sharing L.book (chapter number in L.ch). Chapter 1 carries the title page
+// (L.bookInfo: author, foreword, cover). Books not written yet still show, locked until you know enough words.
+const BOOK_PLANS = {
+  hi: [
+    { id: "bk1", need: 200, title: "दादी का संदूक", titleEn: "Grandma's Chest", ico: "🧰", bg: ["#f7d9a8", "#c9783a"], teaser: "A lost key, a cheeky monkey and a family secret." },
+    { id: "bk2", need: 400, title: "किताब २", titleEn: "Book two", ico: "📕", bg: ["#c9d8ff", "#5b6fc4"], teaser: "Written just for you, from the words you know, when you reach 400 known words." }
+  ],
+  fr: [
+    { id: "bk1", need: 200, title: "Livre un", titleEn: "Book one", ico: "📗", bg: ["#d8f0c8", "#4f9a5a"], teaser: "Written just for you, from the words you know, when you reach 200 known words." },
+    { id: "bk2", need: 400, title: "Livre deux", titleEn: "Book two", ico: "📕", bg: ["#c9d8ff", "#5b6fc4"], teaser: "Written just for you, from the words you know, when you reach 400 known words." }
+  ]
+};
+const bookLang = () => (typeof FR !== "undefined" && FR ? "fr" : "hi");
+const bookChapters = id => lessons.filter(L => L.book === id).sort((a, b) => (a.ch || 0) - (b.ch || 0));
+const bookWritten = id => bookChapters(id).length > 0;
+const storyLessons = () => sortedLessons().filter(L => !L.book);
+const knownCount = () => Object.values(V).filter(e => e.s === 5).length;
+function bookPlan() {
+  const plans = BOOK_PLANS[bookLang()].map(p => Object.assign({}, p, (bookChapters(p.id)[0] || {}).bookInfo || {}));
+  // books written by Claude in chat that aren't in the plan
+  for (const L of lessons) if (L.book && L.ch === 1 && !plans.some(p => p.id === L.book)) plans.push(Object.assign({ id: L.book, need: 0, ico: "📘", bg: ["#ddd", "#888"] }, L.bookInfo || {}));
+  return plans;
+}
+function bookProgress(id) {
+  const ch = bookChapters(id), done = effActivity().lessons || {};
+  const read = ch.filter(L => done[L.id]).length;
+  return { n: ch.length, read, pct: ch.length ? Math.round((read / ch.length) * 100) : 0, next: ch.find(L => !done[L.id]) || ch[0] };
+}
+function bookCover(b, big) {
+  const locked = !bookWritten(b.id) && knownCount() < b.need;
+  return `<div class="book-cover ${big ? "big" : ""} ${locked ? "locked" : ""}" style="--b1:${b.bg[0]};--b2:${b.bg[1]}" aria-hidden="true">
+    <span class="bc-ico">${locked ? "🔒" : b.ico}</span>${(b.scene || []).map((e, i) => `<span class="bc-s bc-s${i}">${e}</span>`).join("")}
+    <span class="bc-title display">${esc(b.title)}</span>${b.author ? `<span class="bc-auth">${esc(b.author)}</span>` : ""}</div>`;
+}
+function booksHtml() {
+  const k = knownCount();
+  return `<div class="books">${bookPlan().map(b => {
+    const w = bookWritten(b.id), open = w || k >= b.need, pr = bookProgress(b.id);
+    return `<div class="book-card">${w ? `<button class="book-open" data-book="${esc(b.id)}">${bookCover(b)}</button>` : bookCover(b)}
+      <div class="book-meta"><b class="display" style="font-size:1.3rem">${esc(b.title)}</b><span class="muted">${esc(b.titleEn || "")}</span>
+      ${w ? `<span class="small">${pr.n} chapters · ${pr.pct}% read</span><span class="ms-lvbar"><i style="width:${pr.pct}%;background:var(--good)"></i></span>
+        <button class="btn primary" data-book="${esc(b.id)}">${pr.read ? (pr.read >= pr.n ? "Read again" : "Continue · chapter " + (pr.next.ch || 1)) : "Open the book"}</button>`
+      : open ? `<span class="small">✨ Unlocked! ${esc(b.teaser || "")}</span>${typeof bookWriteBtn === "function" ? bookWriteBtn(b) : `<span class="muted small">Ask Claude in chat to write it.</span>`}`
+      : `<span class="small">🔒 Unlocks at <b>${b.need}</b> known words</span><span class="ms-lvbar"><i style="width:${Math.min(100, (k / b.need) * 100).toFixed(1)}%;background:var(--accent-strong)"></i></span><span class="muted small">${k} / ${b.need} · ${esc(b.teaser || "")}</span>`}</div></div>`;
+  }).join("")}</div>`;
+}
+function viewBook() {
+  const b = bookPlan().find(x => x.id === route.book);
+  if (!b || !bookWritten(b.id)) return `<div class="empty"><h3>Book not found</h3><button class="btn" data-go="library">Back to library</button></div>`;
+  const ch = bookChapters(b.id), pr = bookProgress(b.id), done = effActivity().lessons || {};
+  return `<div class="book-page">
+    <div class="reader-bar"><button class="icon-btn" data-go="library" aria-label="Back to library">←</button><div class="title"><div class="muted small">📚 Books</div></div></div>
+    <div class="book-title">${bookCover(b, true)}
+      <div class="book-head"><h1 class="display" lang="hi">${esc(b.title)}</h1><div class="muted" style="font-size:1.2rem">${esc(b.titleEn || "")}</div>
+        ${b.author ? `<div>by <b>${esc(b.author)}</b></div>` : ""}
+        <div class="small">${ch.length} chapters · ${pr.pct}% read</div><div class="ms-lvbar"><i style="width:${pr.pct}%;background:var(--good)"></i></div>
+        <div class="ask-row"><button class="btn primary" data-open="${esc(pr.next.id)}">${pr.read ? (pr.read >= pr.n ? "Read again from chapter 1" : "Continue · chapter " + pr.next.ch) : "Start reading"}</button></div></div></div>
+    ${b.foreword ? `<section class="book-sec"><h2>Foreword</h2>${b.foreword.split("\n").map(x => `<p>${esc(x)}</p>`).join("")}</section>` : ""}
+    ${b.aboutAuthor ? `<section class="book-sec"><h2>About the author</h2><p>${esc(b.aboutAuthor)}</p></section>` : ""}
+    <section class="book-sec"><h2>Contents</h2><div class="book-toc">${ch.map(L => { const m = lessonMix(L); return `<button class="book-ch" data-open="${esc(L.id)}"><span class="bch-n">${L.ch}</span><span class="bch-t"><b lang="hi">${esc(L.title)}</b><span class="muted small">${esc(L.titleEn || "")}</span></span><span class="small">${done[L.id] ? "✓ read" : m.n ? `${m.n} new` : `${m.l} left`}</span></button>`; }).join("")}</div></section>
+  </div>`;
+}
 function viewLibrary() {
   const known = Object.values(V).filter(e => e.s === 5).length;
   const learning = Object.values(V).filter(e => e.s >= 1 && e.s <= 4).length;
   const due = dueWords().length;
   const done = effActivity().lessons || {};
-  const all = sortedLessons();
-  const learnedN = all.filter(isLearned).length;
-  const tab = route.libTab === "learned" ? "learned" : "reading";
-  const sorted = all.filter(L => isLearned(L) === (tab === "learned"));
+  const all = storyLessons();
+  const tab = route.libTab === "books" ? "books" : "reading";
+  const sorted = tab === "books" ? [] : all;
   const cards = sorted.map(L => {
     const m = lessonMix(L);
     const pct = x => (m.t ? (x / m.t) * 100 : 0).toFixed(1);
@@ -1279,11 +1362,11 @@ function viewLibrary() {
       <div class="stat"><div class="num">${streak()}</div><span class="label">Day streak</span></div>
       <div class="stat cta">${due ? `<button class="btn accent" data-go="review">Review ${due} word${due === 1 ? "" : "s"}</button>` : ""}</div>
     </div>
-    <div class="section-h"><div class="seg lib-tabs" role="group" aria-label="Which stories"><button data-libtab="reading" aria-pressed="${tab === "reading"}">📖 To read <span class="muted">${all.length - learnedN}</span></button><button data-libtab="learned" aria-pressed="${tab === "learned"}">★ Learned <span class="muted">${learnedN}</span></button></div><span class="lib-tools">
+    <div class="section-h"><div class="seg lib-tabs" role="group" aria-label="Which stories"><button data-libtab="reading" aria-pressed="${tab === "reading"}">📖 Stories <span class="muted">${all.length}</span></button><button data-libtab="books" aria-pressed="${tab === "books"}">📚 Books <span class="muted">${bookPlan().filter(b => bookWritten(b.id)).length}</span></button></div><span class="lib-tools">
       ${STANDALONE ? `<button class="btn" data-act="rmxopen" data-mode="new" ${rmx.busy ? "disabled" : ""}>✨ New stories</button>${lessons.length > 1 ? `<button class="btn" data-act="rmxopen" data-mode="remix" ${rmx.busy ? "disabled" : ""}>🔀 Remix</button>` : ""}` : ""}<span class="seg" role="group" aria-label="Stories per row">${[0, 1, 2, 3, 4].map(n => `<button data-cols="${n}" aria-pressed="${(settings.cols || 0) === n}">${n || "Auto"}</button>`).join("")}</span></span></div>
     ${STANDALONE ? rmxPanel() : ""}
-    ${lessons.length && !sorted.length ? `<div class="empty">${tab === "learned" ? "<h3>No learned stories yet</h3>A story moves here once you know every word in it." : "<h3>You've learned every story!</h3>Ask Claude for new ones."}</div>` : ""}
-    ${sorted.length ? `<div class="lessons" ${settings.cols ? `style="grid-template-columns:repeat(${settings.cols},minmax(0,1fr))"` : ""}>${cards}</div>` : empty}`;
+    ${tab === "books" ? booksHtml() : ""}${tab !== "books" && !sorted.length && lessons.length ? `<div class="empty"><h3>No stories yet</h3>Ask Claude for new ones.</div>` : ""}
+    ${tab === "books" ? "" : sorted.length ? `<div class="lessons" ${settings.cols ? `style="grid-template-columns:repeat(${settings.cols},minmax(0,1fr))"` : ""}>${cards}</div>` : empty}`;
 }
 
 /* ===================== reader ===================== */
@@ -1326,8 +1409,9 @@ function viewReader() {
   const storyCls = ["story", settings.tr ? "show-tr" : "hide-tr", settings.roman ? "roman" : ""].join(" ");
   return `
   <div class="reader-bar">
-    <button class="icon-btn" data-go="library" aria-label="Back to library">←</button>
-    <div class="title"><div class="display">${esc(L.title)}</div><div class="muted small">${esc(L.titleEn || "")}${L.summary ? " · " + esc(L.summary) : ""}</div></div>
+    ${L.book ? `<button class="icon-btn" data-book="${esc(L.book)}" aria-label="Back to the book">←</button>` : `<button class="icon-btn" data-go="library" aria-label="Back to library">←</button>`}
+    <div class="title">${L.book ? (() => { const b = bookPlan().find(x => x.id === L.book) || {}, n = bookChapters(L.book).length, pr = bookProgress(L.book); return `<div class="muted small">📚 ${esc(b.title || "")} · Chapter ${L.ch} of ${n} · ${pr.pct}% of the book read</div><div class="ms-lvbar" style="height:5px;margin:2px 0 4px"><i style="width:${(((L.ch - 1) / Math.max(1, n)) * 100).toFixed(1)}%;background:var(--accent-strong)"></i></div>`; })() : ""}<div class="display">${esc(L.title)}</div><div class="muted small">${esc(L.titleEn || "")}${L.summary ? " · " + esc(L.summary) : ""}</div></div>
+    ${L.book ? `<div class="toggles"><button class="btn" data-act="prevch" ${L.ch > 1 ? "" : "disabled"}>◀ Chapter</button><button class="btn" data-act="nextstory" ${bookChapters(L.book).some(x => x.ch === L.ch + 1) ? "" : "disabled"}>Chapter ▶</button></div>` : ""}
     <div class="player">
       <button class="icon-btn" data-act="prev" aria-label="Previous sentence">⏮</button>
       <button class="icon-btn big" id="playBtn" data-act="play" aria-label="Play story">▶</button>
@@ -1369,11 +1453,12 @@ function sortedLessons() {
   return [...lessons].sort((a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.createdAt ?? 0) - (b.createdAt ?? 0));
 }
 function nextLesson() {
-  const list = sortedLessons(); const i = list.findIndex(l => l.id === route.lesson);
+  const cur = currentLesson();
+  const list = cur && cur.book ? bookChapters(cur.book) : storyLessons(); const i = list.findIndex(l => l.id === route.lesson);
   return i >= 0 ? list[i + 1] || null : null;
 }
 function goNextLesson() {
-  const n = nextLesson(); if (!n) { toast("That was the last story. Ask Claude for more!"); return; }
+  const n = nextLesson(); if (!n) { const c = currentLesson(); if (c && c.book) { go("book", { book: c.book }); return; } toast("That was the last story. Ask Claude for more!"); return; }
   saveMeaning(); stopPlayer(); player.si = 0; go("reader", { lesson: n.id });
 }
 function renderFinish() {
@@ -1382,8 +1467,8 @@ function renderFinish() {
   const done = (effActivity().lessons || {})[L.id];
   const nx = nextLesson();
   const next = nx
-    ? `<button class="btn ${!m.n || done ? "primary" : ""} next-btn" data-act="nextstory">Next story → <span lang="hi">${esc(nx.title)}</span></button>`
-    : `<span class="muted small next-btn">Last story in your library</span>`;
+    ? `<button class="btn ${!m.n || done ? "primary" : ""} next-btn" data-act="nextstory">${L.book ? "Next chapter" : "Next story"} → <span lang="hi">${esc(nx.title)}</span></button>`
+    : L.book ? `<button class="btn next-btn" data-book="${esc(L.book)}">🎉 Last chapter · back to the book</button>` : `<span class="muted small next-btn">Last story in your library</span>`;
   el.innerHTML = (m.n
     ? `<button class="btn accent" data-act="finish">Finish lesson</button><p>Marks the <b>${m.n}</b> remaining blue word${m.n === 1 ? "" : "s"} as known. Make any words you don't know yellow first.</p>`
     : `<button class="btn" data-act="finish">${done ? "Read again ✓" : "Finish lesson"}</button><p>${done ? "You've finished this story." : "No new words left in this story."}</p>`) + next;
@@ -3264,6 +3349,7 @@ document.addEventListener("click", e => {
   if (t.dataset.msgoal) { route.msgoal = +t.dataset.msgoal; render(); return; }
   if (t.dataset.lang) { setLang(t.dataset.lang); return; }
   if (t.dataset.libtab) { route.libTab = t.dataset.libtab; render(); return; }
+  if (t.dataset.book) { saveMeaning(); go("book", { book: t.dataset.book }); return; }
   if (t.dataset.cols != null) { settings.cols = +t.dataset.cols; saveSettings(); render(); return; }
   if (t.dataset.wf) { route.wfilter = t.dataset.wf; route.wlimit = 150; render(); return; }
   if (t.dataset.flip) { const w = t.dataset.flip; setWord(w, V[w] && V[w].s === 5 ? { s: 1, due: Date.now(), iv: 0 } : { s: 5 }); return; }
@@ -3301,9 +3387,11 @@ document.addEventListener("click", e => {
     case "adbwifi": adbToggle(); break;
     case "adbrefresh": render(); break;
     case "adbready": adbReady(); break;
+    case "devsettings": try { NATIVE.openDevSettings(); } catch (e) { toast("Open Settings → Developer options → Wireless debugging."); } break;
     case "pullbuild": pullBuild(); break;
     case "aibal": aiSetBalance(($("#aiBalIn") || {}).value || ""); break;
     case "rmxopen": rmxOpen(t.dataset.mode); break;
+    case "bookwrite": bookWrite(t.dataset.id); break;
     case "newk": if (!rmx.busy) { const ti = $("#newTopic"); if (ti) rmx.topic = ti.value; rmx.k = +t.dataset.n; render(); } break;
     case "rmxn": if (!rmx.busy) { rmx.n = +t.dataset.n; render(); } break;
     case "rmxgo": rmxRun(); break;
@@ -3313,6 +3401,7 @@ document.addEventListener("click", e => {
     case "bagopen": if (talk.npc) closeTalk(); talk.side = "bag"; renderSide(); break;
     case "bagclose": talk.side = "list"; renderSide(); break;
     case "nextstory": goNextLesson(); break;
+    case "prevch": { const c = currentLesson(), p = c && c.book && bookChapters(c.book).find(x => x.ch === c.ch - 1); if (p) { saveMeaning(); stopPlayer(); player.si = 0; go("reader", { lesson: p.id }); } break; }
     case "reftoggle": { settings.ref = settings.ref === false; saveSettings(); const el = $("#sref"); if (el) el.innerHTML = refHtml(); break; }
     case "tretry": talk.error = null; npcTurn(); break;
     case "thelp": talk.showSugg = !talk.showSugg; renderSide(); break;
@@ -4155,11 +4244,11 @@ setInterval(() => { if (route.view === "settings" && !document.hidden) aiSync();
 const rmxWords = L => { const out = []; for (const s of L.sentences || []) for (const m of s.hi.match(WORD_RE) || []) out.push(norm(m)); return out; };
 const rmxLeft = L => { const m = lessonMix(L); return m.n + m.l; };
 function rmxChoices() {
-  const t = lessons.length; const c = [4, 8].filter(n => n < t); if (t >= 2) c.push(t);
+  const t = storyLessons().length; const c = [4, 8].filter(n => n < t); if (t >= 2) c.push(t);
   return c;
 }
 function rmxPick(n) {
-  return sortedLessons().map((L, i) => ({ L, left: rmxLeft(L), i })).sort((a, b) => a.left - b.left || a.i - b.i).slice(0, n).map(x => x.L);
+  return storyLessons().map((L, i) => ({ L, left: rmxLeft(L), i })).sort((a, b) => a.left - b.left || a.i - b.i).slice(0, n).map(x => x.L);
 }
 const rmxOut = n => Math.max(1, Math.round(n / 3.5));
 function rmxOpen(mode) {
@@ -4178,7 +4267,7 @@ function rmxPanel() {
   const left = new Set(); for (const L of pick) for (const w of lessonWords(L)) { const s = statusOf(w); if (s !== 5 && s !== -1 && !isNameWord(w)) left.add(w); }
   return `<div class="set-card rmx"><h3>🔀 Remix stories</h3>
     <p class="muted small" style="margin:0">Claude merges the stories with the fewest words left into new ones. It only uses words you've already seen, and keeps every word you're still learning.</p>
-    <div class="set-row"><span>Merge the easiest</span><span class="seg" role="group" aria-label="How many stories">${rmxChoices().map(n => `<button data-act="rmxn" data-n="${n}" aria-pressed="${rmx.n === n}" ${rmx.busy ? "disabled" : ""}>${n === lessons.length ? "All " + n : n}</button>`).join("")}</span></div>
+    <div class="set-row"><span>Merge the easiest</span><span class="seg" role="group" aria-label="How many stories">${rmxChoices().map(n => `<button data-act="rmxn" data-n="${n}" aria-pressed="${rmx.n === n}" ${rmx.busy ? "disabled" : ""}>${n === storyLessons().length ? "All " + n : n}</button>`).join("")}</span></div>
     <p class="small" style="margin:0"><b>${pick.length}</b> stories → <b>${out}</b> new ${out === 1 ? "story" : "stories"}, keeping <b>${left.size}</b> words you're still learning.<br><span class="muted">${pick.map(L => esc(L.titleEn || L.title)).join(" · ")}</span></p>
     ${rmx.msg ? `<p class="small" style="margin:0" aria-live="polite">${rmx.busy ? "⏳ " : ""}${esc(rmx.msg)}</p>` : ""}
     <div class="ask-row"><button class="btn primary" data-act="rmxgo" ${rmx.busy ? "disabled" : ""}>${rmx.busy ? "Remixing…" : "Remix now"}</button>${rmx.busy ? "" : `<button class="btn ghost" data-act="rmxclose">Cancel</button>`}</div>
@@ -4235,7 +4324,7 @@ function rmxCheck(res, allowed, names, must) {
   return { bad: [...bad], missing: must.filter(w => !used.has(w)) };
 }
 // Asks Claude for stories (structured JSON), checks them, and asks for fixes up to twice. Every call is logged in the spend ledger.
-async function aiStories(system, prompt, kind, check, fixing, fixText) {
+async function aiStories(system, prompt, kind, check, fixing, fixText, schema) {
   const Anthropic = await loadAnthropic();
   const client = new Anthropic({ apiKey: aiKey, dangerouslyAllowBrowser: true });
   const messages = [{ role: "user", content: prompt }], runId = Date.now().toString(36);
@@ -4244,7 +4333,7 @@ async function aiStories(system, prompt, kind, check, fixing, fixText) {
     const stream = client.beta.messages.stream({
       model: AI_MODEL, max_tokens: 64000, system, messages,
       betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
-      output_config: { effort: "high", format: { type: "json_schema", schema: RMX_SCHEMA } }
+      output_config: { effort: "high", format: { type: "json_schema", schema: schema || RMX_SCHEMA } }
     });
     const msg = await stream.finalMessage();
     aiRecord(msg, kind + ":" + runId);
@@ -4371,7 +4460,7 @@ NAMES: ${[...names].join(" ") || "(none)"}
 
 KNOWN (${allowed.size}): ${[...allowed].join(" ")}
 
-EXISTING STORIES: ${sortedLessons().map(L => L.titleEn || L.title).join(" · ")}`;
+EXISTING STORIES: ${storyLessons().map(L => L.titleEn || L.title).join(" · ")}`;
     const { res, chk } = await aiStories(system, prompt, "new", r => newCheck(r, allowed, names),
       c => c.over.length ? `Fixing: too many new words in ${c.over.length} ${c.over.length === 1 ? "story" : "stories"}…` : "",
       c => "Please fix and return all the stories again. Too many words outside the KNOWN list:\n" + c.over.map(o => `"${o.title}": ${o.nw.length} new (max ${o.max}): ${o.nw.join(" ")}. Replace most of them with KNOWN words.`).join("\n"));
@@ -4444,7 +4533,7 @@ function adbCard() {
     ${a.on && a.ip && !a.port ? `<p class="muted small" style="margin:0">The port isn't readable here: see Settings → Developer options → Wireless debugging.</p>` : ""}
     ${a.can ? `<p class="muted small" style="margin:0">The Mac uses this address to install updates. It changes when the Thor restarts.</p>`
       : `<p class="muted small" style="margin:0">To switch it from here, run <b>thor-permission.command</b> on the Mac once (while wireless debugging is on).</p>`}
-    <div class="ask-row"><button class="btn primary" data-act="adbready" ${adbReadying ? "disabled" : ""}>📥 ${adbReadying ? "Getting ready…" : "Get ready for an update"}</button><button class="btn ghost" data-act="adbrefresh">Refresh</button></div>
+    <div class="ask-row"><button class="btn primary" data-act="adbready" ${adbReadying ? "disabled" : ""}>📥 ${adbReadying ? "Getting ready…" : "Get ready for an update"}</button><button class="btn" data-act="devsettings">⚙️ Open Wireless debugging settings</button><button class="btn ghost" data-act="adbrefresh">Refresh</button></div>
     ${adbPosted ? `<p class="small" style="margin:0">${esc(adbPosted)}</p>` : ""}
     <div class="set-row"><span>App build <b>${NATIVE.appVersion ? NATIVE.appVersion() : "?"}</b></span><button class="btn" data-act="pullbuild" ${bld.busy ? "disabled" : ""}>⬇️ ${bld.busy ? "Working…" : "Pull build"}</button></div>
     ${bld.msg ? `<p class="small" style="margin:0" aria-live="polite">${esc(bld.msg)}</p>${bld.busy && bld.pct ? `<div class="mix" style="background:linear-gradient(to right, var(--good) 0 ${bld.pct}%, var(--line) ${bld.pct}% 100%)"></div>` : ""}` : `<p class="muted small" style="margin:0">If the Mac can't reach the Thor, it uploads the new build to GitHub instead. Pull build fetches it from there.</p>`}</div>`;
@@ -4500,6 +4589,100 @@ function adbToggle() {
   render(); setTimeout(() => { if (route.view === "settings") render(); }, 2500);
 }
 setInterval(() => { if (rmx.busy || document.getElementById("aiBusy")) aiBusyPill(); }, 1000);
+
+/* ===================== standalone: write a book with Claude once it unlocks ===================== */
+// Plan first (title page + 10 chapter outlines, saved with chapter 1), then each chapter in turn, using only words you've
+// seen plus words the earlier chapters introduced, with at most NEW_PCT% new words per chapter. Chapters save as they're
+// written, so if it stops part-way, pressing the button again carries on from the next chapter.
+const BOOK_CHAPTERS = 10;
+const BOOK_OUTLINE_SCHEMA = { type: "object", additionalProperties: false, required: ["title", "titleEn", "ico", "scene", "foreword", "chapters"],
+  properties: { title: { type: "string" }, titleEn: { type: "string" }, ico: { type: "string" }, scene: { type: "array", items: { type: "string" } }, foreword: { type: "string" },
+    chapters: { type: "array", items: { type: "object", additionalProperties: false, required: ["title", "titleEn", "plan"], properties: { title: { type: "string" }, titleEn: { type: "string" }, plan: { type: "string" } } } } } };
+const bookJob = { id: null, msg: "" };
+function bookWriteBtn(b) {
+  if (bookJob.id === b.id) return `<span class="small">⏳ ${esc(bookJob.msg || "Writing…")}</span>`;
+  if (!aiKey) return `<span class="muted small">Add your Claude API key in Settings, then Claude can write it.</span>`;
+  const have = bookChapters(b.id).length;
+  return `<button class="btn primary" data-act="bookwrite" data-id="${esc(b.id)}" ${bookJob.id ? "disabled" : ""}>✨ ${have ? "Finish writing this book" : "Write this book"}</button><span class="muted small">About 10 requests to Claude, a few dollars of API credit, 10–20 minutes. You can keep using the app.</span>`;
+}
+async function saveLessonDoc(id, doc) {
+  if (gh) {
+    const file = GH_ROOT + "lessons/" + id + ".json", branch = gh.branch || "main";
+    let sha; try { sha = (await ghApi("/contents/" + file + "?ref=" + branch)).sha; } catch (e) { if (e.status !== 404) throw e; }
+    const r = await ghApi("/contents/" + file, { method: "PUT", body: { message: "Book chapter " + id + (NATIVE ? " (Thor)" : " (browser)"), content: b64e(JSON.stringify(doc, null, 1)), sha, branch } });
+    ghSha[file] = r.content.sha; store.set("ghsha", ghSha);
+  }
+  lessons = lessons.filter(L => L.id !== id).concat([Object.assign({ id }, doc)]);
+  ghSaveLocal();
+}
+function bookSay(msg) { bookJob.msg = msg; rmx.msg = msg; aiBusyPill(); if (route.view === "library") render(); else pushBottom(); }
+async function bookWrite(id) {
+  const plan = BOOK_PLANS[bookLang()].find(p => p.id === id); if (!plan || bookJob.id || rmx.busy) return;
+  if (knownCount() < plan.need && !bookWritten(id)) { toast(`This book unlocks at ${plan.need} known words.`); return; }
+  const lang = FR ? "French" : "Hindi";
+  bookJob.id = id; rmx.busy = true; rmx.mode = "new"; toast("Writing the book in the background. Carry on using the app.", 4000);
+  try {
+    const names = new Set(nameSet()), allowed = new Set();
+    for (const L of lessons) for (const w of rmxWords(L)) allowed.add(w);
+    for (const [w, e] of Object.entries(V)) if (e && e.s) allowed.add(w);
+    const learning = learningWords();
+    const system = `You write graded ${lang} reading books for an adult beginner learning ${lang}. The book is warm, funny and has a real plot with a goal, a few surprises and a satisfying ending, told over ${BOOK_CHAPTERS} chapters with recurring characters. The learner's app colours every word, so vocabulary rules are strict.`;
+    let ch1 = bookChapters(id).find(L => L.ch === 1), info = ch1 && ch1.bookInfo;
+    if (!info || !info.plans) {
+      bookSay("Planning the book…");
+      const { res } = await aiStories(system, `Plan a ${lang} book of ${BOOK_CHAPTERS} chapters for this learner. Use the characters from their stories (${[...names].join(" ")}) and everyday places.
+Give: a ${lang} title and an English title; one emoji "ico" for the cover and 3 emojis "scene" to decorate it; a warm English "foreword" (2 short paragraphs, \\n between them) telling the reader what the book is about and encouraging them; and for each chapter a ${lang} title, an English title and a one-sentence English "plan".
+Their stories so far: ${storyLessons().map(L => L.titleEn || L.title).join(" · ")}`, "book", () => ({}), () => "", () => "", BOOK_OUTLINE_SCHEMA);
+      info = { title: res.title, titleEn: res.titleEn, ico: res.ico || plan.ico, scene: (res.scene || []).slice(0, 4), bg: plan.bg, author: "Claude",
+        aboutAuthor: `Claude is an AI made by Anthropic. It wrote this book especially for ${FR ? "Deb" : "Andy"}, using the ${lang} words already learned in this app, so almost every word is one you've met before.`,
+        foreword: res.foreword, plans: res.chapters.slice(0, BOOK_CHAPTERS), written: Date.now() };
+    }
+    let prev = "";
+    for (let c = 1; c <= info.plans.length; c++) {
+      const cid = id + "c" + String(c).padStart(2, "0"), have = bookChapters(id).find(L => L.ch === c);
+      if (have) { prev = have.sentences.map(x => x.hi).join(" "); for (const w of rmxWords(have)) allowed.add(w); continue; }
+      bookSay(`Writing chapter ${c} of ${info.plans.length}…`);
+      const P = info.plans[c - 1];
+      const prompt = `This is chapter ${c} of ${info.plans.length} of the book "${info.title}" (${info.titleEn}).
+The whole plan: ${info.plans.map((x, i) => `${i + 1}. ${x.titleEn}: ${x.plan}`).join(" ")}
+Write chapter ${c}: "${P.titleEn}" (${lang} title: ${P.title}). ${P.plan}
+${prev ? `The previous chapter ended like this: ${prev.slice(-600)}` : ""}
+
+Rules:
+1. Build it mostly from words in the KNOWN list (exact spellings and inflected forms), plus the NAMES.
+2. Use as many words from the LEARNING list as fit naturally.
+3. At most ${NEW_PCT}% of the chapter's distinct words may be outside the KNOWN list. Choose common, useful words and repeat each new word at least twice.
+4. New character names are fine: in "gloss" give a name's meaning as "<Name> (name)".
+5. Return one story in "stories": the chapter, with title "${P.title}", titleEn "${P.titleEn}", a short topic, a one-sentence English summary, and 14–20 short sentences in paragraphs ("p" 0, 1, 2…, 3–5 sentences each). "en" is a natural English translation.
+6. In "gloss", give every distinct word you used with its English meaning "m" in context, a simple romanization "t", and its word type "c".
+
+LEARNING (${learning.length}): ${learning.join(" ")}
+NAMES: ${[...names].join(" ") || "(none)"}
+KNOWN (${allowed.size}): ${[...allowed].join(" ")}`;
+      const { res, chk } = await aiStories(system, prompt, "book", r => newCheck(r, allowed, names),
+        x => x.over.length ? `Chapter ${c}: fixing too many new words…` : "",
+        x => "Please fix and return the chapter again. Too many words outside the KNOWN list: " + x.over.map(o => `${o.nw.length} new (max ${o.max}): ${o.nw.join(" ")}`).join("; ") + ". Replace most of them with KNOWN words.");
+      if (chk.over.length) throw new Error(`Chapter ${c} kept using too many new words. The chapters written so far are saved; press the button again to carry on.`);
+      const st = res.stories[0], modelGloss = {}; for (const g of res.gloss || []) if (g && g.w) modelGloss[norm(g.w)] = g;
+      const sentences = st.sentences.map(x => ({ p: Math.max(0, x.p | 0), hi: String(x.text).trim(), en: String(x.en).trim() })), gloss = {};
+      for (const x of sentences) for (const m of x.hi.match(WORD_RE) || []) {
+        const w = norm(m); if (gloss[w]) continue;
+        const g0 = glossFor(w), e = V[w], mg = modelGloss[w];
+        gloss[w] = g0 || (e && e.m ? (e.t ? { m: e.m, t: e.t } : { m: e.m }) : mg ? (mg.t ? { m: mg.m, t: mg.t, c: mg.c } : { m: mg.m, c: mg.c }) : { m: "" });
+        allowed.add(w); if (mg && NAME_RE.test(mg.m || "")) names.add(w);
+      }
+      const doc = { order: 0, book: id, ch: c, title: st.title || P.title, titleEn: st.titleEn || P.titleEn, topic: st.topic, level: "Beginner", summary: st.summary, createdAt: Date.now(), sentences, gloss };
+      if (c === 1) doc.bookInfo = info;
+      await saveLessonDoc(cid, doc);
+      prev = sentences.map(x => x.hi).join(" ");
+    }
+    toast(`📚 "${info.title}" is ready in your Books!`, 6000);
+  } catch (e) {
+    console.error(e); toast("⚠️ " + aiErrText(e), 8000);
+  } finally {
+    bookJob.id = null; bookJob.msg = ""; rmxDone();
+  }
+}
 
 /* ===================== Games hub (Hindi; made for the Thor's controller, also works by touch and keyboard) ===================== */
 // Views: games (the hub), adv (Adventure, in standalone.js), fly (Sky Words), match (Object Match), acts (What's He Doing?).
@@ -4695,7 +4878,10 @@ const MATCH_CAT = (() => {
   const all = MATCH_LEVELS.flatMap(L => L.items).concat(FR ? ((typeof GAME_FR !== "undefined" && GAME_FR.objects_extra) || []) : ((typeof GAME_OBJ !== "undefined" && GAME_OBJ.extra) || []));
   const seen = new Set(); return all.filter(it => !seen.has(it[0]) && seen.add(it[0]));
 })();
-const matchSize = i => Math.min(12, 6 + 2 * i);
+const matchSize = i => Math.min(24, 6 + 2 * i);   // 6, 8, 10 … up to 24 pairs as the levels go up
+// Columns grow with the level so everything fits: pictures on the Thor's top screen, words on its bottom screen.
+const matchPicCols = n => (n <= 6 ? 3 : n <= 12 ? 4 : n <= 18 ? 6 : 8);
+const matchWordCols = n => (n <= 8 ? 2 : n <= 15 ? 3 : 4);
 const MATCH_PLAY = (() => { const out = []; let used = 0; for (let i = 0; used < MATCH_CAT.length; i++) { out.push({ size: matchSize(i) }); used += matchSize(i); } return out; })();
 function matchLevelItems(lv) {
   const rank = it => { const st = statusOf(gameWordKey(it[0])); return st >= 1 && st <= 4 ? 0 : st === 5 ? 1 : 2; };
@@ -4765,7 +4951,7 @@ function viewMatch() {
   const n = L.items.length, idx = [...Array(match.cards.length).keys()];
   return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.4rem">🧩 Level ${match.lv + 1}</h2><span class="muted small">${match.done.length / 2} / ${n} linked · ${match.moves} mistake${match.moves === 1 ? "" : "s"}</span></div>
     ${match.st === "won" ? `<div class="adv-end">⭐ ${FR ? "Bravo !" : "शाबाश!"} All linked with ${match.moves} mistake${match.moves === 1 ? "" : "s"}. <button class="btn primary" data-gk="a">Next level</button><button class="btn" data-gk="b">Levels</button></div>` : ""}
-    <div class="mgrid mpics ${n > 6 ? "big" : ""}">${idx.slice(0, n).map(card).join("")}</div>
+    <div class="mgrid mpics ${n > 6 ? "big" : ""}" style="--mpc:${matchPicCols(n)};--memo:${n <= 6 ? 7 : n <= 12 ? 5.5 : n <= 18 ? 4 : 3.2}rem">${idx.slice(0, n).map(card).join("")}</div>
     <div class="mgrid mwords ${n > 6 ? "big" : ""}">${idx.slice(n).map(card).join("")}</div>
     <div class="kbd"><kbd>D-pad</kbd> move · <kbd>A</kbd> pick a picture, then its word · <kbd>B</kbd> levels</div></div>`;
 }
@@ -4788,7 +4974,7 @@ function matchKey(k, i) {
     match.cur = +i; return matchFlip(+i);
   }
   if (DUAL) {   // two screens: left stick / D-pad = pictures (top), right stick = words (bottom), A = link them
-    const pc = match.items.length > 6 ? 4 : 3, wc = 2, mv = (cur, d, size, c) => { const nx = cur + d; return nx < 0 || nx >= size ? cur : nx; };
+    const pc = matchPicCols(match.items.length), wc = matchWordCols(match.items.length), mv = (cur, d, size, c) => { const nx = cur + d; return nx < 0 || nx >= size ? cur : nx; };
     if (k === "left" || k === "right") match.cur = mv(match.cur, k === "right" ? 1 : -1, half, pc);
     else if (k === "up" || k === "down") match.cur = mv(match.cur, k === "down" ? pc : -pc, half, pc);
     else if (k === "rleft" || k === "rright") { match.curW = mv(match.curW, k === "rright" ? 1 : -1, half, wc); speakW(); }
@@ -4907,7 +5093,7 @@ function gameBottom() {
     if (match.st === "menu") return menu("🧩 Object Match", matchMenuLevels(), match.pick, match.best, matchProg());
     const L = { items: match.items };
     const half = match.cards.length / 2;
-    return { type: "match", level: match.lv + 1, won: match.st === "won", moves: match.moves, pairs: L.items.length, found: match.found.map(j => L.items[j]),
+    return { type: "match", wcols: matchWordCols(L.items.length), level: match.lv + 1, won: match.st === "won", moves: match.moves, pairs: L.items.length, found: match.found.map(j => L.items[j]),
       words: match.cards.slice(half).map((c, j) => ({ label: L.items[c.k][0], done: match.done.includes(half + j), cur: j === match.curW, bad: match.bad.includes(half + j) })), linked: match.done.length / 2 };
   }
   if (v === "taxi") {
@@ -5110,8 +5296,8 @@ const SHOP_TXT = FR
   : { hi: ["नमस्ते! मुझे यह चाहिए।", "Hello! I need this."], thanks: ["धन्यवाद!", "Thank you!"], no: ["माफ़ कीजिए, यह नहीं है।", "Sorry, we don't have it."], ok: ["ठीक है, धन्यवाद!", "Okay, thank you!"], bad: ["नहीं, यह नहीं!", "No, not this!"], cur: "₹", price: () => 10 * (1 + Math.floor(Math.random() * 5)), tip: 5, title: "🛒 दुकान", name: "दुकान" };
 const SHOP_LEVELS = MATCH_LEVELS.slice(1).map((L, i) => ({ need: L.need, name: i === 0 ? "Small shop" : i === 1 ? "Corner shop" : i === 2 ? "Supermarket" : "Hypermarket " + (i - 2), about: `up to ${10 * (i + 1)} things in stock`, upto: i + 2 }));
 const PEOPLE = ["🧑", "👩", "👴", "👵", "👦", "👧", "🧔", "👨‍🦱", "👩‍🦰", "🧕"];
-// The Thor's bottom screen shows the stock in 2 columns, or 3 once the shop gets big.
-const shopCols = () => (shopOptions().length - 1 > 16 ? 3 : 2);
+// The Thor's bottom screen shows the stock in 2 columns, then 3, then 4 as the shop gets bigger.
+const shopCols = () => { const n = shopOptions().length - 1; return n <= 12 ? 2 : n <= 24 ? 3 : 4; };
 const shop = { bestOk: store.get("shopbestok", {}), ok: 0, st: "menu", pick: 0, lv: 0, stock: [], queue: [], ci: 0, sel: 0, money: 0, msg: ["", ""], answered: null, tr: false, best: store.get("shopbest", {}) };
 const shopProg = () => SHOP_LEVELS.map((_, i) => (shop.bestOk[i] || 0) / 10);
 function shopStart(lv) {
@@ -5580,10 +5766,14 @@ function bottomState() {
     const keys = MS_KEYS.concat(FR ? [] : [["letters", "क Letters"]]);
     const cur = route.ms || "perday";
     st.ms = { keys, groups: [["Stats", keys], ["Progress", MS_PROGRESS]], cur, html: msDetail(cur, progressStats()) };
+  } else if (route.view === "book") {
+    const done = effActivity().lessons || {};
+    st.bookv = { id: route.book, title: (bookPlan().find(b => b.id === route.book) || {}).title || "", pct: bookProgress(route.book).pct, chapters: bookChapters(route.book).map(L => ({ id: L.id, ch: L.ch, title: L.title, titleEn: L.titleEn || "", done: !!done[L.id] })) };
   } else if (route.view === "library") {
     const doneMap = effActivity().lessons || {};
     st.remix = { mode: rmx.mode, k: rmx.k, topic: rmx.topic, open: rmx.open, busy: rmx.busy, msg: rmx.msg, key: !!aiKey, n: rmx.n, choices: rmxChoices(), total: lessons.length, out: rmxOut(rmx.n), pick: rmx.open ? rmxPick(rmx.n).map(L => L.titleEn || L.title) : [] };
-    st.lessons = sortedLessons().map(L => { const m = lessonMix(L); return { id: L.id, title: L.title, titleEn: L.titleEn || "", n: m.n, left: m.n + m.l, done: !!doneMap[L.id], reads: readCount(doneMap[L.id]), learned: isLearned(L) }; });
+    st.books = bookPlan().map(b => { const pr = bookProgress(b.id); return { id: b.id, ico: b.ico, title: b.title, titleEn: b.titleEn, written: bookWritten(b.id), need: b.need, pct: pr.pct, n: pr.n }; });
+    st.lessons = storyLessons().map(L => { const m = lessonMix(L); return { id: L.id, title: L.title, titleEn: L.titleEn || "", n: m.n, left: m.n + m.l, done: !!doneMap[L.id], reads: readCount(doneMap[L.id]), learned: isLearned(L) }; });
     st.libTab = route.libTab === "learned" ? "learned" : "reading";
     st.known = Object.values(V).filter(e => e.s === 5).length;
   }
@@ -5621,6 +5811,7 @@ function handleCmd(c) {
       if (c.v === "bak") { bakPick = c.d; const it = bakeryInfo()[bakPick]; if (it.n) speak(it.p[2]); render(); break; }
       gameKey(c.v, c.d); return;
     case "libtab": route.libTab = c.v; render(); break;
+    case "book": go("book", { book: c.v }); break;
     case "set": if (sel) setStatus(c.v); break;
     case "say": if (sel) speak(sel.w); break;
     case "saytext": speak(String(c.t || "")); break;
@@ -5669,6 +5860,9 @@ window.__pad = k => {
     bakeryKey(k);
   } else if (GAME_VIEWS.includes(v)) {
     gameKey(k);
+  } else if (v === "book") {
+    if (k === "a" || k === "start") { const pr = bookProgress(route.book); if (pr.next) go("reader", { lesson: pr.next.id }); }
+    else if (k === "b" || k === "select") go("library");
   } else if (v === "library") {
     if (k === "a" || k === "start") { const list = sortedLessons(); const done = effActivity().lessons || {}; const L = list.find(l => !done[l.id] && !isLearned(l)) || list.find(l => !isLearned(l)) || list[0]; if (L) go("reader", { lesson: L.id }); }
     else if (k === "select" || k === "r2") go("review");
