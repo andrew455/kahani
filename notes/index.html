@@ -293,6 +293,7 @@ function render() {
   const cat = id => db.categories.find(c => c.id === id) || { name: '?', color: '#999' };
   if (!db.categories.some(c => c.id === ui.pick)) ui.pick = 'general';
 
+  $('saveBtn').textContent = 'Save to ' + cat(ui.pick).name;
   $('pick').innerHTML = db.categories.map(c => `<button type="button" class="cat-pick ${c.id === ui.pick ? 'on' : ''}" data-pick="${c.id}"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}</button>`).join('');
 
   const open = id => db.notes.filter(n => !n.done && (id === 'all' || n.category === id)).length;
