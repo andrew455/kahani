@@ -3138,6 +3138,7 @@ document.addEventListener("click", e => {
     case "aioff": aiForget(); break;
     case "adbwifi": adbToggle(); break;
     case "adbrefresh": render(); break;
+    case "adbready": adbReady(); break;
     case "aibal": aiSetBalance(($("#aiBalIn") || {}).value || ""); break;
     case "rmxopen": rmxOpen(t.dataset.mode); break;
     case "newk": if (!rmx.busy) { const ti = $("#newTopic"); if (ti) rmx.topic = ti.value; rmx.k = +t.dataset.n; render(); } break;
@@ -3432,6 +3433,7 @@ addEventListener("online", () => { if (gh) ghPull(); });
 /* ===================== standalone: language switch ===================== */
 function setLang(l) {
   if (l === LANG) return;
+  if (typeof rmx !== "undefined" && rmx.busy) { toast("Wait until the new stories are written (a minute or two)."); return; }
   try { localStorage.setItem("kahani:lang", l); } catch (e) {}
   if (NATIVE) { try { NATIVE.send(JSON.stringify({ view: "switching", lang: l })); } catch (e) {} }
   if (NATIVE && NATIVE.reload) { NATIVE.reload(); return; }
@@ -4017,7 +4019,25 @@ function rmxPanel() {
     <div class="ask-row"><button class="btn primary" data-act="rmxgo" ${rmx.busy ? "disabled" : ""}>${rmx.busy ? "Remixing…" : "Remix now"}</button>${rmx.busy ? "" : `<button class="btn ghost" data-act="rmxclose">Cancel</button>`}</div>
     <p class="muted small" style="margin:0">Uses your Claude API credit (usually well under $1 a remix). Takes a minute or two.</p></div>`;
 }
-function rmxSay(msg) { rmx.msg = msg; if (route.view === "library") render(); else pushBottom(); }
+function rmxSay(msg) { rmx.msg = msg; aiBusyPill(); if (route.view === "library") render(); else pushBottom(); }
+// While stories are being written you can carry on using the app: a little pill shows progress, and the screen you're on isn't redrawn.
+function aiBusyPill() {
+  let el = document.getElementById("aiBusy");
+  if (!rmx.busy) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement("button"); el.id = "aiBusy"; el.type = "button";
+    el.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:60;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;font:inherit;font-size:.85rem;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer";
+    el.onclick = () => go("library");
+    document.body.appendChild(el);
+  }
+  el.textContent = (rmx.mode === "new" ? "✨ " : "🔀 ") + (rmx.msg || "Writing stories…");
+  el.hidden = route.view === "library";
+}
+function rmxDone() {
+  rmx.busy = false; aiBusyPill(); aiSync();
+  if (route.view === "reader" && !currentLesson()) { go("library"); return; }   // the story being read was remixed away
+  if (route.view === "library" || route.view === "settings" || route.view === "milestones") render(); else pushBottom();
+}
 
 let anthropicLoad = null;
 function loadAnthropic() {
@@ -4090,7 +4110,7 @@ async function rmxRun() {
   if (rmx.mode === "new") return newRun();
   const pick = rmxPick(rmx.n), out = rmxOut(rmx.n), lang = FR ? "French" : "Hindi";
   if (pick.length < 2) { toast("Pick at least two stories."); return; }
-  rmx.busy = true; rmxSay("Asking Claude to write " + out + " new " + (out === 1 ? "story" : "stories") + "…");
+  rmx.busy = true; toast("Writing in the background. Carry on using the app.", 3500); rmxSay("Asking Claude to write " + out + " new " + (out === 1 ? "story" : "stories") + "…");
   try {
     const names = new Set(nameSet());
     const allowed = new Set();
@@ -4128,9 +4148,9 @@ ${JSON.stringify(old)}`;
     toast(`🔀 ${pick.length} stories → ${res.stories.length} new ones${lost}.`, 6000);
   } catch (e) {
     console.error(e);
-    rmx.msg = aiErrText(e);
+    rmx.msg = aiErrText(e); if (route.view !== "library") toast("⚠️ " + rmx.msg, 7000);
   } finally {
-    rmx.busy = false; render(); aiSync();
+    rmxDone();
   }
 }
 /* ----- ✨ New stories: written fresh at the learner's level, nothing removed ----- */
@@ -4161,7 +4181,7 @@ function newCheck(res, allowed, names) {
 async function newRun() {
   const k = rmx.k, lang = FR ? "French" : "Hindi";
   const tIn = $("#newTopic"); if (tIn) rmx.topic = tIn.value.trim();
-  rmx.busy = true; rmxSay(`Asking Claude to write ${k} new ${k === 1 ? "story" : "stories"}…`);
+  rmx.busy = true; toast("Writing in the background. Carry on using the app.", 3500); rmxSay(`Asking Claude to write ${k} new ${k === 1 ? "story" : "stories"}…`);
   try {
     const names = new Set(nameSet());
     const allowed = new Set();
@@ -4196,9 +4216,9 @@ EXISTING STORIES: ${sortedLessons().map(L => L.titleEn || L.title).join(" · ")}
     toast(`✨ ${res.stories.length} new ${res.stories.length === 1 ? "story" : "stories"} added to the top of your library.`, 6000);
   } catch (e) {
     console.error(e);
-    rmx.msg = aiErrText(e);
+    rmx.msg = aiErrText(e); if (route.view !== "library") toast("⚠️ " + rmx.msg, 7000);
   } finally {
-    rmx.busy = false; render(); aiSync();
+    rmxDone();
   }
 }
 async function rmxSave(res, pick) {
@@ -4206,7 +4226,7 @@ async function rmxSave(res, pick) {
   const nums = lessons.map(L => /^n(\d+)$/.exec(L.id)).filter(Boolean).map(m => +m[1]);
   let next = (nums.length ? Math.max(...nums) : 0) + 1;
   const keep = lessons.filter(L => !oldIds.includes(L.id));
-  const minOrder = Math.min(0, ...keep.map(L => L.order ?? 0));
+  const minOrder = Math.min(0, ...keep.map(L => L.order ?? 0)), maxOrder = Math.max(0, ...keep.map(L => L.order ?? 0));
   const modelGloss = {}; for (const g of res.gloss || []) if (g && g.w) modelGloss[norm(g.w)] = g;
   const made = res.stories.map((st, i) => {
     const gloss = {};
@@ -4219,9 +4239,14 @@ async function rmxSave(res, pick) {
       else if (mg) gloss[w] = mg.t ? { m: mg.m, t: mg.t } : { m: mg.m };
     }
     const id = "n" + String(next++).padStart(2, "0");
-    return { id, doc: { order: minOrder - res.stories.length + i, title: st.title, titleEn: st.titleEn, topic: st.topic, level: "Beginner", summary: st.summary,
+    // brand-new words (never seen, not names): these stories go to the bottom, after the ones that only have learning words left
+    const fresh = new Set(); for (const s of sentences) for (const m of s.hi.match(WORD_RE) || []) { const w = norm(m); if (statusOf(w) === 0 && !isNameWord(w) && !isNameGloss(gloss[w])) fresh.add(w); }
+    return { id, fresh: fresh.size, doc: { order: 0, title: st.title, titleEn: st.titleEn, topic: st.topic, level: "Beginner", summary: st.summary,
       createdAt: Date.now() + i, ...(oldIds.length ? { remixOf: oldIds } : {}), sentences, gloss } };
   });
+  const top = made.filter(x => !x.fresh), bottom = made.filter(x => x.fresh).sort((a, b) => a.fresh - b.fresh);
+  top.forEach((x, i) => { x.doc.order = minOrder - top.length + i; });
+  bottom.forEach((x, i) => { x.doc.order = maxOrder + 1 + i; });
   if (gh) {
     const branch = gh.branch || "main", msg = `${oldIds.length ? "Remix " + oldIds.join(" ") : "New stories"} → ${made.map(x => x.id).join(" ")}${NATIVE ? " (Thor)" : " (browser)"}`;
     for (const x of made) {
@@ -4252,7 +4277,31 @@ function adbCard() {
     ${a.on && a.ip && !a.port ? `<p class="muted small" style="margin:0">The port isn't readable here: see Settings → Developer options → Wireless debugging.</p>` : ""}
     ${a.can ? `<p class="muted small" style="margin:0">The Mac uses this address to install updates. It changes when the Thor restarts.</p>`
       : `<p class="muted small" style="margin:0">To switch it from here, run <b>thor-permission.command</b> on the Mac once (while wireless debugging is on).</p>`}
-    <div class="ask-row"><button class="btn ghost" data-act="adbrefresh">Refresh</button></div></div>`;
+    <div class="ask-row"><button class="btn primary" data-act="adbready" ${adbReadying ? "disabled" : ""}>📥 ${adbReadying ? "Getting ready…" : "Get ready for an update"}</button><button class="btn ghost" data-act="adbrefresh">Refresh</button></div>
+    ${adbPosted ? `<p class="small" style="margin:0">${esc(adbPosted)}</p>` : ""}</div>`;
+}
+// "Get ready for an update": switch Wireless debugging on, then post this Thor's address to the data repo
+// (thor/address.json) so the Mac's install scripts find it without anyone typing it in.
+let adbReadying = false, adbPosted = "";
+async function adbReady() {
+  if (adbReadying) return;
+  let a = adbInfo(); if (!a) return;
+  adbReadying = true; adbPosted = ""; render();
+  try {
+    if (!a.on) {
+      if (!a.can) { adbPosted = "Turn on Wireless debugging in Developer options first (or run thor-permission.command on the Mac once so this button can do it)."; return; }
+      NATIVE.setAdbWifi(true);
+      for (let i = 0; i < 10 && !(a = adbInfo()).port; i++) await new Promise(r => setTimeout(r, 700));
+    }
+    if (!a.ip) { adbPosted = "The Thor isn't on Wi-Fi."; return; }
+    const addr = a.ip + (a.port ? ":" + a.port : "");
+    if (!gh) { adbPosted = `Ready at ${addr}. GitHub sync isn't connected, so tell the Mac this address.`; return; }
+    const file = "thor/address.json", branch = gh.branch || "main";
+    let sha; try { sha = (await ghApi("/contents/" + file + "?ref=" + branch)).sha; } catch (e) { if (e.status !== 404) throw e; }
+    await ghApi("/contents/" + file, { method: "PUT", body: { message: "Thor address " + addr, content: b64e(JSON.stringify({ ip: a.ip, port: a.port || "", at: Date.now() }, null, 1)), sha, branch } });
+    adbPosted = `✓ Ready at ${addr}. The Mac will find it by itself, so just ask for the update.`;
+  } catch (e) { console.error(e); adbPosted = "Couldn't post the address: " + ghErrText(e); }
+  finally { adbReadying = false; if (route.view === "settings") render(); }
 }
 function adbToggle() {
   const a = adbInfo(); if (!a || !a.can) return;
@@ -4260,6 +4309,7 @@ function adbToggle() {
   toast(a.on ? "Wireless debugging off." : "Wireless debugging on. The address appears in a moment.");
   render(); setTimeout(() => { if (route.view === "settings") render(); }, 2500);
 }
+setInterval(() => { if (rmx.busy || document.getElementById("aiBusy")) aiBusyPill(); }, 1000);
 
 /* ===================== Games hub (Hindi; made for the Thor's controller, also works by touch and keyboard) ===================== */
 // Views: games (the hub), adv (Adventure, in standalone.js), fly (Sky Words), match (Object Match), acts (What's He Doing?).
