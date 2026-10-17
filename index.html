@@ -1827,7 +1827,7 @@ function viewSettings() {
       <div class="set-row"><label>Show English under sentences</label><button class="chip-toggle" data-toggle="tr" aria-pressed="${settings.tr}">${settings.tr ? "On" : "Off"}</button></div>
       <p class="muted small" style="margin:0">Romanization is generated automatically and can be slightly off for some words.</p>
     </div>
-    ${ghCard()}${aiCard()}<div class="set-card">
+    ${adbCard()}${ghCard()}${aiCard()}<div class="set-card">
       <h3>Your data</h3>
       <p class="muted small" style="margin:0">Your words and progress are saved online with this app, so they're the same on your phone and computer. Claude can read your word list to write stories at your level. Settings on this page are saved per device.</p>
       <div class="set-row"><span class="muted small">${Object.keys(V).length} words saved · ${Object.keys(pending).length ? Object.keys(pending).length + " change(s) waiting to sync" : "all synced"}</span><button class="btn" data-act="export">Copy word list as backup</button></div>
@@ -3136,6 +3136,8 @@ document.addEventListener("click", e => {
     case "ghoff": ghDisconnect(); break;
     case "aisave": aiSaveKey(($("#aiKeyIn") || {}).value || ""); break;
     case "aioff": aiForget(); break;
+    case "adbwifi": adbToggle(); break;
+    case "adbrefresh": render(); break;
     case "aibal": aiSetBalance(($("#aiBalIn") || {}).value || ""); break;
     case "rmxopen": rmxOpen(t.dataset.mode); break;
     case "newk": if (!rmx.busy) { const ti = $("#newTopic"); if (ti) rmx.topic = ti.value; rmx.k = +t.dataset.n; render(); } break;
@@ -4236,6 +4238,27 @@ async function rmxSave(res, pick) {
   }
   lessons = keep.concat(made.map(x => Object.assign({ id: x.id }, x.doc)));
   ghSaveLocal();
+}
+
+/* ===================== Thor: Wireless debugging ===================== */
+function adbInfo() { try { return JSON.parse(NATIVE.adbInfo()); } catch (e) { return null; } }
+function adbCard() {
+  if (!NATIVE || !NATIVE.adbInfo) return "";
+  const a = adbInfo(); if (!a) return "";
+  const addr = a.ip ? a.ip + (a.port ? ":" + a.port : "") : "";
+  return `<div class="set-card" id="adbCard"><h3>📡 Wireless debugging</h3>
+    <div class="set-row"><label>Wireless debugging</label>${a.can ? `<button class="chip-toggle" data-act="adbwifi" aria-pressed="${!!a.on}">${a.on ? "On" : "Off"}</button>` : `<b>${a.on ? "On" : "Off"}</b>`}</div>
+    <div class="set-row"><span>Address</span><b style="font-size:1.2rem;font-variant-numeric:tabular-nums">${a.on ? (addr ? esc(addr) : "…") : (a.ip ? esc(a.ip) + ' <span class="muted small">(port shows when it\'s on)</span>' : "No Wi-Fi")}</b></div>
+    ${a.on && a.ip && !a.port ? `<p class="muted small" style="margin:0">The port isn't readable here: see Settings → Developer options → Wireless debugging.</p>` : ""}
+    ${a.can ? `<p class="muted small" style="margin:0">The Mac uses this address to install updates. It changes when the Thor restarts.</p>`
+      : `<p class="muted small" style="margin:0">To switch it from here, run <b>thor-permission.command</b> on the Mac once (while wireless debugging is on).</p>`}
+    <div class="ask-row"><button class="btn ghost" data-act="adbrefresh">Refresh</button></div></div>`;
+}
+function adbToggle() {
+  const a = adbInfo(); if (!a || !a.can) return;
+  NATIVE.setAdbWifi(!a.on);
+  toast(a.on ? "Wireless debugging off." : "Wireless debugging on. The address appears in a moment.");
+  render(); setTimeout(() => { if (route.view === "settings") render(); }, 2500);
 }
 
 /* ===================== Games hub (Hindi; made for the Thor's controller, also works by touch and keyboard) ===================== */
