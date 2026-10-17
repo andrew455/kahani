@@ -189,7 +189,7 @@ const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } cat
 let cfg = load(CFG_KEY, null) || load(KAHANI_KEY, null);
 let remote = load(CACHE_KEY, null);         // last copy seen on GitHub
 let pending = load(PEND_KEY, []);           // changes not yet saved to GitHub
-let sha = null, etag = null, busy = false;
+let sha = null, etag = null, busy = false, again = false;
 const ui = { filter: 'all', pick: load(PICK_KEY, 'general'), editing: null };
 
 const b64e = s => { const b = new TextEncoder().encode(s); let o = ''; for (let i = 0; i < b.length; i += 0x8000) o += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(o); };
@@ -197,11 +197,19 @@ const b64d = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
 async function gh(path, opts = {}, c = cfg) {
-  const r = await fetch('https://api.github.com/repos/' + c.repo + path, {
-    method: opts.method || 'GET', cache: 'no-store',
-    headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opts.headers || {}), ...(opts.body ? { 'Content-Type': 'application/json' } : {}) },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
+  const body = opts.body ? JSON.stringify(opts.body) : undefined;
+  // A request the phone froze (app closed or screen locked) gives up after 20s instead of blocking every later sync.
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 20000);
+  let r;
+  try {
+    r = await fetch('https://api.github.com/repos/' + c.repo + path, {
+      method: opts.method || 'GET', cache: 'no-store', signal: ctl.signal,
+      // keepalive lets a save finish even if the app is closed right after tapping Save (browsers allow it under 64 KB)
+      keepalive: !!body && body.length < 60000,
+      headers: { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opts.headers || {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body,
+    });
+  } finally { clearTimeout(timer); }
   if (r.status === 304) return { notModified: true };
   if (!r.ok) { const e = new Error('GitHub ' + r.status); e.status = r.status; throw e; }
   return { data: await r.json(), etag: r.headers.get('ETag') };
@@ -233,7 +241,7 @@ const view = () => pending.reduce(apply, remote || EMPTY);
 function change(op) {
   op.at = Date.now();
   pending.push(op); keep(PEND_KEY, pending);
-  render(); sync();
+  render(); sync(true);
 }
 
 // ---- sync with GitHub ----
@@ -263,17 +271,25 @@ async function push() {
     }
   }
 }
-async function sync() {
-  if (!cfg || busy) return;
-  busy = true; setSync('busy', 'Syncing…');
+async function sync(quick) {
+  if (!cfg) return;
+  if (busy) { again = true; return; }
+  busy = true; setSync('busy', pending.length ? 'Sending…' : 'Syncing…');
   try {
-    const changed = await pull();
+    const changed = quick && sha ? false : await pull();
+    const sent = pending.filter(o => o.t === 'add').length;
     await push();
+    if (sent) toast(sent === 1 ? 'Sent ✓' : `Sent ${sent} notes ✓`);
     setSync('ok', 'Synced');
     if (changed && !ui.editing) render();
-  } catch (e) { console.error(e); setSync('err', e.status ? 'Not synced' : 'Offline'); if (e.status) toast(errText(e)); }
+  } catch (e) {
+    console.error(e);
+    setSync('err', e.status ? 'Not synced' : 'Offline');
+    toast(e.status ? errText(e) : 'Saved on this phone — will send when back online');
+  }
   finally { busy = false; }
-  if (pending.length && $('sync').classList.contains('ok')) sync();
+  if (again || (pending.length && $('sync').classList.contains('ok'))) { again = false; sync(); }
+  if (!ui.editing && document.activeElement?.tagName !== 'SELECT') render();   // updates "not sent yet" labels
 }
 function setSync(state, text) { const s = $('sync'); s.className = 'sync ' + state; s.textContent = text + (pending.length ? ` (${pending.length} waiting)` : ''); }
 
@@ -302,6 +318,7 @@ function render() {
 
   $('catList').innerHTML = db.categories.map(c => `<div><span class="dot" style="background:${c.color}"></span><span class="n">${esc(c.name)}</span>${BUILT_IN.includes(c.id) ? '' : `<button class="icon" data-delcat="${c.id}" title="Delete category">✕</button>`}</div>`).join('');
 
+  const unsent = new Set(pending.filter(o => o.t === 'add').map(o => o.note.id));
   const q = $('search').value.trim().toLowerCase();
   const showDone = $('showDone').checked;
   const notes = db.notes.filter(n => (ui.filter === 'all' || n.category === ui.filter) && (showDone || !n.done) && (!q || n.text.toLowerCase().includes(q)));
@@ -313,7 +330,7 @@ function render() {
       ${editing ? `<textarea data-edit="${n.id}">${esc(n.text)}</textarea>` : `<div class="text">${esc(n.text)}</div>`}
       <div class="meta">
         <select data-move="${n.id}" aria-label="Category">${db.categories.map(x => `<option value="${x.id}" ${x.id === n.category ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
-        <span>${ago(n.created)}</span>
+        <span>${ago(n.created)}${unsent.has(n.id) ? ' · <b>not sent yet</b>' : ''}</span>
         <span class="spacer"></span>
         ${editing
           ? `<button class="icon" data-saveedit="${n.id}">Save</button><button class="icon" data-canceledit>Cancel</button>`
@@ -332,7 +349,7 @@ $('compose').addEventListener('submit', e => {
   if (!text) return;
   change({ t: 'add', note: { id: uid(), text, category: ui.pick, done: false, created: Date.now(), updated: Date.now() } });
   $('text').value = ''; $('saveBtn').disabled = true;
-  toast('Saved to ' + (view().categories.find(c => c.id === ui.pick) || {}).name);
+  toast('Sending…');
 });
 
 document.addEventListener('click', e => {
@@ -400,7 +417,9 @@ function start() {
   setInterval(() => { if (!document.hidden) sync(); }, 15000);
   setInterval(() => { if (!ui.editing && document.activeElement?.tagName !== 'SELECT') render(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
-  addEventListener('online', sync);
+  addEventListener('online', () => sync());
+  addEventListener('pageshow', () => sync());
+  addEventListener('focus', () => sync());
 }
 // QR codes for opening this page on a phone (just the address — never the token)
 const PAGE_URL = location.origin + location.pathname;
