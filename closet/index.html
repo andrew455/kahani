@@ -214,6 +214,7 @@
             <span class="spacer"></span>
             <button id="tMeasure" class="on">Sizes</button>
             <button id="tClothes" class="on">Clothes</button>
+            <button id="hideSelBtn" hidden>🙈 Hide</button>
             <button id="unhideBtn" hidden></button>
             <button class="enter-full" id="fullBtn">⤢</button>
             <button class="exit-full" id="exitFullBtn">Done</button>
@@ -747,6 +748,7 @@ $('strip').addEventListener('click', e => {
 });
 function showUnit(u) {
   ui.paintUnit = u ? u.id : null;
+  $('hideSelBtn').hidden = !u;
   if (u) ui.paintTo = 'unit'; else if (ui.paintTo === 'unit') ui.paintTo = 'cupboard';
   if (typeof renderPalette === 'function' && $('swIkea')) renderPalette();
   if (!u) { $('unitInfo').innerHTML = `<div class="muted">Tap a cupboard to see what's in it and its sizes.</div>`; return; }
@@ -764,6 +766,8 @@ function renderHidden() {
   const n = scene3d.design ? scene3d.design.units.filter(u => ui.hidden.has(u.id)).length : 0;
   $('unhideBtn').hidden = !n; $('unhideBtn').textContent = `Show hidden (${n})`;
 }
+$('hideSelBtn').onclick = () => { if (ui.paintUnit) hideUnit(ui.paintUnit); };
+function hideUnit(id) { ui.hidden.add(id); scene3d.selectById(null); scene3d.setHidden(ui.hidden); renderHidden(); }
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-hide]'); if (!b) return;
   ui.hidden.add(b.dataset.hide); scene3d.selectById(null); scene3d.setHidden(ui.hidden); renderHidden();
