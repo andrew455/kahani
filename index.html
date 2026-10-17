@@ -3136,6 +3136,7 @@ document.addEventListener("click", e => {
     case "ghoff": ghDisconnect(); break;
     case "aisave": aiSaveKey(($("#aiKeyIn") || {}).value || ""); break;
     case "aioff": aiForget(); break;
+    case "aibal": aiSetBalance(($("#aiBalIn") || {}).value || ""); break;
     case "rmxopen": rmxOpen(); break;
     case "rmxn": if (!rmx.busy) { rmx.n = +t.dataset.n; render(); } break;
     case "rmxgo": rmxRun(); break;
@@ -3913,13 +3914,72 @@ function aiSaveKey(k) {
   toast("Claude API key saved on this device."); render();
 }
 function aiForget() { aiKey = ""; try { localStorage.removeItem(AI_KEY); } catch (e) {} render(); }
+function aiSpendHtml() {
+  const t = aiTotals(), b = t.bal;
+  return `<div class="set-row"><span>Spent through Kahani</span><b>${usd(t.spent)}</b></div>
+    <p class="muted small" style="margin:0">${t.remixes} remix${t.remixes === 1 ? "" : "es"} · ${t.calls} request${t.calls === 1 ? "" : "s"} to Claude${gh ? " · synced across your devices" : ""}. Worked out from the tokens Claude reports, so it's close but not exact.</p>
+    ${b ? `<div class="set-row"><span>About <b>${usd(Math.max(0, t.left))}</b> left</span><span class="muted small">Console said ${usd(b.usd)} on ${new Date(b.at).toLocaleDateString([], { day: "numeric", month: "short" })}</span></div>` : ""}
+    <div class="set-row"><label for="aiBalIn">Balance shown in the Claude Console</label><span style="display:flex;gap:6px"><input id="aiBalIn" class="search" inputmode="decimal" placeholder="${b ? b.usd.toFixed(2) : "e.g. 10.00"}" style="width:7em"><button class="btn" data-act="aibal">Update</button></span></div>`;
+}
 function aiCard() {
-  return `<div class="set-card" id="aiCard"><h3>🔀 Claude API key</h3>
+  return `<div class="set-card" id="aiCard"><h3>🔀 Claude API · key and spending</h3>
     <p class="muted small" style="margin:0">Used by <b>Remix stories</b> in the Library. The key stays on this device only. It isn't synced or uploaded anywhere except to Claude.</p>
+    ${aiSpendHtml()}
     ${aiKey ? `<div class="set-row"><span>Key saved <span class="muted">(…${esc(aiKey.slice(-4))})</span></span><button class="btn ghost" data-act="aioff">Remove</button></div>`
     : `<div class="set-row"><label for="aiKeyIn">Key</label><input id="aiKeyIn" class="search" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"></div>
       <div class="ask-row"><button class="btn primary" data-act="aisave">Save key</button></div>`}</div>`;
 }
+
+// What Kahani has spent on Claude: one entry per API call, worked out from the token counts Claude sends back.
+// Shared by both languages; synced to ai/spend.json at the root of the data repo. "bal" is the balance last read
+// off the Claude Console, so "left" = that balance minus what's been spent since.
+const AI_LEDGER = "kahani:aispend";
+const AI_PRICE = { "claude-opus-5-5": [4, 20], "claude-sonnet-5-5": [2, 10], "claude-haiku-5-5": [.1, .5] };   // $ per million tokens in / out
+let aiLedger = (() => { try { return Object.assign({ e: {}, bal: null }, JSON.parse(localStorage.getItem(AI_LEDGER) || "{}")); } catch (e) { return { e: {}, bal: null }; } })();
+const aiSaveLedger = () => { try { localStorage.setItem(AI_LEDGER, JSON.stringify(aiLedger)); } catch (e) {} };
+function aiCost(msg) {
+  const u = msg.usage || {}, [pi, po] = AI_PRICE[msg.model] || [5, 25];
+  const inTok = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) * .1 + (u.cache_creation_input_tokens || 0) * 1.25;
+  return (inTok * pi + (u.output_tokens || 0) * po) / 1e6;
+}
+function aiRecord(msg, what) {
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  aiLedger.e[id] = { t: Date.now(), usd: +aiCost(msg).toFixed(5), in: (msg.usage || {}).input_tokens || 0, out: (msg.usage || {}).output_tokens || 0, model: msg.model, what, lang: LANG };
+  aiSaveLedger();
+}
+function aiTotals() {
+  const es = Object.values(aiLedger.e), b = aiLedger.bal;
+  const spent = es.reduce((a, e) => a + e.usd, 0);
+  const since = b ? es.filter(e => e.t > b.at).reduce((a, e) => a + e.usd, 0) : 0;
+  const remixes = new Set(es.filter(e => e.what && e.what.startsWith("remix:")).map(e => e.what)).size;
+  return { spent, remixes, calls: es.length, left: b ? b.usd - since : null, bal: b };
+}
+let aiSyncing = false;
+async function aiSync() {
+  if (!gh || aiSyncing) return;
+  aiSyncing = true;
+  const file = "ai/spend.json", branch = gh.branch || "main";
+  try {
+    let remote = { e: {}, bal: null }, sha;
+    try { const c = await ghApi("/contents/" + file + "?ref=" + branch); sha = c.sha; remote = Object.assign(remote, JSON.parse(b64d(c.content))); }
+    catch (e) { if (e.status !== 404) throw e; }
+    const merged = { e: Object.assign({}, remote.e, aiLedger.e), bal: [remote.bal, aiLedger.bal].filter(Boolean).sort((a, b) => b.at - a.at)[0] || null };
+    const needPut = Object.keys(merged.e).length !== Object.keys(remote.e || {}).length || JSON.stringify(merged.bal) !== JSON.stringify(remote.bal || null);
+    if (needPut) await ghApi("/contents/" + file, { method: "PUT", body: { message: "Claude spend" + (NATIVE ? " (Thor)" : " (browser)"), content: b64e(JSON.stringify(merged, null, 1)), sha, branch } });
+    const changed = JSON.stringify(merged) !== JSON.stringify(aiLedger);
+    aiLedger = merged; aiSaveLedger();
+    if (changed && route.view === "settings") render();
+  } catch (e) { console.error(e); }
+  finally { aiSyncing = false; }
+}
+function aiSetBalance(v) {
+  const usd = parseFloat(String(v).replace(/[^0-9.]/g, ""));
+  if (!(usd >= 0)) { toast("Type the balance shown in the Claude Console, like 9.42"); return; }
+  aiLedger.bal = { usd, at: Date.now() }; aiSaveLedger(); toast("Balance saved."); render(); aiSync();
+}
+const usd = x => "$" + x.toFixed(2);
+setTimeout(aiSync, 4000);
+setInterval(() => { if (route.view === "settings" && !document.hidden) aiSync(); }, 90000);
 
 const rmxWords = L => { const out = []; for (const s of L.sentences || []) for (const m of s.hi.match(WORD_RE) || []) out.push(norm(m)); return out; };
 const rmxLeft = L => { const m = lessonMix(L); return m.n + m.l; };
@@ -4014,7 +4074,7 @@ OLD STORIES:
 ${JSON.stringify(old)}`;
     const Anthropic = await loadAnthropic();
     const client = new Anthropic({ apiKey: aiKey, dangerouslyAllowBrowser: true });
-    const messages = [{ role: "user", content: prompt }];
+    const messages = [{ role: "user", content: prompt }], runId = Date.now().toString(36);
     let res = null, chk = null;
     for (let round = 0; round < 3; round++) {
       const stream = client.beta.messages.stream({
@@ -4023,6 +4083,7 @@ ${JSON.stringify(old)}`;
         output_config: { effort: "high", format: { type: "json_schema", schema: RMX_SCHEMA } }
       });
       const msg = await stream.finalMessage();
+      aiRecord(msg, "remix:" + runId);
       if (msg.stop_reason === "refusal") throw new Error("Claude declined to write these stories.");
       if (msg.stop_reason === "max_tokens") throw new Error("The stories came out too long. Try merging fewer.");
       const text = msg.content.filter(b => b.type === "text").map(b => b.text).join("");
@@ -4053,7 +4114,7 @@ ${JSON.stringify(old)}`;
       : e instanceof SyntaxError ? "Claude's answer came back garbled. Nothing was changed. Try again."
       : (e && e.message) || "Something went wrong.";
   } finally {
-    rmx.busy = false; render();
+    rmx.busy = false; render(); aiSync();
   }
 }
 async function rmxSave(res, pick) {
