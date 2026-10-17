@@ -83,6 +83,17 @@
   @media (min-width: 900px) { .shot { height: 190px; } }
   .compose.drag { outline: 2px dashed var(--accent); outline-offset: -6px; }
   .paste-hint { font-size: 13px; color: var(--muted); text-align: center; margin-top: -4px; }
+  .ikea-btn { width: 100%; background: #0058a3; color: #fff; border: 0; border-radius: 12px; padding: 11px 16px; font-weight: 700; font-size: 16px; }
+  .ikea-btn.alt { background: transparent; color: var(--ink); border: 1px solid var(--line); font-weight: 600; }
+  .ikea-btn:disabled { opacity: .6; }
+  .shop { display: grid; gap: 6px; font-size: 14px; }
+  .shop a, .shop div.row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 7px 8px; background: var(--chip); border-radius: 8px; color: inherit; text-decoration: none; }
+  .shop a:hover { outline: 1px solid var(--muted); }
+  .shop .q { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .shop .n b { display: block; } .shop .n span { color: var(--muted); font-size: 12px; }
+  .shop .p { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .shop-total { display: flex; justify-content: space-between; font-weight: 700; margin-top: 10px; font-size: 16px; }
+  .ikea-tag { display: inline-block; background: #ffda1a; color: #0058a3; font-weight: 800; font-size: 11px; padding: 1px 6px; border-radius: 4px; vertical-align: 2px; margin-right: 4px; }
   .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 12px; }
   .stat { background: var(--chip); border-radius: 10px; padding: 8px 10px; }
   .stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -194,6 +205,8 @@
             <div class="summary" id="summary" style="margin-top:10px"></div>
             <div class="stats" id="stats"></div>
           </div>
+          <div class="card" id="ikeaCard" hidden></div>
+          <button class="ikea-btn" id="ikeaBtn" hidden></button>
           <div class="card unit-info" id="unitInfo"><div class="muted">Tap a cupboard to see what's in it and its sizes.</div></div>
           <button class="primary" id="askChanges">Ask for changes to this design</button>
         </div>
@@ -416,7 +429,7 @@ function renderAsk() {
   $('reqs').innerHTML = reqs.length ? reqs.map(r => {
     const st = r.status === 'done' ? `<span class="pill done">Done</span>` : r.status === 'working' ? `<span class="pill working">Claude is working on it</span>` : `<span class="pill new">Waiting for Claude</span>`;
     return `<div class="card req">
-      ${r.base ? `<div class="muted">Changes to Design ${r.base}</div>` : ''}
+      ${r.type === 'ikea' ? `<div class="muted"><span class="ikea-tag">IKEA</span>Make Design ${r.base} from real IKEA Australia parts</div>` : r.base ? `<div class="muted">Changes to Design ${r.base}</div>` : ''}
       ${r.text ? `<div class="text">${esc(r.text)}</div>` : ''}
       ${r.images?.length ? `<div class="thumbs">${r.images.map(n => `<button class="thumb" data-photo="${esc(n)}"><img data-src="${esc(n)}" alt=""></button>`).join('')}</div>` : ''}
       <div class="meta">${st}<span>${ago(r.created)}</span><span class="spacer"></span>${r.design ? `<button class="ghost" data-show="${r.design}">See Design ${r.design}</button>` : ''}</div>
@@ -487,6 +500,43 @@ document.addEventListener('click', e => {
   else if (d.photo) openPhoto(d.photo);
   else if (d.show) { ui.version = +d.show; setTab('designs'); renderDesigns(); }
 });
+// IKEA: a design can be rebuilt from real IKEA Australia parts. The IKEA version is its own design
+// (ikeaOf: original version) with a shopping list; the original links to it (ikeaVersion).
+function renderIkea(d) {
+  const btn = $('ikeaBtn'), card = $('ikeaCard');
+  const ikeaOf = d.ikeaOf && db.designs.find(x => x.version === d.ikeaOf);
+  const ikeaV = !d.ikeaOf && db.designs.filter(x => x.ikeaOf === d.version).sort((a, b) => b.version - a.version)[0];
+  const waiting = db.requests.some(r => r.type === 'ikea' && r.base === d.version && r.status !== 'done');
+  btn.hidden = false; btn.disabled = false; btn.className = 'ikea-btn';
+  if (d.ikeaOf) { btn.className = 'ikea-btn alt'; btn.textContent = ikeaOf ? `See the original (Design ${d.ikeaOf})` : 'Original design'; btn.dataset.go = d.ikeaOf; btn.disabled = !ikeaOf; }
+  else if (ikeaV) { btn.textContent = `See the IKEA version (Design ${ikeaV.version})`; btn.dataset.go = ikeaV.version; }
+  else if (waiting) { btn.textContent = 'IKEA version on its way…'; btn.disabled = true; delete btn.dataset.go; }
+  else { btn.textContent = 'Convert to IKEA'; delete btn.dataset.go; }
+  const items = d.shopping || [];
+  card.hidden = !items.length;
+  if (items.length) {
+    const money = n => '$' + Number(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    const total = d.total || items.reduce((t, i) => t + (i.price || 0) * (i.qty || 1), 0);
+    card.innerHTML = `<div class="label"><span class="ikea-tag">IKEA</span>Shopping list</div>
+      <div class="shop">${items.map(i => {
+        const inner = `<span class="q">${i.qty || 1}×</span><span class="n"><b>${esc(i.name)}</b><span>${esc(i.desc || '')}${i.article ? ' · ' + esc(i.article) : ''}</span></span><span class="p">${i.price ? money(i.price * (i.qty || 1)) : ''}</span>`;
+        return /^https:\/\/www\.ikea\.com\//.test(i.url || '') ? `<a href="${esc(i.url)}" target="_blank" rel="noopener">${inner}</a>` : `<div class="row">${inner}</div>`;
+      }).join('')}</div>
+      <div class="shop-total"><span>Total</span><span>${money(total)}</span></div>
+      <div class="muted" style="margin-top:6px">${esc(d.priceNote || 'Prices from ikea.com/au when the design was made — check before buying.')}</div>`;
+  }
+}
+$('ikeaBtn').onclick = async () => {
+  const btn = $('ikeaBtn'), d = scene3d.design;
+  if (btn.dataset.go) { ui.version = +btn.dataset.go; renderDesigns(); scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const req = { id: uid(), type: 'ikea', text: `Convert Design ${d.version} to real IKEA Australia parts`, images: [], base: d.version, status: 'new', created: Date.now() };
+    await update('Robe request: IKEA version', x => x.requests.push(req));
+    toast('Sent — Claude will make an IKEA version ✓');
+    renderAll();
+  } catch (e) { toast(errText(e)); renderIkea(d); }
+};
 $('askChanges').onclick = () => {
   ui.base = ui.version; setTab('ask'); renderAsk();
   $('text').focus(); scrollTo({ top: 0, behavior: 'smooth' });
@@ -521,9 +571,10 @@ function renderDesigns() {
   if (!list.length) return;
   if (!list.some(d => d.version === ui.version)) ui.version = list[0].version;
   const d = list.find(x => x.version === ui.version);
-  $('versionPick').innerHTML = list.map(x => `<option value="${x.version}" ${x.version === d.version ? 'selected' : ''}>Design ${x.version}${x.title ? ' — ' + esc(x.title) : ''}${x === list[0] ? ' (latest)' : ''}</option>`).join('');
+  $('versionPick').innerHTML = list.map(x => `<option value="${x.version}" ${x.version === d.version ? 'selected' : ''}>Design ${x.version}${x.ikeaOf ? ' (IKEA)' : ''}${x.title ? ' — ' + esc(x.title) : ''}${x === list[0] ? ' (latest)' : ''}</option>`).join('');
   $('summary').textContent = d.summary || '';
   renderShots(d);
+  renderIkea(d);
   $('stats').innerHTML = stats(d).map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
   if (scene3d.design !== d) scene3d.show(d);
 }
