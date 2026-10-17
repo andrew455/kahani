@@ -4019,8 +4019,8 @@ function flyDraw(t) {
       const ty = flyOpts.en ? y - rad * .18 : y;
       x.lineWidth = Math.max(2, rad * .08); x.strokeStyle = "rgba(20,24,40,.85)"; x.strokeText(w.w, cx, ty); x.fillStyle = "#fff"; x.fillText(w.w, cx, ty);
       if (flyOpts.en) {   // English under each word when that option is on
-        x.font = `600 ${Math.max(10, rad * .22)}px Mukta, system-ui, sans-serif`; x.lineWidth = Math.max(2, rad * .06);
-        x.strokeText(w.m, cx, y + rad * .3, rad * 1.7); x.fillStyle = "#ffe9a8"; x.fillText(w.m, cx, y + rad * .3, rad * 1.7);
+        x.font = `700 ${Math.max(12, rad * .3)}px Mukta, system-ui, sans-serif`; x.lineWidth = Math.max(3, rad * .08);
+        x.strokeText(w.m, cx, y + rad * .38, rad * 1.8); x.fillStyle = "#ffe9a8"; x.fillText(w.m, cx, y + rad * .38, rad * 1.8);
       }
     });
   }
