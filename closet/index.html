@@ -73,9 +73,14 @@
   .vpick { display: flex; gap: 8px; align-items: center; }
   .vpick select { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 10px; }
   .summary { white-space: pre-wrap; font-size: 15px; }
-  .design-photo { display: block; width: 100%; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--chip); margin-top: 10px; position: relative; aspect-ratio: 3 / 4; }
-  .design-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .design-photo span { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
+  .left-col { min-width: 0; display: grid; gap: 12px; }
+  .gallery { padding: 12px; }
+  .gallery .strip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+  .shot { flex: none; height: 150px; border: 0; padding: 0; border-radius: 10px; overflow: hidden; background: var(--chip); position: relative; }
+  .shot.tall { aspect-ratio: 3 / 4; } .shot.wide { aspect-ratio: 4 / 3; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .shot span { position: absolute; left: 6px; bottom: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 6px; }
+  @media (min-width: 900px) { .shot { height: 190px; } }
   .compose.drag { outline: 2px dashed var(--accent); outline-offset: -6px; }
   .paste-hint { font-size: 13px; color: var(--muted); text-align: center; margin-top: -4px; }
   .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 12px; }
@@ -126,7 +131,10 @@
   .photo { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 30; display: flex; flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
   .photo .pic { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px; }
   .photo img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
-  .photo .bar2 { display: flex; justify-content: center; padding: 12px; }
+  .photo .bar2 { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 12px; color: #ddd; font-size: 14px; }
+  .photo .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(255,255,255,.18); color: #fff; font-size: 22px; line-height: 44px; padding: 0; }
+  .photo .nav.prev { left: 10px; } .photo .nav.next { right: 10px; }
+  .photo .pic { position: relative; }
   .photo .bar2 button { background: #2b2926; color: #fff; border: 0; border-radius: 10px; padding: 10px 16px; font-size: 15px; }
 
   .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); text-align: center; z-index: 40; }
@@ -158,6 +166,7 @@
 
     <section id="designsView">
       <div class="viewer-layout">
+        <div class="left-col">
         <div class="stage" id="stage">
           <canvas id="canvas"></canvas>
           <div class="labels" id="labels"></div>
@@ -173,11 +182,15 @@
           </div>
           <div class="stage-hint" id="hint">Drag to turn · pinch or scroll to zoom · two fingers to move · tap a cupboard</div>
         </div>
+        <div class="card gallery" id="gallery" hidden>
+          <div class="label">Photos · tap to look closer</div>
+          <div class="strip" id="strip"></div>
+        </div>
+        </div>
 
         <div class="panel">
           <div class="card">
             <div class="vpick"><select id="versionPick" aria-label="Design version"></select></div>
-            <button class="design-photo" id="designPhoto" hidden><img alt="Photo-style render of this design"><span>Photo · tap to enlarge</span></button>
             <div class="summary" id="summary" style="margin-top:10px"></div>
             <div class="stats" id="stats"></div>
           </div>
@@ -212,7 +225,7 @@
     <div class="foot"><button class="icon" id="disconnect">Disconnect this device</button></div>
   </div>
 </div>
-<div class="photo" id="photo" hidden><div class="pic"><img id="photoImg" alt=""></div><div class="bar2"><button id="photoClose">Close</button></div></div>
+<div class="photo" id="photo" hidden><div class="pic"><img id="photoImg" alt=""><button class="nav prev" id="photoPrev" aria-label="Previous">‹</button><button class="nav next" id="photoNext" aria-label="Next">›</button></div><div class="bar2"><span id="photoCap"></span><button id="photoClose">Close</button></div></div>
 <div class="toast" id="toast"></div>
 
 <script src="../three.min.js"></script>
@@ -342,9 +355,33 @@ function stamp() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
-function openPhoto(name, path) {
+// photo box: one inspiration photo, or a design's renders with previous / next (arrows, keys or swipe)
+const box = { list: [], i: 0 };
+function showShot(i) {
+  box.i = (i + box.list.length) % box.list.length;
+  const p = box.list[box.i];
+  $('photoImg').src = '';
+  $('photoCap').textContent = `${VIEW_NAMES[p.view] || 'Photo'} · ${box.i + 1} of ${box.list.length}`;
+  rawUrl(p.path).then(u => { if (box.list[box.i] === p) $('photoImg').src = u; }).catch(e => toast(errText(e)));
+}
+function openShots(list, i) {
+  box.list = list; $('photo').hidden = false;
+  $('photoPrev').hidden = $('photoNext').hidden = list.length < 2;
+  showShot(i);
+}
+$('photoPrev').onclick = () => showShot(box.i - 1);
+$('photoNext').onclick = () => showShot(box.i + 1);
+addEventListener('keydown', e => { if ($('photo').hidden || box.list.length < 2) return; if (e.key === 'ArrowLeft') showShot(box.i - 1); if (e.key === 'ArrowRight') showShot(box.i + 1); });
+let swipeX = null;
+$('photo').addEventListener('touchstart', e => swipeX = e.touches[0].clientX, { passive: true });
+$('photo').addEventListener('touchend', e => {
+  if (swipeX == null || box.list.length < 2) return;
+  const dx = e.changedTouches[0].clientX - swipeX; swipeX = null;
+  if (Math.abs(dx) > 50) showShot(box.i + (dx < 0 ? 1 : -1));
+});
+function openPhoto(name) {
+  box.list = []; $('photoPrev').hidden = $('photoNext').hidden = true; $('photoCap').textContent = '';
   $('photo').hidden = false; $('photoImg').src = '';
-  if (path) return rawUrl(path).then(u => $('photoImg').src = u).catch(e => toast(errText(e)));
   imageUrl(name, true).then(u => { if (!$('photoImg').src) $('photoImg').src = u; }).catch(() => {});
   imageUrl(name, false).then(u => $('photoImg').src = u).catch(e => toast(errText(e)));
 }
@@ -486,16 +523,24 @@ function renderDesigns() {
   const d = list.find(x => x.version === ui.version);
   $('versionPick').innerHTML = list.map(x => `<option value="${x.version}" ${x.version === d.version ? 'selected' : ''}>Design ${x.version}${x.title ? ' — ' + esc(x.title) : ''}${x === list[0] ? ' (latest)' : ''}</option>`).join('');
   $('summary').textContent = d.summary || '';
-  const ph = $('designPhoto');
-  ph.hidden = !d.photo;
-  if (d.photo && ph.dataset.path !== d.photo) {
-    ph.dataset.path = d.photo; ph.querySelector('img').removeAttribute('src');
-    rawUrl(d.photo).then(u => { if (ph.dataset.path === d.photo) ph.querySelector('img').src = u; }).catch(() => {});
-  }
+  renderShots(d);
   $('stats').innerHTML = stats(d).map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
   if (scene3d.design !== d) scene3d.show(d);
 }
-$('designPhoto').onclick = () => openPhoto(null, $('designPhoto').dataset.path);
+const VIEW_NAMES = { door: 'From the doorway', back: 'From the back', right: 'Right wall', left: 'Left wall', high: 'Overview' };
+const shotsOf = d => d.photos || (d.photo ? [{ path: d.photo, view: 'door' }] : []);
+function renderShots(d) {
+  const shots = shotsOf(d), key = shots.map(p => p.path).join('|');
+  $('gallery').hidden = !shots.length;
+  if ($('strip').dataset.key === key) return;
+  $('strip').dataset.key = key;
+  $('strip').innerHTML = shots.map((p, i) => `<button class="shot ${p.view === 'left' || p.view === 'right' ? 'wide' : 'tall'}" data-shot="${i}"><img alt=""><span>${VIEW_NAMES[p.view] || 'Photo'}</span></button>`).join('');
+  shots.forEach((p, i) => rawUrl(p.path).then(u => { const img = $('strip').querySelector(`[data-shot="${i}"] img`); if (img && $('strip').dataset.key === key) img.src = u; }).catch(() => {}));
+}
+$('strip').addEventListener('click', e => {
+  const b = e.target.closest('[data-shot]'); if (!b) return;
+  openShots(shotsOf(scene3d.design), +b.dataset.shot);
+});
 $('versionPick').addEventListener('change', e => { ui.version = +e.target.value; renderDesigns(); });
 function showUnit(u) {
   if (!u) { $('unitInfo').innerHTML = `<div class="muted">Tap a cupboard to see what's in it and its sizes.</div>`; return; }
