@@ -1244,7 +1244,8 @@ function viewLibrary() {
       <div class="stat cta">${due ? `<button class="btn accent" data-go="review">Review ${due} word${due === 1 ? "" : "s"}</button>` : ""}</div>
     </div>
     <div class="section-h"><div class="seg lib-tabs" role="group" aria-label="Which stories"><button data-libtab="reading" aria-pressed="${tab === "reading"}">📖 To read <span class="muted">${all.length - learnedN}</span></button><button data-libtab="learned" aria-pressed="${tab === "learned"}">★ Learned <span class="muted">${learnedN}</span></button></div><span class="lib-tools">
-      <span class="seg" role="group" aria-label="Stories per row">${[0, 1, 2, 3, 4].map(n => `<button data-cols="${n}" aria-pressed="${(settings.cols || 0) === n}">${n || "Auto"}</button>`).join("")}</span></span></div>
+      ${STANDALONE && lessons.length > 1 ? `<button class="btn" data-act="rmxopen" ${rmx.busy ? "disabled" : ""}>🔀 Remix</button>` : ""}<span class="seg" role="group" aria-label="Stories per row">${[0, 1, 2, 3, 4].map(n => `<button data-cols="${n}" aria-pressed="${(settings.cols || 0) === n}">${n || "Auto"}</button>`).join("")}</span></span></div>
+    ${STANDALONE ? rmxPanel() : ""}
     ${lessons.length && !sorted.length ? `<div class="empty">${tab === "learned" ? "<h3>No learned stories yet</h3>A story moves here once you know every word in it." : "<h3>You've learned every story!</h3>Ask Claude for new ones."}</div>` : ""}
     ${sorted.length ? `<div class="lessons" ${settings.cols ? `style="grid-template-columns:repeat(${settings.cols},minmax(0,1fr))"` : ""}>${cards}</div>` : empty}`;
 }
@@ -1826,7 +1827,7 @@ function viewSettings() {
       <div class="set-row"><label>Show English under sentences</label><button class="chip-toggle" data-toggle="tr" aria-pressed="${settings.tr}">${settings.tr ? "On" : "Off"}</button></div>
       <p class="muted small" style="margin:0">Romanization is generated automatically and can be slightly off for some words.</p>
     </div>
-    ${ghCard()}<div class="set-card">
+    ${ghCard()}${aiCard()}<div class="set-card">
       <h3>Your data</h3>
       <p class="muted small" style="margin:0">Your words and progress are saved online with this app, so they're the same on your phone and computer. Claude can read your word list to write stories at your level. Settings on this page are saved per device.</p>
       <div class="set-row"><span class="muted small">${Object.keys(V).length} words saved · ${Object.keys(pending).length ? Object.keys(pending).length + " change(s) waiting to sync" : "all synced"}</span><button class="btn" data-act="export">Copy word list as backup</button></div>
@@ -3133,6 +3134,12 @@ document.addEventListener("click", e => {
     case "ghsave": ghConnect(($("#ghRepo") || {}).value || "", ($("#ghToken") || {}).value || ""); break;
     case "ghsync": ghPull(); break;
     case "ghoff": ghDisconnect(); break;
+    case "aisave": aiSaveKey(($("#aiKeyIn") || {}).value || ""); break;
+    case "aioff": aiForget(); break;
+    case "rmxopen": rmxOpen(); break;
+    case "rmxn": if (!rmx.busy) { rmx.n = +t.dataset.n; render(); } break;
+    case "rmxgo": rmxRun(); break;
+    case "rmxclose": if (!rmx.busy) { rmx.open = false; rmx.msg = ""; render(); } break;
     case "qnext": nextQuiz(); break;
     case "tleave": closeTalk(); break;
     case "bagopen": if (talk.npc) closeTalk(); talk.side = "bag"; renderSide(); break;
@@ -3888,6 +3895,204 @@ function bakeryKey(k) {
   else return;
   const it = bakeryInfo()[bakPick]; if (it.n) speak(it.p[2]);
   render();
+}
+
+/* ===================== standalone: Remix stories with Claude ===================== */
+// Merges the easiest stories (fewest words left to learn) into fewer new ones, written by Claude using only words
+// already seen, and covering every word still being learned. Needs a Claude API key, kept only on this device.
+const AI_KEY = "kahani:anthropic";
+const AI_MODEL = "claude-opus-5-5";
+let aiKey = (() => { try { return localStorage.getItem(AI_KEY) || ""; } catch (e) { return ""; } })();
+if (NATIVE && NATIVE.takeAi) { try { const k = NATIVE.takeAi(); if (k) { aiKey = k.trim(); localStorage.setItem(AI_KEY, aiKey); } } catch (e) {} }
+const rmx = { open: false, n: 0, busy: false, msg: "" };
+
+function aiSaveKey(k) {
+  k = String(k || "").trim();
+  if (!/^sk-ant-/.test(k)) { toast("That doesn't look like a Claude API key. It starts with sk-ant-"); return; }
+  aiKey = k; try { localStorage.setItem(AI_KEY, k); } catch (e) {}
+  toast("Claude API key saved on this device."); render();
+}
+function aiForget() { aiKey = ""; try { localStorage.removeItem(AI_KEY); } catch (e) {} render(); }
+function aiCard() {
+  return `<div class="set-card" id="aiCard"><h3>🔀 Claude API key</h3>
+    <p class="muted small" style="margin:0">Used by <b>Remix stories</b> in the Library. The key stays on this device only. It isn't synced or uploaded anywhere except to Claude.</p>
+    ${aiKey ? `<div class="set-row"><span>Key saved <span class="muted">(…${esc(aiKey.slice(-4))})</span></span><button class="btn ghost" data-act="aioff">Remove</button></div>`
+    : `<div class="set-row"><label for="aiKeyIn">Key</label><input id="aiKeyIn" class="search" type="password" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"></div>
+      <div class="ask-row"><button class="btn primary" data-act="aisave">Save key</button></div>`}</div>`;
+}
+
+const rmxWords = L => { const out = []; for (const s of L.sentences || []) for (const m of s.hi.match(WORD_RE) || []) out.push(norm(m)); return out; };
+const rmxLeft = L => { const m = lessonMix(L); return m.n + m.l; };
+function rmxChoices() {
+  const t = lessons.length; const c = [4, 8].filter(n => n < t); if (t >= 2) c.push(t);
+  return c;
+}
+function rmxPick(n) {
+  return sortedLessons().map((L, i) => ({ L, left: rmxLeft(L), i })).sort((a, b) => a.left - b.left || a.i - b.i).slice(0, n).map(x => x.L);
+}
+const rmxOut = n => Math.max(1, Math.round(n / 3.5));
+function rmxOpen() {
+  if (rmx.busy) return;
+  const c = rmxChoices(); if (!c.length) { toast("You need at least two stories to remix."); return; }
+  rmx.open = true; rmx.msg = ""; if (!c.includes(rmx.n)) rmx.n = c[Math.min(1, c.length - 1)] || c[0];
+  if (route.view !== "library") go("library"); else render();
+}
+function rmxPanel() {
+  if (!rmx.open) return "";
+  if (!aiKey) return `<div class="set-card rmx"><h3>🔀 Remix stories</h3><p class="muted small" style="margin:0">Add your Claude API key in Settings first.</p>
+    <div class="ask-row"><button class="btn primary" data-go="settings">Open Settings</button><button class="btn ghost" data-act="rmxclose">Close</button></div></div>`;
+  const pick = rmxPick(rmx.n), out = rmxOut(rmx.n);
+  const left = new Set(); for (const L of pick) for (const w of lessonWords(L)) { const s = statusOf(w); if (s !== 5 && s !== -1 && !isNameWord(w)) left.add(w); }
+  return `<div class="set-card rmx"><h3>🔀 Remix stories</h3>
+    <p class="muted small" style="margin:0">Claude merges the stories with the fewest words left into new ones. It only uses words you've already seen, and keeps every word you're still learning.</p>
+    <div class="set-row"><span>Merge the easiest</span><span class="seg" role="group" aria-label="How many stories">${rmxChoices().map(n => `<button data-act="rmxn" data-n="${n}" aria-pressed="${rmx.n === n}" ${rmx.busy ? "disabled" : ""}>${n === lessons.length ? "All " + n : n}</button>`).join("")}</span></div>
+    <p class="small" style="margin:0"><b>${pick.length}</b> stories → <b>${out}</b> new ${out === 1 ? "story" : "stories"}, keeping <b>${left.size}</b> words you're still learning.<br><span class="muted">${pick.map(L => esc(L.titleEn || L.title)).join(" · ")}</span></p>
+    ${rmx.msg ? `<p class="small" style="margin:0" aria-live="polite">${rmx.busy ? "⏳ " : ""}${esc(rmx.msg)}</p>` : ""}
+    <div class="ask-row"><button class="btn primary" data-act="rmxgo" ${rmx.busy ? "disabled" : ""}>${rmx.busy ? "Remixing…" : "Remix now"}</button>${rmx.busy ? "" : `<button class="btn ghost" data-act="rmxclose">Cancel</button>`}</div>
+    <p class="muted small" style="margin:0">Uses your Claude API credit (usually well under $1 a remix). Takes a minute or two.</p></div>`;
+}
+function rmxSay(msg) { rmx.msg = msg; if (route.view === "library") render(); else pushBottom(); }
+
+let anthropicLoad = null;
+function loadAnthropic() {
+  if (window.Anthropic) return Promise.resolve(window.Anthropic);
+  if (!anthropicLoad) anthropicLoad = new Promise((ok, bad) => {
+    const s = document.createElement("script"); s.src = "anthropic-sdk.min.js";
+    s.onload = () => window.Anthropic ? ok(window.Anthropic) : bad(new Error("Claude library didn't load"));
+    s.onerror = () => { anthropicLoad = null; bad(new Error("Claude library didn't load")); };
+    document.head.appendChild(s);
+  });
+  return anthropicLoad;
+}
+const RMX_SCHEMA = {
+  type: "object", additionalProperties: false, required: ["stories", "gloss"],
+  properties: {
+    stories: { type: "array", items: { type: "object", additionalProperties: false, required: ["title", "titleEn", "topic", "summary", "sentences"],
+      properties: { title: { type: "string" }, titleEn: { type: "string" }, topic: { type: "string" }, summary: { type: "string" },
+        sentences: { type: "array", items: { type: "object", additionalProperties: false, required: ["p", "text", "en"],
+          properties: { p: { type: "integer" }, text: { type: "string" }, en: { type: "string" } } } } } } },
+    gloss: { type: "array", items: { type: "object", additionalProperties: false, required: ["w", "m", "t"],
+      properties: { w: { type: "string" }, m: { type: "string" }, t: { type: "string" } } } }
+  }
+};
+function rmxCheck(res, allowed, names, must) {
+  const used = new Set(), bad = new Set();
+  for (const st of res.stories || []) for (const s of st.sentences || []) for (const m of String(s.text).match(WORD_RE) || []) {
+    const w = norm(m); used.add(w); if (!allowed.has(w) && !names.has(w)) bad.add(w);
+  }
+  return { bad: [...bad], missing: must.filter(w => !used.has(w)) };
+}
+async function rmxRun() {
+  if (rmx.busy || !aiKey) return;
+  const pick = rmxPick(rmx.n), out = rmxOut(rmx.n), lang = FR ? "French" : "Hindi";
+  if (pick.length < 2) { toast("Pick at least two stories."); return; }
+  rmx.busy = true; rmxSay("Asking Claude to write " + out + " new " + (out === 1 ? "story" : "stories") + "…");
+  try {
+    const names = new Set(nameSet());
+    const allowed = new Set();
+    for (const L of lessons) for (const w of rmxWords(L)) allowed.add(w);
+    for (const [w, e] of Object.entries(V)) if (e && e.s) allowed.add(w);
+    const must = [...new Set(pick.flatMap(rmxWords))].filter(w => { const s = statusOf(w); return s !== 5 && s !== -1 && !names.has(w) && !isNameWord(w); });
+    const old = pick.map(L => ({ title: L.titleEn || L.title, sentences: (L.sentences || []).map(s => s.hi) }));
+    const system = `You write short graded ${lang} reading stories for an adult beginner learning ${lang}. Stories are simple, warm and a little funny, with everyday situations and recurring characters. The learner's app colours every word, so vocabulary rules are strict.`;
+    const prompt = `Merge these ${pick.length} existing stories into ${out} new ${out === 1 ? "story" : "stories"}.
+
+Rules:
+1. Use ONLY words from the ALLOWED list below (exact spellings, the same inflected forms), plus the character and place NAMES listed. Do not use any other ${lang} word, not even a common one. Numbers must be written as words from the list.
+2. Use EVERY word in the MUST list at least once across the new stories (they're the words the learner is still learning). Using them more than once is good.
+3. Each story: a ${lang} title, an English title, a one-word-or-two topic, a one-sentence English summary, and as many short sentences as needed (roughly 10–20). Group sentences into paragraphs with "p" (0, 1, 2…), about 3–5 sentences each. "en" is a natural English translation.
+4. Keep sentences short and grammatical. Reuse the characters from the old stories.
+5. In "gloss", give every distinct word you used (as written) with its English meaning "m" in context and a simple romanization "t"${FR ? " (for French, a rough English-style pronunciation)" : ""}.
+
+MUST (${must.length}): ${must.join(" ")}
+
+NAMES: ${[...names].join(" ") || "(none)"}
+
+ALLOWED (${allowed.size}): ${[...allowed].join(" ")}
+
+OLD STORIES:
+${JSON.stringify(old)}`;
+    const Anthropic = await loadAnthropic();
+    const client = new Anthropic({ apiKey: aiKey, dangerouslyAllowBrowser: true });
+    const messages = [{ role: "user", content: prompt }];
+    let res = null, chk = null;
+    for (let round = 0; round < 3; round++) {
+      const stream = client.beta.messages.stream({
+        model: AI_MODEL, max_tokens: 64000, system, messages,
+        betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
+        output_config: { effort: "high", format: { type: "json_schema", schema: RMX_SCHEMA } }
+      });
+      const msg = await stream.finalMessage();
+      if (msg.stop_reason === "refusal") throw new Error("Claude declined to write these stories.");
+      if (msg.stop_reason === "max_tokens") throw new Error("The stories came out too long. Try merging fewer.");
+      const text = msg.content.filter(b => b.type === "text").map(b => b.text).join("");
+      res = JSON.parse(text);
+      chk = rmxCheck(res, allowed, names, must);
+      if (!chk.bad.length && !chk.missing.length) break;
+      if (round === 2) break;
+      rmxSay(`Fixing: ${chk.bad.length} new word${chk.bad.length === 1 ? "" : "s"}, ${chk.missing.length} missing…`);
+      messages.push({ role: "assistant", content: msg.content });
+      messages.push({ role: "user", content: `Please fix and return all the stories again.${chk.bad.length ? `\nThese words are NOT in the allowed list, replace them with allowed words: ${chk.bad.join(" ")}` : ""}${chk.missing.length ? `\nThese MUST words are missing, include each one: ${chk.missing.join(" ")}` : ""}` });
+    }
+    if (chk.bad.length) throw new Error(`Claude kept using words you haven't seen (${chk.bad.slice(0, 8).join(" ")}). Nothing was changed. Try again.`);
+    if (chk.missing.length > 3) throw new Error(`Claude left out ${chk.missing.length} words you're learning. Nothing was changed. Try again.`);
+    rmxSay("Saving the new stories…");
+    await rmxSave(res, pick);
+    const lost = chk.missing.length ? ` (${chk.missing.length} learning word${chk.missing.length === 1 ? "" : "s"} left out: ${chk.missing.join(" ")})` : "";
+    rmx.open = false; rmx.msg = "";
+    toast(`🔀 ${pick.length} stories → ${res.stories.length} new ones${lost}.`, 6000);
+  } catch (e) {
+    console.error(e);
+    const A = window.Anthropic;
+    rmx.msg = A && e instanceof A.AuthenticationError ? "Claude didn't accept the API key. Check it in Settings."
+      : A && e instanceof A.PermissionDeniedError ? "This API key isn't allowed to use Claude. Check the key in the Claude Console."
+      : A && e instanceof A.RateLimitError ? "Claude is busy right now. Wait a minute and try again."
+      : A && e instanceof A.BadRequestError && /credit|billing|balance/i.test(e.message) ? "Your API credit has run out. Add some in the Claude Console → Billing."
+      : A && e instanceof A.APIConnectionError ? "Couldn't reach Claude. Check the internet connection."
+      : A && e instanceof A.APIError ? "Claude had a problem: " + (e.message || e.status)
+      : e instanceof SyntaxError ? "Claude's answer came back garbled. Nothing was changed. Try again."
+      : (e && e.message) || "Something went wrong.";
+  } finally {
+    rmx.busy = false; render();
+  }
+}
+async function rmxSave(res, pick) {
+  const oldIds = pick.map(L => L.id);
+  const nums = lessons.map(L => /^n(\d+)$/.exec(L.id)).filter(Boolean).map(m => +m[1]);
+  let next = (nums.length ? Math.max(...nums) : 0) + 1;
+  const keep = lessons.filter(L => !oldIds.includes(L.id));
+  const minOrder = Math.min(0, ...keep.map(L => L.order ?? 0));
+  const modelGloss = {}; for (const g of res.gloss || []) if (g && g.w) modelGloss[norm(g.w)] = g;
+  const made = res.stories.map((st, i) => {
+    const gloss = {};
+    const sentences = st.sentences.map(s => ({ p: Math.max(0, s.p | 0), hi: String(s.text).trim(), en: String(s.en).trim() }));
+    for (const s of sentences) for (const m of s.hi.match(WORD_RE) || []) {
+      const w = norm(m); if (gloss[w]) continue;
+      const g0 = glossFor(w), e = V[w], mg = modelGloss[w];
+      if (g0) gloss[w] = g0;
+      else if (e && e.m) gloss[w] = e.t ? { m: e.m, t: e.t } : { m: e.m };
+      else if (mg) gloss[w] = mg.t ? { m: mg.m, t: mg.t } : { m: mg.m };
+    }
+    const id = "n" + String(next++).padStart(2, "0");
+    return { id, doc: { order: minOrder - res.stories.length + i, title: st.title, titleEn: st.titleEn, topic: st.topic, level: "Beginner", summary: st.summary,
+      createdAt: Date.now() + i, remixOf: oldIds, sentences, gloss } };
+  });
+  if (gh) {
+    const branch = gh.branch || "main", msg = `Remix ${oldIds.join(" ")} → ${made.map(x => x.id).join(" ")}${NATIVE ? " (Thor)" : " (browser)"}`;
+    for (const x of made) {
+      const r = await ghApi("/contents/" + GH_ROOT + "lessons/" + x.id + ".json", { method: "PUT", body: { message: msg, content: b64e(JSON.stringify(x.doc, null, 1)), branch } });
+      ghSha[GH_ROOT + "lessons/" + x.id + ".json"] = r.content.sha;
+    }
+    for (const id of oldIds) {
+      const file = GH_ROOT + "lessons/" + id + ".json";
+      try { const c = await ghApi("/contents/" + file + "?ref=" + branch); await ghApi("/contents/" + file, { method: "DELETE", body: { message: msg, sha: c.sha, branch } }); }
+      catch (e) { if (e.status !== 404) throw e; }
+      delete ghSha[file]; delete ghPend["lessons/" + id];
+    }
+    store.set("ghsha", ghSha); store.set("ghpend", ghPend);
+  }
+  lessons = keep.concat(made.map(x => Object.assign({ id: x.id }, x.doc)));
+  ghSaveLocal();
 }
 
 /* ===================== Games hub (Hindi; made for the Thor's controller, also works by touch and keyboard) ===================== */
@@ -4793,6 +4998,7 @@ function bottomState() {
     st.ms = { keys, cur, html: msDetail(cur, progressStats()) };
   } else if (route.view === "library") {
     const doneMap = effActivity().lessons || {};
+    st.remix = { open: rmx.open, busy: rmx.busy, msg: rmx.msg, key: !!aiKey, n: rmx.n, choices: rmxChoices(), total: lessons.length, out: rmxOut(rmx.n), pick: rmx.open ? rmxPick(rmx.n).map(L => L.titleEn || L.title) : [] };
     st.lessons = sortedLessons().map(L => { const m = lessonMix(L); return { id: L.id, title: L.title, titleEn: L.titleEn || "", n: m.n, left: m.n + m.l, done: !!doneMap[L.id], learned: isLearned(L) }; });
     st.libTab = route.libTab === "learned" ? "learned" : "reading";
     st.known = Object.values(V).filter(e => e.s === 5).length;
@@ -4815,6 +5021,10 @@ function handleCmd(c) {
   switch (c.cmd) {
     case "go": go(c.view); break;
     case "open": go("reader", { lesson: c.id }); break;
+    case "remix": rmxOpen(); break;
+    case "rmxn": if (!rmx.busy) { rmx.n = +c.v; render(); } break;
+    case "rmxgo": rmxRun(); break;
+    case "rmxclose": if (!rmx.busy) { rmx.open = false; rmx.msg = ""; render(); } break;
     case "lang": setLang(c.v); return;
     case "ms": route.ms = c.v; render(); break;
     case "advpick": advPick(c.d); return;
