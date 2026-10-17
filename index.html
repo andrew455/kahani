@@ -985,8 +985,11 @@ function bumpDay(field, by) {
   const cur = (a.days && a.days[k] && a.days[k][field]) || 0;
   enqueue("stats/activity", { days: { [k]: { [field]: cur + by } } });
 }
+// Each finish counts as one read (older records without a count were read once).
+const readCount = x => (x ? x.n || (x.done ? 1 : 0) : 0);
 function markLessonDone(id) {
-  enqueue("stats/activity", { lessons: { [id]: { done: Date.now() } } });
+  const prev = (effActivity().lessons || {})[id];
+  enqueue("stats/activity", { lessons: { [id]: { done: Date.now(), n: readCount(prev) + 1 } } });
   bumpDay("l", 1);
 }
 
@@ -1241,7 +1244,7 @@ function viewLibrary() {
     const pct = x => (m.t ? (x / m.t) * 100 : 0).toFixed(1);
     return `<button class="lesson" data-open="${esc(L.id)}">
       <div class="row"><div style="min-width:0"><div class="t">${esc(L.title)}</div><div class="en">${esc(L.titleEn || "")}</div></div>
-      ${m.t && !m.l && !m.n ? '<span class="done">★ Learned</span>' : done[L.id] ? '<span class="done">✓ Read</span>' : ""}</div>
+      ${m.t && !m.l && !m.n ? `<span class="done">★ Learned${readCount(done[L.id]) ? ` · read ${readCount(done[L.id])}×` : ""}</span>` : done[L.id] ? `<span class="done">✓ Read ${readCount(done[L.id])}×</span>` : ""}</div>
       <div class="mix" aria-hidden="true" style="background:linear-gradient(to right, var(--good) 0 ${pct(m.k)}%, var(--accent-strong) ${pct(m.k)}% ${pct(m.k + m.l)}%, var(--new) ${pct(m.k + m.l)}% 100%)"></div>
       <div class="mix-legend"><span class="lk"><b>${m.k}</b> known</span><span class="ll"><b>${m.l}</b> learning</span><span class="ln"><b>${m.n}</b> new</span></div>
     </button>`;
@@ -4485,13 +4488,16 @@ function viewGames() {
       <span class="hub-ico">${ico}</span><b class="display">${esc(hi)}</b><span class="hub-en">${esc(en)}</span><span class="muted small">${esc(about)}</span></button>`).join("")}</div>
     <div class="kbd"><kbd>◀ ▶</kbd> choose · <kbd>A</kbd> play · <kbd>Select</kbd> menu</div></div>`;
 }
+// A level opens once you know enough words AND got 100% on the level before it.
+const lvOpen = (levels, i, prog) => knownN() >= levels[i].need && (i === 0 || !prog || (prog[i - 1] || 0) >= .999);
+const lvLock = (levels, i, prog) => knownN() >= levels[i].need && levels[i].need !== Infinity ? `🔒 Get 100% on level ${i} to unlock` : levels[i].need === Infinity ? "🔒 Beat the level before to unlock" : lockNote(levels[i].need);
 function levelMenu(title, levels, pick, best, prog) {
   const k = knownN();
   return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.7rem">${title}</h2><button class="btn ghost" data-gk="b">← Games</button></div>
-    <div class="adv-chs">${levels.map((L, i) => { const open = k >= L.need; return `<button class="adv-ch ${open ? "" : "locked"} ${pick === i ? "pick" : ""}" data-gk="level" data-gi="${i}" ${open ? "" : "disabled"}>
+    <div class="adv-chs">${levels.map((L, i) => { const open = lvOpen(levels, i, prog), wordsOk = k >= L.need; return `<button class="adv-ch ${open ? "" : "locked"} ${pick === i ? "pick" : ""}" data-gk="level" data-gi="${i}" ${open ? "" : "disabled"}>
       <span class="adv-n">${best[i] != null ? "★" : open ? i + 1 : "🔒"}</span><span class="adv-t"><b class="display" style="font-size:1.2rem">Level ${i + 1}${L.name ? " · " + esc(L.name) : ""}</b>
-      <span class="muted small">${open ? (L.about || "") + (best[i] != null ? ` · best ${best[i]}` : "") : L.need === Infinity ? "🔒 Beat the level before to unlock" : lockNote(L.need)}</span>
-      ${open || L.need === Infinity ? "" : `<span class="adv-bar"><i style="width:${Math.min(100, (k / L.need) * 100)}%"></i></span>`}
+      <span class="muted small">${open ? (L.about || "") + (best[i] != null ? ` · best ${best[i]}` : "") : lvLock(levels, i, prog)}</span>
+      ${open || wordsOk || L.need === Infinity ? "" : `<span class="adv-bar"><i style="width:${Math.min(100, (k / L.need) * 100)}%"></i></span>`}
       ${open && prog ? `<span class="perf-bar" title="perfected"><i style="width:${Math.round((prog[i] || 0) * 100)}%"></i></span><span class="muted small">${Math.round((prog[i] || 0) * 100)}% perfected</span>` : ""}</span></button>`; }).join("")}</div>
     <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> play · <kbd>B</kbd> back</div></div>`;
 }
@@ -4530,7 +4536,9 @@ function flyNewGate() {
   fly.gate = { target: pick[0], words: gShuffle(pick), d: 1.1, phase: "in", t: 0 };
   pushBottom();
 }
+const flyProg = () => FLY_LEVELS.map((_, i) => Math.min(1, (fly.best[i] || 0) / FLY_PERFECT));
 function flyStart(lv) {
+  if (!lvOpen(FLY_LEVELS, lv, flyProg())) return;
   fly.lv = lv; fly.score = 0; fly.lives = 3; fly.lane = Math.floor(FLY_LEVELS[lv].lanes / 2); fly.x = fly.lane; fly.speed = FLY_LEVELS[lv].speed; fly.msg = "";
   fly.st = "play"; fly.clouds = Array.from({ length: 7 }, () => ({ x: Math.random(), y: Math.random() * .3, s: .5 + Math.random() }));
   render(); flyNewGate(); fly.last = performance.now(); cancelAnimationFrame(fly.raf); fly.raf = requestAnimationFrame(flyLoop);
@@ -4626,7 +4634,7 @@ function flyKey(k, i) {
   if (fly.st === "menu") {
     if (k === "level") return flyStart(+i);
     if (k === "up" || k === "down") { fly.pick = Math.max(0, Math.min(FLY_LEVELS.length - 1, fly.pick + (k === "down" ? 1 : -1))); render(); }
-    else if (k === "a" && knownN() >= FLY_LEVELS[fly.pick].need) flyStart(fly.pick);
+    else if (k === "a") flyStart(fly.pick);
     else if (k === "b") go("games");
     return;
   }
@@ -4672,7 +4680,7 @@ const sayNow = t => { ++gameSaySeq; stopPlayer(); speak(t); };   // cut off what
 const match = { st: "menu", pick: 0, lv: 0, cards: [], cur: 0, curW: 0, open: [], done: [], bad: [], moves: 0, lock: false, found: [], best: store.get("matchbest2", {}) };
 // Everything is face up: pictures on top, words underneath. Pick a picture and a word to link them. Best = fewest mistakes.
 function matchStart(lv) {
-  if (!MATCH_PLAY[lv] || (lv > 0 && match.best[lv - 1] == null)) return;
+  if (!MATCH_PLAY[lv] || !lvOpen(matchMenuLevels(), lv, matchProg())) return;
   match.lv = lv; match.st = "play"; match.cur = 0; match.curW = 0; match.open = []; match.done = []; match.bad = []; match.moves = 0; match.found = []; match.lock = false;
   // more pairs each level (6, 8, 10, 12): this level's new things plus some from earlier levels to review
   match.items = matchLevelItems(lv);
@@ -4724,7 +4732,7 @@ function viewMatch() {
 }
 // for the level list: a level is open once the one before it is beaten
 const matchProg = () => MATCH_PLAY.map((L, i) => match.best[i] == null ? 0 : Math.max(0, 1 - match.best[i] / L.size));   // 0 mistakes = 100%
-const matchMenuLevels = () => MATCH_PLAY.map((L, i) => ({ need: i === 0 || match.best[i - 1] != null ? 0 : Infinity, name: `${L.size} pairs`, about: i === 0 ? "starts with the words you're learning" : "new things" }));
+const matchMenuLevels = () => MATCH_PLAY.map((L, i) => ({ need: 0, name: `${L.size} pairs`, about: i === 0 ? "starts with the words you're learning" : "new things" }));
 function speakW() { const c = match.cards[match.cards.length / 2 + match.curW]; if (c) sayNow(match.items[c.k][0]); }
 function matchKey(k, i) {
   if (match.st === "menu") {
@@ -4776,7 +4784,8 @@ function actsNext() {
   acts.q = { target, opts: gShuffle([target, ...others]) }; acts.sel = 0; acts.answered = null;
   render(); speak(ACTD.question[0]);
 }
-function actsStart(lv) { if (knownN() < ACT_LEVELS[lv].need) return; acts.lv = lv; acts.round = 0; acts.score = 0; acts.st = "play"; actsNext(); }
+const actsProg = () => ACT_LEVELS.map((_, i) => (acts.best[i] || 0) / ACT_ROUNDS);
+function actsStart(lv) { if (!lvOpen(ACT_LEVELS, lv, actsProg())) return; acts.lv = lv; acts.round = 0; acts.score = 0; acts.st = "play"; actsNext(); }
 function actsAnswer(i) {
   if (acts.answered != null) return;
   const o = acts.q.opts[i], ok = o === acts.q.target; acts.answered = i;
@@ -4847,7 +4856,7 @@ function gameBottom() {
   const v = route.view, k = knownN();
   if (v === "games") return { type: "hub", list: GAMES.map(g => ({ ico: g[1], hi: g[2], en: g[3] })), pick: hub.pick };
   if (v === "adv") return Object.assign({ type: "adv" }, advBottom());
-  const menu = (title, levels, pick, best, prog) => ({ type: "levels", title, pick, list: levels.map((L, i) => ({ name: `Level ${i + 1}${L.name ? " · " + L.name : ""}`, open: k >= L.need, need: L.need, best: best[i], prog: prog ? prog[i] || 0 : null })), known: k, fly: v === "fly" ? Object.assign({}, flyOpts) : null });
+  const menu = (title, levels, pick, best, prog) => ({ type: "levels", title, pick, list: levels.map((L, i) => ({ name: `Level ${i + 1}${L.name ? " · " + L.name : ""}`, open: lvOpen(levels, i, prog), lock: lvLock(levels, i, prog).replace("🔒 ", ""), need: L.need, best: best[i], prog: prog ? prog[i] || 0 : null })), known: k, fly: v === "fly" ? Object.assign({}, flyOpts) : null });
   if (v === "fly") {
     if (fly.st === "menu") return menu("✈️ Sky Words", FLY_LEVELS, fly.pick, fly.best, FLY_LEVELS.map((_, i) => Math.min(1, (fly.best[i] || 0) / FLY_PERFECT)));
     const G = fly.gate;
@@ -5063,8 +5072,9 @@ const PEOPLE = ["🧑", "👩", "👴", "👵", "👦", "👧", "🧔", "👨‍
 // The Thor's bottom screen shows the stock in 2 columns, or 3 once the shop gets big.
 const shopCols = () => (shopOptions().length - 1 > 16 ? 3 : 2);
 const shop = { bestOk: store.get("shopbestok", {}), ok: 0, st: "menu", pick: 0, lv: 0, stock: [], queue: [], ci: 0, sel: 0, money: 0, msg: ["", ""], answered: null, tr: false, best: store.get("shopbest", {}) };
+const shopProg = () => SHOP_LEVELS.map((_, i) => (shop.bestOk[i] || 0) / 10);
 function shopStart(lv) {
-  const L = SHOP_LEVELS[lv]; if (!L || knownN() < L.need) return;
+  const L = SHOP_LEVELS[lv]; if (!L || !lvOpen(SHOP_LEVELS, lv, shopProg())) return;
   const pool = gShuffle(MATCH_LEVELS.slice(0, L.upto + 1).filter(x => knownN() >= x.need).flatMap(x => x.items));
   // bigger shop each level: 10 things on level 1, 20 on level 2, 30 on level 3… (as many as the word lists allow)
   const size = Math.max(10, Math.min(10 * (lv + 1), pool.length - 2));
@@ -5155,7 +5165,7 @@ const taxi = { st: "menu", veh: store.get("taxiveh", "taxi"), own: store.get("ta
   fare: null, n: 0, ok: 0, money: 0, answered: null, trQ: false, wbwQ: false, trA: false, wbwA: false, msg: ["", ""], end: null, trE: false, wbwE: false, best: store.get("taxibest", 0), raf: 0 };
 const txV = () => TXL.vehicles.find(v => v.id === taxi.veh) || TXL.vehicles[0];
 // Levels: each vehicle's own places are level 1, then "levels" adds new places. Beat a level (6 / 8 right) to open the next.
-const TX_PASS = 6;
+const TX_PASS = TX_FARES;   // 100%: every fare right
 taxi.lv = store.get("taxilv", {}); taxi.unl = store.get("taxiunl", {});
 const txLevels = (V0 = txV()) => [{ name: V0.level1 ? V0.level1[0] : "Level 1", native: V0.level1 ? V0.level1[1] : "", places: V0.places }].concat(V0.levels || []);
 const txLv = () => Math.min(taxi.lv[taxi.veh] || 0, txUnl());
@@ -5403,7 +5413,7 @@ function bottomState() {
   } else if (route.view === "library") {
     const doneMap = effActivity().lessons || {};
     st.remix = { mode: rmx.mode, k: rmx.k, topic: rmx.topic, open: rmx.open, busy: rmx.busy, msg: rmx.msg, key: !!aiKey, n: rmx.n, choices: rmxChoices(), total: lessons.length, out: rmxOut(rmx.n), pick: rmx.open ? rmxPick(rmx.n).map(L => L.titleEn || L.title) : [] };
-    st.lessons = sortedLessons().map(L => { const m = lessonMix(L); return { id: L.id, title: L.title, titleEn: L.titleEn || "", n: m.n, left: m.n + m.l, done: !!doneMap[L.id], learned: isLearned(L) }; });
+    st.lessons = sortedLessons().map(L => { const m = lessonMix(L); return { id: L.id, title: L.title, titleEn: L.titleEn || "", n: m.n, left: m.n + m.l, done: !!doneMap[L.id], reads: readCount(doneMap[L.id]), learned: isLearned(L) }; });
     st.libTab = route.libTab === "learned" ? "learned" : "reading";
     st.known = Object.values(V).filter(e => e.s === 5).length;
   }
