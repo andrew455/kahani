@@ -73,6 +73,11 @@
   .vpick { display: flex; gap: 8px; align-items: center; }
   .vpick select { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 10px; }
   .summary { white-space: pre-wrap; font-size: 15px; }
+  .design-photo { display: block; width: 100%; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--chip); margin-top: 10px; position: relative; aspect-ratio: 3 / 4; }
+  .design-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .design-photo span { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
+  .compose.drag { outline: 2px dashed var(--accent); outline-offset: -6px; }
+  .paste-hint { font-size: 13px; color: var(--muted); text-align: center; margin-top: -4px; }
   .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 12px; }
   .stat { background: var(--chip); border-radius: 10px; padding: 8px 10px; }
   .stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -172,6 +177,7 @@
         <div class="panel">
           <div class="card">
             <div class="vpick"><select id="versionPick" aria-label="Design version"></select></div>
+            <button class="design-photo" id="designPhoto" hidden><img alt="Photo-style render of this design"><span>Photo · tap to enlarge</span></button>
             <div class="summary" id="summary" style="margin-top:10px"></div>
             <div class="stats" id="stats"></div>
           </div>
@@ -191,6 +197,7 @@
             <textarea id="text" placeholder="e.g. Lots of drawers for jewellery and underwear, long hanging for dresses, a full-length mirror, shoe shelves that show off the shoes, white with brass handles…"></textarea>
             <div class="thumbs" id="pickedThumbs"></div>
             <button type="button" class="addpics" id="addPics">＋ Add inspiration photos</button>
+            <div class="paste-hint">or paste a screenshot into the box above, or drag pictures here</div>
             <input type="file" id="picInput" accept="image/*" multiple hidden>
             <button class="primary" id="sendBtn" disabled>Send to Claude</button>
           </form>
@@ -300,6 +307,11 @@ async function imageUrl(name, thumb) {
     .catch(e => { if (thumb) return imageUrl(name, false); delete blobUrls[key]; throw e; });
   return blobUrls[key];
 }
+const rawUrls = {};
+function rawUrl(path) {
+  if (DEMO) return Promise.resolve(path);
+  return rawUrls[path] || (rawUrls[path] = gh('/contents/' + path, { raw: true, timeout: 60000 }).then(b => URL.createObjectURL(b)).catch(e => { delete rawUrls[path]; throw e; }));
+}
 function fillImages(root) {
   root.querySelectorAll('img[data-src]').forEach(img => {
     const n = img.dataset.src; img.removeAttribute('data-src');
@@ -330,8 +342,9 @@ function stamp() {
   const d = new Date(), p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
-function openPhoto(name) {
+function openPhoto(name, path) {
   $('photo').hidden = false; $('photoImg').src = '';
+  if (path) return rawUrl(path).then(u => $('photoImg').src = u).catch(e => toast(errText(e)));
   imageUrl(name, true).then(u => { if (!$('photoImg').src) $('photoImg').src = u; }).catch(() => {});
   imageUrl(name, false).then(u => $('photoImg').src = u).catch(e => toast(errText(e)));
 }
@@ -378,9 +391,27 @@ function renderAsk() {
 $('text').addEventListener('input', () => $('sendBtn').disabled = !$('text').value.trim() && !ui.picked.length);
 $('addPics').onclick = () => $('picInput').click();
 $('picInput').addEventListener('change', e => {
-  for (const f of e.target.files) ui.picked.push({ file: f, url: URL.createObjectURL(f) });
-  e.target.value = ''; renderAsk();
+  addPicked(e.target.files); e.target.value = '';
 });
+// screenshots and pictures can be pasted (⌘V, or long-press → Paste on a phone) or dropped onto the form
+function addPicked(files) {
+  const imgs = [...files].filter(f => f && f.type.startsWith('image/'));
+  for (const f of imgs) ui.picked.push({ file: f, url: URL.createObjectURL(f) });
+  if (imgs.length) { renderAsk(); toast(imgs.length === 1 ? 'Picture added' : `${imgs.length} pictures added`); }
+  return imgs.length;
+}
+document.addEventListener('paste', e => {
+  if (!cfg || $('app').hidden) return;
+  const files = [...(e.clipboardData?.items || [])].filter(i => i.kind === 'file').map(i => i.getAsFile());
+  if (!files.some(f => f && f.type.startsWith('image/'))) return;
+  e.preventDefault();
+  if (ui.tab !== 'ask') setTab('ask');
+  addPicked(files);
+});
+const compose = $('compose');
+compose.addEventListener('dragover', e => { e.preventDefault(); compose.classList.add('drag'); });
+compose.addEventListener('dragleave', () => compose.classList.remove('drag'));
+compose.addEventListener('drop', e => { e.preventDefault(); compose.classList.remove('drag'); addPicked(e.dataTransfer.files); });
 $('clearBase').onclick = () => { ui.base = null; renderAsk(); };
 $('compose').addEventListener('submit', async e => {
   e.preventDefault();
@@ -455,9 +486,16 @@ function renderDesigns() {
   const d = list.find(x => x.version === ui.version);
   $('versionPick').innerHTML = list.map(x => `<option value="${x.version}" ${x.version === d.version ? 'selected' : ''}>Design ${x.version}${x.title ? ' — ' + esc(x.title) : ''}${x === list[0] ? ' (latest)' : ''}</option>`).join('');
   $('summary').textContent = d.summary || '';
+  const ph = $('designPhoto');
+  ph.hidden = !d.photo;
+  if (d.photo && ph.dataset.path !== d.photo) {
+    ph.dataset.path = d.photo; ph.querySelector('img').removeAttribute('src');
+    rawUrl(d.photo).then(u => { if (ph.dataset.path === d.photo) ph.querySelector('img').src = u; }).catch(() => {});
+  }
   $('stats').innerHTML = stats(d).map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
   if (scene3d.design !== d) scene3d.show(d);
 }
+$('designPhoto').onclick = () => openPhoto(null, $('designPhoto').dataset.path);
 $('versionPick').addEventListener('change', e => { ui.version = +e.target.value; renderDesigns(); });
 function showUnit(u) {
   if (!u) { $('unitInfo').innerHTML = `<div class="muted">Tap a cupboard to see what's in it and its sizes.</div>`; return; }
