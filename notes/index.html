@@ -113,6 +113,25 @@
   .viewer .bar2 { display: flex; gap: 8px; padding: 12px 16px; justify-content: center; flex-wrap: wrap; align-items: center; color: #ddd; font-size: 13px; }
   .viewer .bar2 button, .viewer .bar2 a { background: #2b2926; color: #fff; border: 0; border-radius: 10px; padding: 10px 16px; font-size: 15px; text-decoration: none; }
 
+  .group { padding: 12px; }
+  .group-head { display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+  .group-head b { color: var(--ink); font-size: 15px; }
+  .tag { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--chip); border: 1px solid var(--line); color: var(--ink); }
+  button.tag { cursor: pointer; }
+  .tag.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .tag.add { border-style: dashed; color: var(--muted); background: transparent; }
+  .tagrow { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .edit-box { display: grid; gap: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; background: var(--bg); }
+  .edit-box .label, .panel .label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .row-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .tagman { padding: 12px; margin-bottom: 12px; display: grid; gap: 8px; }
+  .tagman .t { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+  .tagman .t span { flex: 1; }
+  .sheet { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 9; display: flex; align-items: flex-end; justify-content: center; }
+  .sheet .panel { background: var(--card); width: 100%; max-width: 520px; border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); max-height: 88vh; overflow: auto; display: grid; gap: 12px; }
+  .sheet h3 { margin: 0; font-size: 18px; }
+  @media (min-width: 900px) { .sheet { align-items: center; } .sheet .panel { border-radius: 16px; } }
+
   .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); text-align: center; }
   .toast.show { opacity: 1; }
 </style>
@@ -167,18 +186,20 @@
         <nav class="tabs" id="tabs"><button data-tab="notes">Notes</button><button data-tab="images">Images</button></nav>
 
         <section id="imagesView" hidden>
+          <div class="filters" id="imgCats"></div>
+          <div class="tagrow" id="imgTags" style="margin-bottom:12px"></div>
+          <div class="card tagman" id="tagMan" hidden></div>
           <div class="img-actions">
             <button class="primary" id="pickImages">Add images</button>
             <div class="img-row">
-              <label class="toggle"><input type="checkbox" id="fullSize"> Full size (slower)</label>
               <span class="spacer"></span>
-              <button class="ghost desktop-only" id="downloadAll">Download all</button>
+              <button class="ghost desktop-only" id="downloadAll">Download these</button>
             </div>
             <input type="file" id="imgInput" accept="image/*" multiple hidden>
           </div>
           <div class="card progress" id="imgProgress" hidden><div id="imgProgressText"></div><div class="bar"><i id="imgBar"></i></div></div>
-          <div class="grid" id="grid"></div>
-          <div class="empty" id="imgEmpty" hidden>No images yet — tap <b>Add images</b>.</div>
+          <div class="list" id="groups"></div>
+          <div class="empty" id="imgEmpty" hidden>No images here yet — tap <b>Add images</b>.</div>
         </section>
 
         <section id="notesView">
@@ -201,6 +222,17 @@
         <div class="foot"><button class="icon" id="disconnect">Disconnect this device</button></div>
       </main>
     </div>
+  </div>
+</div>
+<div class="sheet" id="sheet" hidden>
+  <div class="panel">
+    <h3 id="sheetTitle">Add photos</h3>
+    <div class="label">Category</div>
+    <div class="tagrow" id="sheetCats"></div>
+    <div class="label">Tags <span style="text-transform:none;letter-spacing:0">(optional)</span></div>
+    <div class="tagrow" id="sheetTags"></div>
+    <label class="toggle"><input type="checkbox" id="fullSize"> Full size (slower)</label>
+    <div class="row-btns"><button class="ghost" id="sheetCancel">Cancel</button><button class="primary" id="sheetGo" style="width:auto">Upload</button></div>
   </div>
 </div>
 <div class="viewer" id="viewer" hidden>
@@ -460,10 +492,17 @@ $('disconnect').addEventListener('click', () => {
   location.reload();
 });
 
-// ---- images (stored in images/ in the same repo, with small previews in images/thumbs/) ----
-const TAB_KEY = 'phonenotes:tab';
-const imgs = { list: [], etag: null, thumbSha: {}, urls: {}, loading: {}, queue: [], total: 0, done: 0, failed: [], busy: false, open: null };
+// ---- images ----
+// Photos are files in images/ (previews in images/thumbs/). images/index.json holds the categories, each
+// category's tags, and the groups: one per upload, with its category, tags and image names. Index changes are
+// replayed onto the latest copy before saving, like notes, so two devices can't overwrite each other.
+const TAB_KEY = 'phonenotes:tab', IMGCAT_KEY = 'phonenotes:imgcat', IDX = 'images/index.json';
+const imgs = { list: [], etag: null, thumbSha: {}, urls: {}, loading: {}, queue: [], total: 0, done: 0, failed: [], busy: false, open: null,
+  index: null, idxEtag: null, cat: load(IMGCAT_KEY, 'all'), tag: null, editing: null, edit: null, manage: false, sheet: null };
 const baseName = n => n.replace(/\.[^.]+$/, '');
+const cleanTag = t => String(t || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+const hasTag = (list, t) => list.some(x => x.toLowerCase() === t.toLowerCase());
+const slug = n => n.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'cat';
 
 function setTab(t) {
   ui.tab = t; keep(TAB_KEY, t);
@@ -484,38 +523,175 @@ async function ghRaw(path) {
   } finally { clearTimeout(timer); }
 }
 
+// ---- the index ----
+// when the earliest photo in a list was taken, from names like 2026-10-17_162443-ab12.jpg
+function whenFromNames(names) {
+  const t = names.map(n => n.match(/^(\d{4})-(\d\d)-(\d\d)_(\d\d)(\d\d)(\d\d)/)).filter(Boolean)
+    .map(m => new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime());
+  return t.length ? Math.min(...t) : Date.now();
+}
+function seedIndex() {
+  // first time: Closet, with any photos already uploaded as one group in it
+  const names = imgs.list.map(f => f.name);
+  const g = { id: uid(), category: 'closet', tags: [], created: whenFromNames(names), images: names };
+  return { categories: [{ id: 'closet', name: 'Closet', tags: [] }], groups: g.images.length ? [g] : [] };
+}
+function applyIdx(db, op) {
+  db = structuredClone(db);
+  const cat = id => db.categories.find(c => c.id === id);
+  const addVocab = (c, tags) => { const k = cat(c); if (k) for (const t of tags) if (!hasTag(k.tags, t)) k.tags.push(t); };
+  if (op.t === 'addcat' && !cat(op.cat.id)) db.categories.push(op.cat);
+  if (op.t === 'renamecat' && cat(op.id)) cat(op.id).name = op.name;
+  if (op.t === 'addtag') addVocab(op.cat, [op.tag]);
+  if (op.t === 'renametag' || op.t === 'deltag') {
+    const k = cat(op.cat);
+    const fix = list => { const out = []; for (const t of list) { const u = t.toLowerCase() === op.from.toLowerCase() ? (op.t === 'renametag' ? op.to : null) : t; if (u && !hasTag(out, u)) out.push(u); } return out; };
+    if (k) k.tags = fix(k.tags);
+    for (const g of db.groups) if (g.category === op.cat) g.tags = fix(g.tags);
+  }
+  if (op.t === 'addimages') {
+    let g = db.groups.find(x => x.id === op.group.id);
+    if (!g) { g = { ...op.group, images: [] }; db.groups.push(g); }
+    for (const n of op.names) if (!g.images.includes(n)) g.images.push(n);
+    addVocab(g.category, g.tags);
+  }
+  if (op.t === 'setgroup') {
+    const g = db.groups.find(x => x.id === op.id);
+    if (g) { if (op.category && cat(op.category)) g.category = op.category; g.tags = op.tags; addVocab(g.category, g.tags); }
+  }
+  if (op.t === 'delimage') {
+    for (const g of db.groups) g.images = g.images.filter(n => n !== op.name);
+    db.groups = db.groups.filter(g => g.images.length);
+  }
+  return db;
+}
+async function readIndex(useEtag) {
+  try {
+    const r = await gh('/contents/' + IDX, useEtag && imgs.idxEtag ? { headers: { 'If-None-Match': imgs.idxEtag } } : {});
+    if (r.notModified) return { notModified: true };
+    return { db: JSON.parse(b64d(r.data.content)), sha: r.data.sha, etag: r.etag };
+  } catch (e) { if (e.status === 404) return { db: null, sha: null }; throw e; }
+}
+// Change the index: show it straight away, then save it on top of the latest copy.
+async function changeIndex(ops, message) {
+  imgs.index = ops.reduce(applyIdx, imgs.index || seedIndex());
+  renderImages();
+  try {
+    for (let attempt = 0; ; attempt++) {
+      const { db, sha } = await readIndex();
+      const next = ops.reduce(applyIdx, db || seedIndex());
+      try {
+        await gh('/contents/' + IDX, { method: 'PUT', body: { message, content: b64e(JSON.stringify(next, null, 1)), ...(sha ? { sha } : {}) } });
+        imgs.index = next; imgs.idxEtag = null; renderImages();
+        return true;
+      } catch (e) { if ((e.status === 409 || e.status === 422) && attempt < 4) continue; throw e; }
+    }
+  } catch (e) { console.error(e); toast('Not saved: ' + errText(e)); loadImages(true); return false; }
+}
+
 async function loadImages(force) {
   try {
     const r = await gh('/contents/images', imgs.etag && !force ? { headers: { 'If-None-Match': imgs.etag } } : {}).catch(e => { if (e.status === 404) return { data: [] }; throw e; });
-    if (r.notModified) return;
-    imgs.etag = r.etag;
-    imgs.list = r.data.filter(f => f.type === 'file' && /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(f.name)).sort((a, b) => b.name.localeCompare(a.name));
-    if (r.data.some(f => f.type === 'dir' && f.name === 'thumbs')) {
-      const t = await gh('/contents/images/thumbs');
-      imgs.thumbSha = Object.fromEntries(t.data.map(f => [baseName(f.name), f.sha]));
+    if (!r.notModified) {
+      imgs.etag = r.etag;
+      imgs.list = r.data.filter(f => f.type === 'file' && /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(f.name)).sort((a, b) => b.name.localeCompare(a.name));
+      if (r.data.some(f => f.type === 'dir' && f.name === 'thumbs')) {
+        const t = await gh('/contents/images/thumbs');
+        imgs.thumbSha = Object.fromEntries(t.data.map(f => [baseName(f.name), f.sha]));
+      }
     }
-    renderImages();
+    const x = await readIndex(!force);
+    if (!x.notModified) {
+      imgs.idxEtag = x.etag || null;
+      if (x.db) imgs.index = x.db;
+      else if (!imgs.index) { imgs.index = seedIndex(); changeIndex([], 'Set up image categories'); }
+    }
+    if (!r.notModified || !x.notModified || force) renderImages();
   } catch (e) { console.error(e); toast(errText(e)); }
 }
 
+// ---- drawing ----
+const catName = id => ((imgs.index?.categories || []).find(c => c.id === id) || { name: 'Unsorted' }).name;
+function viewGroups() {
+  const idx = imgs.index || { categories: [], groups: [] };
+  const known = new Set(imgs.list.map(f => f.name));
+  const groups = idx.groups.map(g => ({ ...g, images: g.images.filter(n => known.has(n) || imgs.busy) })).filter(g => g.images.length);
+  // photos in no group (e.g. an upload that was cut off) are shown as Unsorted so they can be filed
+  const grouped = new Set(idx.groups.flatMap(g => g.images));
+  const loose = imgs.list.map(f => f.name).filter(n => !grouped.has(n));
+  if (loose.length) groups.push({ id: 'unsorted', category: null, tags: [], created: 0, images: loose });
+  return groups.sort((a, b) => b.created - a.created);
+}
 function renderImages() {
-  $('imgEmpty').hidden = imgs.list.length > 0 || imgs.busy;
-  $('grid').innerHTML = imgs.list.map(f => {
-    const b = baseName(f.name), when = b.slice(0, 10);
-    return `<button class="tile" data-img="${esc(f.name)}">${imgs.urls[b] ? `<img src="${imgs.urls[b]}" alt="">` : ''}<span>${esc(when)}</span></button>`;
+  const idx = imgs.index || { categories: [], groups: [] };
+  const all = viewGroups();
+  if (imgs.cat !== 'all' && imgs.cat !== 'unsorted' && !idx.categories.some(c => c.id === imgs.cat)) imgs.cat = 'all';
+  const count = id => all.filter(g => id === 'all' || (id === 'unsorted' ? !g.category : g.category === id)).reduce((n, g) => n + g.images.length, 0);
+  const cats = [{ id: 'all', name: 'All' }, ...idx.categories, ...(count('unsorted') ? [{ id: 'unsorted', name: 'Unsorted' }] : [])];
+  $('imgCats').innerHTML = cats.map(c => `<button class="cat-pick ${imgs.cat === c.id ? 'on' : ''}" data-imgcat="${esc(c.id)}">${esc(c.name)} <span class="count">${count(c.id)}</span></button>`).join('')
+    + `<button class="cat-pick" data-newcat>+ New</button>`;
+
+  const cur = idx.categories.find(c => c.id === imgs.cat);
+  if (imgs.tag && !(cur && hasTag(cur.tags, imgs.tag))) imgs.tag = null;
+  $('imgTags').innerHTML = cur ? [
+    ...(cur.tags.length ? [`<button class="tag ${!imgs.tag ? 'on' : ''}" data-imgtag="">All tags</button>`] : []),
+    ...cur.tags.map(t => `<button class="tag ${imgs.tag === t ? 'on' : ''}" data-imgtag="${esc(t)}">${esc(t)}</button>`),
+    `<button class="tag add" data-managetags>${imgs.manage ? 'Done editing' : 'Edit tags'}</button>`].join('') : '';
+  $('imgTags').hidden = !cur;
+
+  $('tagMan').hidden = !(cur && imgs.manage);
+  if (cur && imgs.manage) {
+    $('tagMan').innerHTML = `<div class="label" style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">${esc(cur.name)} tags</div>`
+      + (cur.tags.length ? cur.tags.map(t => `<div class="t"><span>${esc(t)}</span><button class="icon" data-renametag="${esc(t)}">Rename</button><button class="icon" data-deltag="${esc(t)}">Delete</button></div>`).join('') : '<div class="t" style="color:var(--muted)">No tags yet.</div>')
+      + `<form class="addcat" data-addtagform><input placeholder="New tag" maxlength="30"><button class="ghost">Add</button></form>`
+      + `<div class="row-btns"><button class="icon" data-renamecat>Rename category</button></div>`;
+  }
+
+  const shown = all.filter(g => (imgs.cat === 'all' || (imgs.cat === 'unsorted' ? !g.category : g.category === imgs.cat)) && (!imgs.tag || hasTag(g.tags, imgs.tag)));
+  $('imgEmpty').hidden = shown.length > 0 || imgs.busy;
+  $('pickImages').textContent = cur ? `Add images to ${cur.name}` : 'Add images';
+  $('groups').innerHTML = shown.map(g => {
+    const when = g.created ? new Date(g.created).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+    const editing = imgs.editing === g.id;
+    return `<div class="card group">
+      <div class="group-head"><b>${esc(catName(g.category))}</b>${when ? `<span>${esc(when)}</span>` : ''}<span>${g.images.length} photo${g.images.length === 1 ? '' : 's'}</span>
+        <span class="spacer"></span>${editing ? '' : `<button class="icon" data-editgroup="${g.id}">${g.category ? 'Edit tags' : 'File it'}</button>`}</div>
+      ${editing ? groupEditor() : (g.tags.length ? `<div class="tagrow" style="margin-bottom:10px">${g.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : '')}
+      <div class="grid">${g.images.map(n => `<button class="tile" data-img="${esc(n)}">${imgs.urls[baseName(n)] ? `<img src="${imgs.urls[baseName(n)]}" alt="">` : ''}</button>`).join('')}</div>
+    </div>`;
   }).join('');
-  // load previews a few at a time
-  const missing = imgs.list.filter(f => !imgs.urls[baseName(f.name)] && !imgs.loading[baseName(f.name)]);
+  loadPreviews(shown.flatMap(g => g.images));
+}
+function tagPicker(catId, chosen, attr) {
+  const c = (imgs.index?.categories || []).find(x => x.id === catId);
+  const tags = c ? c.tags.slice() : [];
+  for (const t of chosen) if (!hasTag(tags, t)) tags.push(t);
+  return tags.map(t => `<button type="button" class="tag ${hasTag(chosen, t) ? 'on' : ''}" ${attr}="${esc(t)}">${esc(t)}</button>`).join('')
+    + `<button type="button" class="tag add" ${attr}-new>+ New tag</button>`;
+}
+function catPicker(chosen, attr) {
+  return (imgs.index?.categories || []).map(c => `<button type="button" class="tag ${c.id === chosen ? 'on' : ''}" ${attr}="${esc(c.id)}">${esc(c.name)}</button>`).join('')
+    + `<button type="button" class="tag add" data-newcat>+ New</button>`;
+}
+function groupEditor() {
+  const e = imgs.edit;
+  return `<div class="edit-box">
+    <div class="label">Category</div><div class="tagrow">${catPicker(e.category, 'data-gcat')}</div>
+    <div class="label">Tags</div><div class="tagrow">${tagPicker(e.category, e.tags, 'data-gtag')}</div>
+    <div class="row-btns"><button class="ghost" data-gcancel>Cancel</button><button class="primary" style="width:auto;padding:8px 16px;font-size:15px" data-gsave>Save</button></div>
+  </div>`;
+}
+function loadPreviews(names) {
+  const missing = names.filter(n => !imgs.urls[baseName(n)] && !imgs.loading[baseName(n)]);
   let i = 0;
   const worker = async () => {
     while (i < missing.length) {
-      const f = missing[i++], b = baseName(f.name);
+      const n = missing[i++], b = baseName(n);
       imgs.loading[b] = true;
       try {
-        const blob = await ghRaw(imgs.thumbSha[b] ? 'images/thumbs/' + b + '.jpg' : 'images/' + f.name);
+        const blob = await ghRaw(imgs.thumbSha[b] ? 'images/thumbs/' + b + '.jpg' : 'images/' + n);
         imgs.urls[b] = URL.createObjectURL(blob);
-        const tile = document.querySelector(`[data-img="${CSS.escape(f.name)}"]`);
-        if (tile) tile.insertAdjacentHTML('afterbegin', `<img src="${imgs.urls[b]}" alt="">`);
+        document.querySelectorAll(`[data-img="${CSS.escape(n)}"]`).forEach(t => { if (!t.querySelector('img')) t.insertAdjacentHTML('afterbegin', `<img src="${imgs.urls[b]}" alt="">`); });
       } catch (e) { console.error(e); }
       finally { delete imgs.loading[b]; }
     }
@@ -523,8 +699,52 @@ function renderImages() {
   for (let k = 0; k < 4; k++) worker();
 }
 
-// resize a photo in the browser (also turns HEIC into JPEG)
-async function shrink(file, max, quality) {
+// ---- categories and tags ----
+function newCategory() {
+  const name = cleanTag(prompt('Name for the new category:') || '');
+  if (!name) return null;
+  const idx = imgs.index || seedIndex();
+  const same = idx.categories.find(c => c.name.toLowerCase() === name.toLowerCase());
+  if (same) return same.id;
+  const id = slug(name) + '-' + Math.random().toString(36).slice(2, 5);
+  changeIndex([{ t: 'addcat', cat: { id, name, tags: [] } }], 'Image category: ' + name);
+  return id;
+}
+const askTag = () => cleanTag(prompt('New tag:') || '');
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  const d = t.dataset;
+  if (d.imgcat !== undefined) { imgs.cat = d.imgcat; imgs.tag = null; imgs.manage = false; keep(IMGCAT_KEY, imgs.cat); renderImages(); }
+  else if (d.imgtag !== undefined) { imgs.tag = d.imgtag || null; renderImages(); }
+  else if ('managetags' in d) { imgs.manage = !imgs.manage; renderImages(); }
+  else if ('newcat' in d && !t.closest('#sheet') && !t.closest('.edit-box')) { const id = newCategory(); if (id) { imgs.cat = id; keep(IMGCAT_KEY, id); renderImages(); } }
+  else if (d.renametag) { const to = cleanTag(prompt('Rename tag to:', d.renametag) || ''); if (to && to !== d.renametag) changeIndex([{ t: 'renametag', cat: imgs.cat, from: d.renametag, to }], 'Rename image tag'); }
+  else if (d.deltag) { if (confirm(`Delete the tag "${d.deltag}"? It's removed from every group in ${catName(imgs.cat)}; the photos stay.`)) changeIndex([{ t: 'deltag', cat: imgs.cat, from: d.deltag }], 'Delete image tag'); }
+  else if ('renamecat' in d) { const name = cleanTag(prompt('Rename category to:', catName(imgs.cat)) || ''); if (name) changeIndex([{ t: 'renamecat', id: imgs.cat, name }], 'Rename image category'); }
+  // editing a group
+  else if (d.editgroup) { const g = viewGroups().find(x => x.id === d.editgroup); imgs.editing = g.id; imgs.edit = { category: g.category || (imgs.cat !== 'all' && imgs.cat !== 'unsorted' ? imgs.cat : 'closet'), tags: g.tags.slice(), images: g.images }; renderImages(); }
+  else if (d.gcat) { imgs.edit.category = d.gcat; imgs.edit.tags = []; renderImages(); }
+  else if ('newcat' in d && t.closest('.edit-box')) { const id = newCategory(); if (id) { imgs.edit.category = id; imgs.edit.tags = []; renderImages(); } }
+  else if (d.gtag) { const L = imgs.edit.tags; imgs.edit.tags = hasTag(L, d.gtag) ? L.filter(x => x.toLowerCase() !== d.gtag.toLowerCase()) : [...L, d.gtag]; renderImages(); }
+  else if ('gtagNew' in d) { const tag = askTag(); if (tag && !hasTag(imgs.edit.tags, tag)) { imgs.edit.tags.push(tag); renderImages(); } }
+  else if ('gcancel' in d) { imgs.editing = null; renderImages(); }
+  else if ('gsave' in d) {
+    const id = imgs.editing, e2 = imgs.edit; imgs.editing = null;
+    changeIndex([id === 'unsorted'
+      ? { t: 'addimages', group: { id: uid(), category: e2.category, tags: e2.tags, created: whenFromNames(e2.images) }, names: e2.images }
+      : { t: 'setgroup', id, category: e2.category, tags: e2.tags }], 'Tag images');
+  }
+});
+document.addEventListener('submit', e => {
+  if (!e.target.matches('[data-addtagform]')) return;
+  e.preventDefault();
+  const tag = cleanTag(e.target.querySelector('input').value);
+  if (tag) changeIndex([{ t: 'addtag', cat: imgs.cat, tag }], 'Add image tag');
+});
+
+// ---- picking and uploading ----
+async function shrink(file, max, quality) {   // resize in the browser (also turns HEIC into JPEG)
   const url = URL.createObjectURL(file);
   try {
     const img = new Image();
@@ -554,14 +774,14 @@ function stamp(t) {
   const d = new Date(t || Date.now()), p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
-async function uploadOne(file) {
-  const full = $('fullSize').checked;
+async function uploadOne({ file, full }) {
   const ext = full ? ((file.name.match(/\.([a-z0-9]+)$/i) || [])[1] || 'jpg').toLowerCase() : 'jpg';
   const name = stamp(file.lastModified) + '-' + Math.random().toString(36).slice(2, 6);
   await putFile(`images/${name}.${ext}`, full ? file : await shrink(file, 2560, 0.88), 'Phone image');
   const thumb = await shrink(file, 480, 0.75);
   await putFile(`images/thumbs/${name}.jpg`, thumb, 'Phone image preview');
   imgs.urls[name] = URL.createObjectURL(thumb);
+  return `${name}.${ext}`;
 }
 function showProgress() {
   const p = $('imgProgress');
@@ -579,24 +799,62 @@ async function uploadQueue() {
   if (imgs.busy || !imgs.queue.length) return;
   imgs.busy = true; imgs.failed = [];
   showProgress(); renderImages();
+  const added = new Map();   // group id -> { group, names }
   while (imgs.queue.length) {
-    const f = imgs.queue.shift();
-    try { await uploadOne(f); } catch (e) { console.error(e); imgs.failed.push(f); if (e.status === 401 || e.status === 403) toast(errText(e)); }
+    const item = imgs.queue.shift();
+    try {
+      const name = await uploadOne(item);
+      if (!added.has(item.group.id)) added.set(item.group.id, { group: item.group, names: [] });
+      added.get(item.group.id).names.push(name);
+    } catch (e) { console.error(e); imgs.failed.push(item); if (e.status === 401 || e.status === 403) toast(errText(e)); }
     imgs.done++; showProgress();
   }
+  await loadImages(true);
+  if (added.size) await changeIndex([...added.values()].map(a => ({ t: 'addimages', group: a.group, names: a.names })), 'Group phone images');
   imgs.busy = false;
   const ok = imgs.done - imgs.failed.length;
   if (!imgs.failed.length) toast(ok === 1 ? '1 image added ✓' : `${ok} images added ✓`);
   imgs.done = imgs.failed.length ? ok : 0;
-  showProgress();
-  await loadImages(true);
+  showProgress(); renderImages();
+}
+
+// the sheet that asks for category and tags after you pick photos
+function renderSheet() {
+  const sh = imgs.sheet;
+  $('sheetTitle').textContent = `Add ${sh.files.length} photo${sh.files.length === 1 ? '' : 's'}`;
+  $('sheetCats').innerHTML = catPicker(sh.category, 'data-scat');
+  $('sheetTags').innerHTML = tagPicker(sh.category, sh.tags, 'data-stag');
 }
 $('pickImages').addEventListener('click', () => $('imgInput').click());
 $('imgInput').addEventListener('change', e => {
   const files = [...e.target.files]; e.target.value = '';
   if (!files.length) return;
+  const cats = imgs.index?.categories || [{ id: 'closet' }];
+  const category = cats.some(c => c.id === imgs.cat) ? imgs.cat : (cats.some(c => c.id === load('phonenotes:lastimgcat', '')) ? load('phonenotes:lastimgcat', '') : cats[0].id);
+  imgs.sheet = { files, category, tags: imgs.tag ? [imgs.tag] : [] };
+  renderSheet(); $('sheet').hidden = false;
+});
+$('sheet').addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (e.target === $('sheet')) { $('sheet').hidden = true; imgs.sheet = null; return; }
+  if (!t) return;
+  const d = t.dataset, sh = imgs.sheet;
+  if (d.scat) { sh.category = d.scat; sh.tags = []; renderSheet(); }
+  else if ('newcat' in d) { const id = newCategory(); if (id) { sh.category = id; sh.tags = []; renderSheet(); } }
+  else if (d.stag) { sh.tags = hasTag(sh.tags, d.stag) ? sh.tags.filter(x => x.toLowerCase() !== d.stag.toLowerCase()) : [...sh.tags, d.stag]; renderSheet(); }
+  else if ('stagNew' in d) { const tag = askTag(); if (tag && !hasTag(sh.tags, tag)) { sh.tags.push(tag); renderSheet(); } }
+});
+$('sheetCancel').addEventListener('click', () => { $('sheet').hidden = true; imgs.sheet = null; });
+$('sheetGo').addEventListener('click', () => {
+  const sh = imgs.sheet; if (!sh) return;
+  $('sheet').hidden = true; imgs.sheet = null;
+  keep('phonenotes:lastimgcat', sh.category);
+  const group = { id: uid(), category: sh.category, tags: sh.tags, created: Date.now() };
   if (!imgs.busy) { imgs.total = 0; imgs.done = 0; }
-  imgs.queue.push(...files); imgs.total += files.length;
+  const full = $('fullSize').checked;
+  imgs.queue.push(...sh.files.map(file => ({ file, group, full })));
+  imgs.total += sh.files.length;
+  if (imgs.cat !== 'all' && imgs.cat !== sh.category) { imgs.cat = sh.category; imgs.tag = null; keep(IMGCAT_KEY, imgs.cat); }
   uploadQueue();
 });
 document.addEventListener('click', e => {
@@ -605,6 +863,7 @@ document.addEventListener('click', e => {
   if (tile) openViewer(tile.dataset.img);
 });
 
+// ---- full-size viewer ----
 async function openViewer(name) {
   const f = imgs.list.find(x => x.name === name); if (!f) return;
   imgs.open = f;
@@ -626,15 +885,19 @@ $('viewerDelete').addEventListener('click', async () => {
     await gh('/contents/images/' + f.name, { method: 'DELETE', body: { message: 'Delete phone image', sha: f.sha } });
     const b = baseName(f.name);
     if (imgs.thumbSha[b]) await gh('/contents/images/thumbs/' + b + '.jpg', { method: 'DELETE', body: { message: 'Delete phone image preview', sha: imgs.thumbSha[b] } }).catch(() => {});
-    $('viewerClose').click(); toast('Deleted'); loadImages(true);
+    $('viewerClose').click(); toast('Deleted');
+    imgs.list = imgs.list.filter(x => x.name !== f.name);
+    await changeIndex([{ t: 'delimage', name: f.name }], 'Delete phone image');
+    loadImages(true);
   } catch (e) { toast(errText(e)); }
 });
 $('downloadAll').addEventListener('click', async () => {
-  if (!imgs.list.length) return toast('No images yet');
-  toast(`Downloading ${imgs.list.length} images…`);
-  for (const f of imgs.list) {
+  const names = [...document.querySelectorAll('#groups [data-img]')].map(t => t.dataset.img);
+  if (!names.length) return toast('No images here');
+  toast(`Downloading ${names.length} images…`);
+  for (const n of names) {
     try {
-      const a = document.createElement('a'); a.href = URL.createObjectURL(await ghRaw('images/' + f.name)); a.download = f.name;
+      const a = document.createElement('a'); a.href = URL.createObjectURL(await ghRaw('images/' + n)); a.download = n;
       document.body.append(a); a.click(); a.remove();
       await new Promise(r => setTimeout(r, 400));
     } catch (e) { console.error(e); }
@@ -646,7 +909,7 @@ function start() {
   render(); sync();
   setTab(load(TAB_KEY, 'notes') === 'images' ? 'images' : 'notes');
   setInterval(() => { if (!document.hidden) sync(); }, 15000);
-  setInterval(() => { if (!document.hidden && ui.tab === 'images' && !imgs.busy) loadImages(); }, 30000);
+  setInterval(() => { if (!document.hidden && ui.tab === 'images' && !imgs.busy && !imgs.editing && !imgs.sheet) loadImages(); }, 30000);
   setInterval(() => { if (!ui.editing && document.activeElement?.tagName !== 'SELECT') render(); }, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
   addEventListener('online', () => sync());
