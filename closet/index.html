@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Robe">
+<meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1917" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Walk-in Robe</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #ffffff; --ink: #1f1d1a; --muted: #77716a; --line: #e5e0d8;
+    --accent: #b5754a; --accent-ink: #fff; --chip: #efebe4; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 2px 8px rgba(0,0,0,.04);
+    --stage: #e9e5de;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1a1917; --card: #24221f; --ink: #ece8e1; --muted: #9a948b; --line: #35322d; --chip: #2e2b27; --shadow: none; --stage: #2a2825; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  .wrap { max-width: 1200px; margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)); }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  header h1 { font-size: 22px; margin: 0; letter-spacing: -.01em; }
+  .sync { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .sync::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3f9c6d; }
+  .sync.busy::before { background: #d9a43b; }
+  .sync.err::before { background: #c9473d; }
+  .spacer { flex: 1; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+  .primary { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 12px; padding: 12px 18px; font-weight: 600; width: 100%; font-size: 17px; }
+  .primary:disabled { opacity: .5; }
+  .ghost { background: transparent; border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; font-size: 14px; }
+  .ghost.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .icon { background: none; border: 0; padding: 4px 6px; border-radius: 6px; color: var(--muted); font-size: 13px; }
+  .icon:hover { background: var(--chip); color: var(--ink); }
+  .empty { text-align: center; color: var(--muted); padding: 30px 10px; }
+  .label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+
+  .tabs { display: flex; gap: 4px; background: var(--chip); border-radius: 12px; padding: 4px; margin-bottom: 14px; }
+  .tabs button { flex: 1; border: 0; background: transparent; border-radius: 9px; padding: 8px 10px; font-weight: 600; color: var(--muted); }
+  .tabs button.on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+  @media (min-width: 900px) { .tabs { max-width: 360px; } }
+
+  /* ---- design viewer ---- */
+  .viewer-layout { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 900px) { .viewer-layout { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; } }
+  .stage { position: relative; height: min(62vh, 640px); min-height: 340px; border-radius: 14px; overflow: hidden; background: var(--stage); border: 1px solid var(--line); touch-action: none; user-select: none; -webkit-user-select: none; }
+  .stage.full { position: fixed; inset: 0; height: auto; border-radius: 0; z-index: 20; border: 0; }
+  .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .lbl { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); background: rgba(31,29,26,.82); color: #fff; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .lbl.rm { background: var(--accent); }
+  .lbl.part { background: rgba(255,255,255,.92); color: #1f1d1a; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .stage-bar { position: absolute; left: 8px; right: 8px; top: 8px; display: flex; gap: 6px; flex-wrap: wrap; pointer-events: none; }
+  .stage-bar button { pointer-events: auto; background: rgba(255,255,255,.9); color: #1f1d1a; border: 0; border-radius: 9px; padding: 6px 10px; font-size: 13px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .stage-bar button.on { background: #1f1d1a; color: #fff; }
+  .stage-hint { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 12px; color: var(--muted); pointer-events: none; }
+  .stage .exit-full { display: none; }
+  .stage.full .exit-full { display: inline-block; }
+  .stage.full .enter-full { display: none; }
+
+  .panel { display: grid; gap: 12px; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+  .panel .card { padding: 14px; }
+  .vpick { display: flex; gap: 8px; align-items: center; }
+  .vpick select { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 8px 10px; }
+  .summary { white-space: pre-wrap; font-size: 15px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; margin-top: 12px; }
+  .stat { background: var(--chip); border-radius: 10px; padding: 8px 10px; }
+  .stat b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  .unit-info h3 { margin: 0 0 4px; font-size: 17px; }
+  .unit-info .sub { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
+  .parts { display: grid; gap: 4px; font-size: 14px; }
+  .parts div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; background: var(--chip); border-radius: 8px; }
+  .parts div span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .muted { color: var(--muted); font-size: 14px; }
+
+  /* ---- ask ---- */
+  .ask-layout { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 900px) { .ask-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+  .compose { padding: 14px; display: grid; gap: 10px; }
+  .compose textarea { width: 100%; min-height: 160px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); outline: 0; resize: vertical; font-size: 16px; }
+  .compose textarea:focus { border-color: var(--muted); }
+  .base-chip { display: inline-flex; gap: 6px; align-items: center; background: var(--chip); border-radius: 999px; padding: 4px 6px 4px 12px; font-size: 14px; justify-self: start; }
+  .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+  .thumb { aspect-ratio: 1; border-radius: 9px; overflow: hidden; position: relative; background: var(--chip); border: 0; padding: 0; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .x { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; border: 0; font-size: 13px; line-height: 24px; padding: 0; }
+  .addpics { border: 1.5px dashed var(--line); background: transparent; border-radius: 10px; padding: 12px; color: var(--muted); font-weight: 600; }
+  .room { padding: 14px; }
+  .room .dims { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .reqs { display: grid; gap: 10px; }
+  .req { padding: 12px 14px; }
+  .req .text { white-space: pre-wrap; word-break: break-word; }
+  .req .thumbs { margin-top: 8px; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+  .req .meta { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+  .pill { border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; }
+  .pill.new { background: #f5e3c8; color: #7a4f12; }
+  .pill.working { background: #dbe6f7; color: #24508f; }
+  .pill.done { background: #d7eedf; color: #1f6b3d; }
+  .reply { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: var(--chip); font-size: 14px; white-space: pre-wrap; }
+  .reply b { color: var(--accent); }
+
+  .setup { max-width: 480px; margin: 40px auto; padding: 20px; }
+  .setup h2 { margin: 0 0 8px; }
+  .setup p, .setup li { color: var(--muted); font-size: 15px; }
+  .setup input { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 10px 12px; margin: 6px 0 12px; }
+  .setup .err { color: #c9473d; font-size: 14px; min-height: 1.4em; }
+  .foot { text-align: center; margin-top: 24px; font-size: 13px; }
+  .foot button { color: var(--muted); }
+
+  .photo { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 30; display: flex; flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+  .photo .pic { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 12px; }
+  .photo img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+  .photo .bar2 { display: flex; justify-content: center; padding: 12px; }
+  .photo .bar2 button { background: #2b2926; color: #fff; border: 0; border-radius: 10px; padding: 10px 16px; font-size: 15px; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: calc(100% - 32px); text-align: center; z-index: 40; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <form class="card setup" id="setup" hidden>
+    <h2>Connect to GitHub</h2>
+    <p>Your ideas, photos and designs are saved in the private <b>kahani-data</b> repo.</p>
+    <ol>
+      <li>Use the <b>Kahani apps</b> token (the same one Phone Notes uses), or make one with access to <b>kahani-data</b> and <b>Contents: Read and write</b>.</li>
+      <li>Paste it below. You only do this once on each device.</li>
+    </ol>
+    <label>Token<input id="tokenIn" type="password" autocomplete="off" placeholder="github_pat_…"></label>
+    <label>Repo<input id="repoIn" value="andrew455/kahani-data"></label>
+    <div class="err" id="setupErr"></div>
+    <button class="primary">Connect</button>
+  </form>
+
+  <div id="app" hidden>
+    <header>
+      <h1>Walk-in Robe</h1>
+      <span class="sync" id="sync">Synced</span>
+      <span class="spacer"></span>
+    </header>
+    <nav class="tabs" id="tabs"><button data-tab="designs">Designs</button><button data-tab="ask">Ideas &amp; requests</button></nav>
+
+    <section id="designsView">
+      <div class="viewer-layout">
+        <div class="stage" id="stage">
+          <canvas id="canvas"></canvas>
+          <div class="labels" id="labels"></div>
+          <div class="stage-bar">
+            <button data-view="outside">Outside</button>
+            <button data-view="inside">Walk in</button>
+            <button data-view="top">Top</button>
+            <span class="spacer"></span>
+            <button id="tMeasure" class="on">Sizes</button>
+            <button id="tClothes" class="on">Clothes</button>
+            <button class="enter-full" id="fullBtn">⤢</button>
+            <button class="exit-full" id="exitFullBtn">Done</button>
+          </div>
+          <div class="stage-hint" id="hint">Drag to turn · pinch or scroll to zoom · two fingers to move · tap a cupboard</div>
+        </div>
+
+        <div class="panel">
+          <div class="card">
+            <div class="vpick"><select id="versionPick" aria-label="Design version"></select></div>
+            <div class="summary" id="summary" style="margin-top:10px"></div>
+            <div class="stats" id="stats"></div>
+          </div>
+          <div class="card unit-info" id="unitInfo"><div class="muted">Tap a cupboard to see what's in it and its sizes.</div></div>
+          <button class="primary" id="askChanges">Ask for changes to this design</button>
+        </div>
+      </div>
+      <div class="empty" id="noDesigns" hidden>No designs yet. Add your ideas in <b>Ideas &amp; requests</b> and Claude will make one.</div>
+    </section>
+
+    <section id="askView" hidden>
+      <div class="ask-layout">
+        <div>
+          <form class="card compose" id="compose">
+            <div class="label">Tell Claude what you'd like</div>
+            <span class="base-chip" id="baseChip" hidden><span id="baseText"></span><button type="button" class="icon" id="clearBase" aria-label="Not a change">✕</button></span>
+            <textarea id="text" placeholder="e.g. Lots of drawers for jewellery and underwear, long hanging for dresses, a full-length mirror, shoe shelves that show off the shoes, white with brass handles…"></textarea>
+            <div class="thumbs" id="pickedThumbs"></div>
+            <button type="button" class="addpics" id="addPics">＋ Add inspiration photos</button>
+            <input type="file" id="picInput" accept="image/*" multiple hidden>
+            <button class="primary" id="sendBtn" disabled>Send to Claude</button>
+          </form>
+          <div class="card room" id="roomCard" style="margin-top:14px"></div>
+        </div>
+        <div>
+          <div class="label">Your requests</div>
+          <div class="reqs" id="reqs"></div>
+        </div>
+      </div>
+    </section>
+    <div class="foot"><button class="icon" id="disconnect">Disconnect this device</button></div>
+  </div>
+</div>
+<div class="photo" id="photo" hidden><div class="pic"><img id="photoImg" alt=""></div><div class="bar2"><button id="photoClose">Close</button></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="../three.min.js"></script>
+<script>
+// Walk-in Robe designer. Ideas (text + inspiration photos) and Claude's designs live in closet/ in the private
+// kahani-data repo. Claude reads new requests with closet/closet.js, and posts each design back as JSON,
+// which this page turns into a 3D model. Sizes are in millimetres.
+const FILE = 'closet/closet.json', IMG_DIR = 'closet/images';
+const CFG_KEY = 'closet:gh', TAB_KEY = 'closet:tab';
+const DEMO = new URLSearchParams(location.search).has('demo');
+const EMPTY = { version: 1, requests: [], designs: [] };
+
+const $ = id => document.getElementById(id);
+const load = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
+const keep = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 8);
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2800); }
+function ago(t) {
+  const s = (Date.now() - t) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
+// Same website as Phone Notes and Kahani, so reuse their GitHub connection if this device has one.
+let cfg = DEMO ? { demo: true } : load(CFG_KEY, null) || load('phonenotes:gh', null) || load('kahani:gh', null);
+let db = load('closet:cache', null) || EMPTY, sha = null;
+
+// ---------------- GitHub ----------------
+const b64e = s => { const b = new TextEncoder().encode(s); let o = ''; for (let i = 0; i < b.length; i += 0x8000) o += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(o); };
+const b64d = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, '')), c => c.charCodeAt(0)));
+async function gh(path, opts = {}, c = cfg) {
+  const body = opts.body ? JSON.stringify(opts.body) : undefined;
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), opts.timeout || 30000);
+  let r;
+  try {
+    r = await fetch('https://api.github.com/repos/' + c.repo + path, {
+      method: opts.method || 'GET', cache: 'no-store', signal: ctl.signal,
+      headers: { Authorization: 'Bearer ' + c.token, Accept: opts.raw ? 'application/vnd.github.raw' : 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body,
+    });
+  } finally { clearTimeout(timer); }
+  if (!r.ok) { const e = new Error('GitHub ' + r.status); e.status = r.status; throw e; }
+  return opts.raw ? r.blob() : r.json();
+}
+function errText(e) {
+  const s = e && e.status;
+  if (s === 401) return 'GitHub didn\'t accept the token — it may have expired.';
+  if (s === 403) return 'The token can\'t save to this repo (needs Contents: Read and write).';
+  if (s === 404) return 'Repo not found, or the token has no access to it.';
+  return 'Couldn\'t reach GitHub — check your connection.';
+}
+async function pull() {
+  if (DEMO) return false;
+  try {
+    const r = await gh('/contents/' + FILE);
+    if (r.sha === sha) return false;
+    sha = r.sha; db = JSON.parse(b64d(r.content));
+  } catch (e) { if (e.status !== 404) throw e; sha = null; db = structuredClone(EMPTY); }
+  keep('closet:cache', db);
+  return true;
+}
+// Applies fn to the latest copy and saves it, retrying if Claude saved in between.
+async function update(message, fn) {
+  if (DEMO) { fn(db); return; }
+  for (let attempt = 0; ; attempt++) {
+    await pull();
+    const next = structuredClone(db); fn(next); next.version = (next.version || 1) + 1;
+    try {
+      const r = await gh('/contents/' + FILE, { method: 'PUT', body: { message, content: b64e(JSON.stringify(next, null, 1)), ...(sha ? { sha } : {}) } });
+      sha = r.content.sha; db = next; keep('closet:cache', db); return;
+    } catch (e) { if ((e.status === 409 || e.status === 422) && attempt < 4) continue; throw e; }
+  }
+}
+function setSync(state, text) { const s = $('sync'); s.className = 'sync ' + state; s.textContent = text; }
+async function refresh() {
+  if (!cfg || refresh.busy) return;
+  refresh.busy = true;
+  try { if (await pull()) renderAll(); setSync('ok', DEMO ? 'Demo' : 'Synced'); }
+  catch (e) { console.error(e); setSync('err', 'Offline'); }
+  finally { refresh.busy = false; }
+}
+
+// ---------------- images ----------------
+const blobUrls = {};
+async function imageUrl(name, thumb) {
+  const key = (thumb ? 'thumbs/' : '') + name;
+  if (!blobUrls[key]) blobUrls[key] = DEMO ? Promise.resolve('') : gh('/contents/' + IMG_DIR + '/' + (thumb ? 'thumbs/' + name.replace(/\.[^.]+$/, '.jpg') : name), { raw: true, timeout: 60000 })
+    .then(b => URL.createObjectURL(b))
+    .catch(e => { if (thumb) return imageUrl(name, false); delete blobUrls[key]; throw e; });
+  return blobUrls[key];
+}
+function fillImages(root) {
+  root.querySelectorAll('img[data-src]').forEach(img => {
+    const n = img.dataset.src; img.removeAttribute('data-src');
+    imageUrl(n, true).then(u => img.src = u).catch(() => {});
+  });
+}
+async function shrink(file, max, quality) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('Could not read that image')), 'image/jpeg', quality));
+  } finally { URL.revokeObjectURL(url); }
+}
+const blobB64 = b => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.slice(r.result.indexOf(',') + 1)); r.onerror = rej; r.readAsDataURL(b); });
+async function putFile(path, blob, message) {
+  if (DEMO) return;
+  const content = await blobB64(blob);
+  for (let attempt = 0; ; attempt++) {
+    try { return await gh('/contents/' + path, { method: 'PUT', body: { message, content }, timeout: 90000 }); }
+    catch (e) { if (e.status === 409 && attempt < 3) { await new Promise(r => setTimeout(r, 800)); continue; } throw e; }
+  }
+}
+function stamp() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+function openPhoto(name) {
+  $('photo').hidden = false; $('photoImg').src = '';
+  imageUrl(name, true).then(u => { if (!$('photoImg').src) $('photoImg').src = u; }).catch(() => {});
+  imageUrl(name, false).then(u => $('photoImg').src = u).catch(e => toast(errText(e)));
+}
+$('photoClose').onclick = () => $('photo').hidden = true;
+$('photo').addEventListener('click', e => { if (e.target.classList.contains('pic')) $('photo').hidden = true; });
+
+// ---------------- tabs ----------------
+const ui = { tab: load(TAB_KEY, 'designs'), version: null, base: null, picked: [] };
+function setTab(t) {
+  ui.tab = t; keep(TAB_KEY, t);
+  $('designsView').hidden = t !== 'designs'; $('askView').hidden = t !== 'ask';
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  if (t === 'designs') { scene3d.resize(); }
+}
+$('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) setTab(b.dataset.tab); });
+
+// ---------------- ask ----------------
+function renderAsk() {
+  const room = (latestDesign() || {}).room || db.room;
+  $('roomCard').innerHTML = room
+    ? `<div class="label">The room</div><div class="dims">${room.width} × ${room.depth} mm</div><div class="muted">${(room.width / 1000).toFixed(2)} m wide · ${(room.depth / 1000).toFixed(2)} m deep · ${(room.height / 1000).toFixed(2)} m ceiling${room.estimated ? '<br>Measured off the floor plan — exact measurements coming.' : ''}</div>`
+    : `<div class="label">The room</div><div class="muted">Roughly 1.5 m wide × 3.1 m deep, from the floor plan.</div>`;
+
+  const base = ui.base && db.designs.find(d => d.version === ui.base);
+  $('baseChip').hidden = !base;
+  if (base) $('baseText').textContent = `Changes to Design ${base.version} — ${base.title || ''}`;
+
+  $('pickedThumbs').innerHTML = ui.picked.map((p, i) => `<div class="thumb"><img src="${p.url}" alt=""><button type="button" class="x" data-unpick="${i}">✕</button></div>`).join('');
+  $('sendBtn').disabled = !$('text').value.trim() && !ui.picked.length;
+
+  const reqs = [...db.requests].sort((a, b) => b.created - a.created);
+  $('reqs').innerHTML = reqs.length ? reqs.map(r => {
+    const st = r.status === 'done' ? `<span class="pill done">Done</span>` : r.status === 'working' ? `<span class="pill working">Claude is working on it</span>` : `<span class="pill new">Waiting for Claude</span>`;
+    return `<div class="card req">
+      ${r.base ? `<div class="muted">Changes to Design ${r.base}</div>` : ''}
+      ${r.text ? `<div class="text">${esc(r.text)}</div>` : ''}
+      ${r.images?.length ? `<div class="thumbs">${r.images.map(n => `<button class="thumb" data-photo="${esc(n)}"><img data-src="${esc(n)}" alt=""></button>`).join('')}</div>` : ''}
+      <div class="meta">${st}<span>${ago(r.created)}</span><span class="spacer"></span>${r.design ? `<button class="ghost" data-show="${r.design}">See Design ${r.design}</button>` : ''}</div>
+      ${r.reply ? `<div class="reply"><b>Claude:</b> ${esc(r.reply)}</div>` : ''}
+    </div>`;
+  }).join('') : `<div class="empty">Nothing sent yet.</div>`;
+  fillImages($('reqs'));
+}
+$('text').addEventListener('input', () => $('sendBtn').disabled = !$('text').value.trim() && !ui.picked.length);
+$('addPics').onclick = () => $('picInput').click();
+$('picInput').addEventListener('change', e => {
+  for (const f of e.target.files) ui.picked.push({ file: f, url: URL.createObjectURL(f) });
+  e.target.value = ''; renderAsk();
+});
+$('clearBase').onclick = () => { ui.base = null; renderAsk(); };
+$('compose').addEventListener('submit', async e => {
+  e.preventDefault();
+  const text = $('text').value.trim();
+  if (!text && !ui.picked.length) return;
+  const btn = $('sendBtn'); btn.disabled = true;
+  const names = [];
+  try {
+    for (let i = 0; i < ui.picked.length; i++) {
+      btn.textContent = `Uploading photo ${i + 1} of ${ui.picked.length}…`;
+      const p = ui.picked[i];
+      if (!p.name) {
+        const name = stamp() + '-' + Math.random().toString(36).slice(2, 6) + '.jpg';
+        await putFile(`${IMG_DIR}/${name}`, await shrink(p.file, 2200, 0.86), 'Robe inspiration photo');
+        const thumb = await shrink(p.file, 420, 0.75);
+        await putFile(`${IMG_DIR}/thumbs/${name}`, thumb, 'Robe photo preview');
+        blobUrls['thumbs/' + name] = Promise.resolve(URL.createObjectURL(thumb));
+        p.name = name;   // a retry after a failure won't upload it twice
+      }
+      names.push(p.name);
+    }
+    btn.textContent = 'Sending…';
+    const req = { id: uid(), text, images: names, base: ui.base || null, status: 'new', created: Date.now() };
+    await update('Robe request', d => d.requests.push(req));
+    $('text').value = ''; ui.picked = []; ui.base = null;
+    toast('Sent to Claude ✓');
+    renderAll();
+  } catch (err) { console.error(err); toast(errText(err) + ' Your words and photos are still here — try again.'); }
+  finally { btn.textContent = 'Send to Claude'; btn.disabled = !$('text').value.trim() && !ui.picked.length; }
+});
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  const d = t.dataset;
+  if (d.unpick) { ui.picked.splice(+d.unpick, 1); renderAsk(); }
+  else if (d.photo) openPhoto(d.photo);
+  else if (d.show) { ui.version = +d.show; setTab('designs'); renderDesigns(); }
+});
+$('askChanges').onclick = () => {
+  ui.base = ui.version; setTab('ask'); renderAsk();
+  $('text').focus(); scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// ---------------- designs ----------------
+const latestDesign = () => db.designs.reduce((a, b) => (!a || b.version > a.version ? b : a), null);
+const PART_NAMES = { drawers: 'Drawers', shelves: 'Shelves', hang: 'Hanging', shoes: 'Shoe shelves', cabinet: 'Cupboard with doors', open: 'Open space', mirror: 'Mirror', baskets: 'Pull-out baskets' };
+const WALL_NAMES = { left: 'Left wall', right: 'Right wall', back: 'Back wall', front: 'Door wall', floor: 'Island' };
+function partLabel(p) {
+  const n = PART_NAMES[p.type] || p.type;
+  const c = p.count;
+  if (p.type === 'drawers' || p.type === 'baskets') return `${c || 1} ${n.toLowerCase()}`;
+  if (p.type === 'shoes') return `Shoe shelves × ${c || 3}`;
+  if (p.type === 'shelves') return c ? `Shelf + ${c} adjustable` : 'Shelf';
+  return (p.label ? p.label : n);
+}
+function stats(d) {
+  let drawers = 0, hang = 0, shelves = 0, shoes = 0;
+  for (const u of d.units || []) for (const p of u.parts || []) {
+    if (p.type === 'drawers' || p.type === 'baskets') drawers += p.count || 1;
+    if (p.type === 'hang') hang += u.width;
+    if (p.type === 'shelves') shelves += 1 + (p.count || 0);
+    if (p.type === 'shoes') shoes += p.count || 3;
+  }
+  return [[drawers, 'drawers'], [(hang / 1000).toFixed(1) + ' m', 'hanging rail'], [shelves, 'shelves'], [shoes, 'shoe shelves']].filter(s => s[0] && s[0] !== '0.0 m');
+}
+function renderDesigns() {
+  const list = [...db.designs].sort((a, b) => b.version - a.version);
+  $('noDesigns').hidden = !!list.length;
+  document.querySelector('#designsView .viewer-layout').hidden = !list.length;
+  if (!list.length) return;
+  if (!list.some(d => d.version === ui.version)) ui.version = list[0].version;
+  const d = list.find(x => x.version === ui.version);
+  $('versionPick').innerHTML = list.map(x => `<option value="${x.version}" ${x.version === d.version ? 'selected' : ''}>Design ${x.version}${x.title ? ' — ' + esc(x.title) : ''}${x === list[0] ? ' (latest)' : ''}</option>`).join('');
+  $('summary').textContent = d.summary || '';
+  $('stats').innerHTML = stats(d).map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+  if (scene3d.design !== d) scene3d.show(d);
+}
+$('versionPick').addEventListener('change', e => { ui.version = +e.target.value; renderDesigns(); });
+function showUnit(u) {
+  if (!u) { $('unitInfo').innerHTML = `<div class="muted">Tap a cupboard to see what's in it and its sizes.</div>`; return; }
+  const parts = [...(u.parts || [])].reverse();
+  $('unitInfo').innerHTML = `<h3>${esc(u.name || 'Cupboard')}</h3>
+    <div class="sub">${WALL_NAMES[u.wall] || ''} · ${u.width} wide × ${u.depth} deep × ${u.height || scene3d.design.room.height} high</div>
+    <div class="label">Top to bottom</div>
+    <div class="parts">${parts.map(p => `<div><span>${esc(partLabel(p))}</span><span>${p.height} mm</span></div>`).join('')}</div>
+    ${u.note ? `<div class="muted" style="margin-top:8px">${esc(u.note)}</div>` : ''}`;
+}
+
+// ---------------- 3D ----------------
+const scene3d = (() => {
+  const canvas = $('canvas'), stage = $('stage'), labelsEl = $('labels');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  if ('outputEncoding' in renderer) renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.02, 100);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xb9a88f, 0.75));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.55);
+  sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0005;
+  scene.add(sun, sun.target);
+  const lamp = new THREE.PointLight(0xfff4e6, 0.35, 8);
+  scene.add(lamp);
+
+  let root = null, units = [], labels = [], partLabels = [], selected = null, box = null;
+  const opts = { sizes: true, clothes: true };
+  const ctl = { target: new THREE.Vector3(), r: 5, theta: 0.6, phi: 0.9 };
+  let needs = true;
+  const S = 1 / 1000;   // mm → m
+  const room = { w: 1.5, d: 3, h: 2.4 };
+
+  const mats = {};
+  function mat(color, extra = {}) {
+    const k = color + JSON.stringify(extra);
+    return mats[k] || (mats[k] = new THREE.MeshStandardMaterial({ color, roughness: 0.75, metalness: 0, ...extra }));
+  }
+  function boxMesh(w, h, d, m, x, y, z, parent) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(Math.max(w, 0.001), Math.max(h, 0.001), Math.max(d, 0.001)), m);
+    mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true;
+    parent.add(mesh); return mesh;
+  }
+  function plane(w, h, m, parent) {
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+    mesh.receiveShadow = true; parent.add(mesh); return mesh;
+  }
+
+  // Room coordinates: x from the left wall, y up, d = depth from the door wall. World z = -d,
+  // so standing in the doorway looking in you face -z with +x on your right.
+  const P = (x, y, d) => new THREE.Vector3(x * S, y * S, -d * S);
+
+  function buildRoom(r, f, g) {
+    const W = r.width * S, D = r.depth * S, H = r.height * S;
+    const wallM = mat(f.walls || '#f5f2ed'), floorM = mat(f.floor || '#b99d7c', { roughness: 0.9 });
+    const floor = plane(W, D, floorM, g); floor.rotation.x = -Math.PI / 2; floor.position.set(W / 2, 0, -D / 2);
+    const ceil = plane(W, D, mat('#fbfaf8'), g); ceil.rotation.x = Math.PI / 2; ceil.position.set(W / 2, H, -D / 2);
+    // Walls are one-sided and face into the room, so from outside you see straight in through the near walls.
+    const back = plane(W, H, wallM, g); back.position.set(W / 2, H / 2, -D);
+    const left = plane(D, H, wallM, g); left.rotation.y = Math.PI / 2; left.position.set(0, H / 2, -D / 2);
+    const right = plane(D, H, wallM, g); right.rotation.y = -Math.PI / 2; right.position.set(W, H / 2, -D / 2);
+    const door = r.door || { offset: 0, width: 0, height: 0 };
+    const dx = door.offset * S, dw = door.width * S, dh = Math.min(door.height * S, H);
+    const front = (x0, x1, y0, y1) => {
+      if (x1 - x0 < 1e-4 || y1 - y0 < 1e-4) return;
+      const m = plane(x1 - x0, y1 - y0, wallM, g); m.rotation.y = Math.PI; m.position.set((x0 + x1) / 2, (y0 + y1) / 2, 0);
+    };
+    front(0, dx, 0, H); front(dx + dw, W, 0, H); front(dx, dx + dw, dh, H);
+    // outline of the walls' top edges and skirting, so the room reads clearly from outside
+    const pts = [[0, 0], [W, 0], [W, -D], [0, -D], [0, 0]];
+    for (const y of [0.002, H]) g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(([x, z]) => new THREE.Vector3(x, y, z))), new THREE.LineBasicMaterial({ color: 0x8a7f72 })));
+    for (const [x, z] of pts.slice(0, 4)) g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, 0, z), new THREE.Vector3(x, H, z)]), new THREE.LineBasicMaterial({ color: 0xc9c0b4 })));
+    // door opening frame
+    if (dw) g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([[dx, 0], [dx, dh], [dx + dw, dh], [dx + dw, 0]].map(([x, y]) => new THREE.Vector3(x, y, 0.001))), new THREE.LineBasicMaterial({ color: 0x8a7f72 })));
+  }
+
+  // garment colours, picked the same way every time so the model doesn't flicker between renders
+  const CLOTH = ['#2f3e55', '#a8b8c8', '#e8e2d6', '#7a4b3a', '#c99b8a', '#3d5a4a', '#d7c3a3', '#1f1f22', '#8e6f9b', '#b44a4a', '#f0efe9', '#5d6b7a'];
+  let seed = 1; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  function buildUnit(u, f, R) {
+    const g = new THREE.Group(); g.userData.unit = u;
+    const w = u.width * S, d = u.depth * S, h = (u.height || R.height) * S, t = 0.018;
+    const plinth = (u.plinth || 0) * S;
+    const carcass = mat(u.color || f.carcass || '#efe9df'), fronts = mat(u.fronts || f.fronts || '#e4dccf');
+    const handle = mat(f.handles || '#3a3632', { metalness: 0.6, roughness: 0.35 }), rail = mat(f.rail || '#bfc3c7', { metalness: 0.85, roughness: 0.25 });
+    const inner = mat(u.color || f.carcass || '#efe9df');
+    boxMesh(t, h, d, carcass, t / 2, h / 2, d / 2, g);
+    boxMesh(t, h, d, carcass, w - t / 2, h / 2, d / 2, g);
+    boxMesh(w, t, d, carcass, w / 2, h - t / 2, d / 2, g);
+    boxMesh(w - 2 * t, t, d, carcass, w / 2, plinth + t / 2, d / 2, g);
+    if (plinth) boxMesh(w - 2 * t, plinth, t, fronts, w / 2, plinth / 2, d - 0.04, g);
+    boxMesh(w - 2 * t, h - t, 0.006, mat(shade(u.color || f.carcass || '#efe9df', -0.06)), w / 2, (h - t) / 2, 0.003, g);
+    const iw = w - 2 * t;
+    let y = plinth + t;
+    const parts = u.parts || [];
+    const zones = [];
+    parts.forEach((p, i) => {
+      const ph = p.height * S, y0 = y, y1 = Math.min(y + ph, h - t);
+      zones.push({ p, y0, y1 });
+      if (i < parts.length - 1 && y1 < h - t - 0.01) boxMesh(iw, t, d - 0.01, inner, w / 2, y1 - t / 2, d / 2, g);   // fixed shelf between sections
+      const top = i < parts.length - 1 ? y1 - t : y1, zh = top - y0;
+      if (zh <= 0.01) { y = y1; return; }
+      const n = p.count || 0;
+      if (p.type === 'shelves') {
+        for (let k = 1; k <= n; k++) boxMesh(iw - 0.004, t, d - 0.03, inner, w / 2, y0 + zh * k / (n + 1), d / 2 - 0.01, g);
+      } else if (p.type === 'drawers' || p.type === 'baskets') {
+        const c = Math.max(1, n || 1), gap = 0.003, fh = (zh - gap * (c + 1)) / c;
+        for (let k = 0; k < c; k++) {
+          const cy = y0 + gap + fh / 2 + k * (fh + gap);
+          if (p.type === 'drawers') {
+            boxMesh(iw - 0.004, fh, t, mat(p.color || u.fronts || f.fronts || '#e4dccf'), w / 2, cy, d - t / 2, g);
+            boxMesh(Math.min(0.16, iw * 0.4), 0.012, 0.02, handle, w / 2, cy + fh * 0.25, d + 0.01, g);
+          } else {
+            const wire = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(iw - 0.02, fh * 0.8, d - 0.06)), new THREE.LineBasicMaterial({ color: 0x9aa0a6 }));
+            wire.position.set(w / 2, cy - fh * 0.08, d / 2); g.add(wire);
+            boxMesh(iw - 0.02, 0.004, d - 0.06, rail, w / 2, cy - fh * 0.48, d / 2, g);
+          }
+        }
+      } else if (p.type === 'hang') {
+        const ry = top - 0.06;
+        const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.0125, 0.0125, iw, 16), rail);
+        cyl.rotation.z = Math.PI / 2; cyl.position.set(w / 2, ry, d / 2); cyl.castShadow = true; g.add(cyl);
+        if (opts.clothes) {
+          const cg = new THREE.Group(); cg.userData.clothes = true;
+          const step = 0.075, count = Math.floor((iw - 0.06) / step);
+          for (let k = 0; k < count; k++) {
+            const long = zh > 1.4, len = Math.min(zh - 0.12, long ? 1.0 + rnd() * 0.45 : 0.55 + rnd() * 0.4);
+            const gw = Math.min(0.46, d - 0.1);
+            const m = mat(CLOTH[Math.floor(rnd() * CLOTH.length)], { roughness: 0.95 });
+            const piece = boxMesh(0.03, len, gw, m, t + 0.04 + k * step + rnd() * 0.01, ry - 0.05 - len / 2, d / 2, cg);
+            piece.castShadow = false;
+            boxMesh(0.004, 0.05, gw * 0.85, rail, piece.position.x, ry - 0.025, d / 2, cg).castShadow = false;
+          }
+          g.add(cg);
+        }
+      } else if (p.type === 'shoes') {
+        const c = Math.max(1, n || 3);
+        for (let k = 0; k < c; k++) {
+          const sy = y0 + zh * (k + 0.6) / c;
+          const s = boxMesh(iw - 0.004, t, d - 0.05, inner, w / 2, sy, d / 2, g);
+          s.rotation.x = 0.26;
+          boxMesh(iw - 0.004, 0.03, 0.012, rail, w / 2, sy - Math.sin(0.26) * (d - 0.05) / 2 + 0.012, d / 2 + Math.cos(0.26) * (d - 0.05) / 2, g);
+          if (opts.clothes) for (let q = 0; q + 0.2 < iw; q += 0.24) {
+            const sm = mat(CLOTH[Math.floor(rnd() * CLOTH.length)], { roughness: 0.6 });
+            const shoe = boxMesh(0.085, 0.07, 0.22, sm, t + 0.07 + q, sy + 0.06, d / 2 + 0.02, g); shoe.rotation.x = 0.26; shoe.castShadow = false;
+            const shoe2 = boxMesh(0.085, 0.07, 0.22, sm, t + 0.17 + q, sy + 0.06, d / 2 + 0.02, g); shoe2.rotation.x = 0.26; shoe2.castShadow = false;
+          }
+        }
+      } else if (p.type === 'cabinet') {
+        for (let k = 1; k <= n; k++) boxMesh(iw - 0.004, t, d - 0.03, inner, w / 2, y0 + zh * k / (n + 1), d / 2 - 0.01, g);
+        const doors = iw > 0.62 ? 2 : 1, dw = (iw - 0.004 * (doors + 1)) / doors;
+        for (let k = 0; k < doors; k++) {
+          const cx = t + 0.004 + dw / 2 + k * (dw + 0.004);
+          boxMesh(dw, zh - 0.006, t, mat(p.color || u.fronts || f.fronts || '#e4dccf'), cx, y0 + zh / 2, d - t / 2, g);
+          const hx = doors === 2 ? (k === 0 ? cx + dw / 2 - 0.04 : cx - dw / 2 + 0.04) : cx + dw / 2 - 0.04;
+          boxMesh(0.012, Math.min(0.2, zh * 0.4), 0.02, handle, hx, y0 + zh / 2, d + 0.01, g);
+        }
+      } else if (p.type === 'mirror') {
+        boxMesh(iw - 0.04, zh - 0.04, 0.006, mat('#cfdbe3', { metalness: 0.9, roughness: 0.08 }), w / 2, y0 + zh / 2, 0.012, g);
+      }
+      y = y1;
+    });
+    g.userData.zones = zones;
+    g.userData.size = { w, d, h };
+    place(g, u, R);
+    return g;
+  }
+  function place(g, u, R) {
+    const W = R.width * S, D = R.depth * S, from = (u.from || 0) * S, w = u.width * S, el = (u.elevation || 0) * S;
+    if (u.wall === 'back') { g.position.set(from, el, -D); }
+    else if (u.wall === 'left') { g.rotation.y = Math.PI / 2; g.position.set(0, el, -from); }
+    else if (u.wall === 'right') { g.rotation.y = -Math.PI / 2; g.position.set(W, el, -(from + w)); }
+    else if (u.wall === 'front') { g.rotation.y = Math.PI; g.position.set(from + w, el, 0); }
+    else {   // free-standing island: x, d = centre; rotation in degrees (0 = fronts face the door)
+      const rot = (u.rotation || 0) * Math.PI / 180, d = u.depth * S;
+      g.rotation.y = rot;
+      const c = new THREE.Vector3(-w / 2, 0, -d / 2).applyAxisAngle(new THREE.Vector3(0, 1, 0), rot);
+      g.position.set((u.x || 0) * S + c.x, el, -(u.d || 0) * S + c.z);
+    }
+  }
+  function shade(hex, amt) {
+    const c = new THREE.Color(hex); const hsl = {}; c.getHSL(hsl); c.setHSL(hsl.h, hsl.s, Math.max(0, Math.min(1, hsl.l + amt)));
+    return '#' + c.getHexString();
+  }
+
+  // dimension line with end ticks and a label
+  function dim(a, b, text, cls, parent) {
+    const m = new THREE.LineBasicMaterial({ color: cls === 'rm' ? 0xb5754a : 0x3a3632 });
+    const dir = b.clone().sub(a).normalize();
+    const up = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+    const tick = up.clone().multiplyScalar(0.04);
+    const pts = [a, b, a.clone().add(tick), a.clone().sub(tick), b.clone().add(tick), b.clone().sub(tick)];
+    const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), m);
+    line.userData.dim = true; parent.add(line);
+    addLabel(a.clone().add(b).multiplyScalar(0.5), text, cls, labels);
+  }
+  function addLabel(pos, text, cls, list) {
+    const el = document.createElement('div'); el.className = 'lbl ' + (cls || ''); el.textContent = text;
+    labelsEl.append(el); list.push({ pos, el });
+  }
+
+  function show(design) {
+    api.design = design;
+    if (root) { scene.remove(root); root.traverse(o => { if (o.geometry) o.geometry.dispose(); }); }
+    labelsEl.innerHTML = ''; labels = []; partLabels = []; selected = null; box = null; showUnit(null);
+    seed = 7;
+    const R = design.room || { width: 1500, depth: 3100, height: 2400 };
+    const f = design.finish || {};
+    room.w = R.width * S; room.d = R.depth * S; room.h = R.height * S;
+    root = new THREE.Group(); scene.add(root);
+    buildRoom(R, f, root);
+    units = (design.units || []).map(u => { const g = buildUnit(u, f, R); root.add(g); return g; });
+
+    // sizes: the room, each cupboard's width, and any extra ones the design asks for
+    const dg = new THREE.Group(); dg.userData.dims = true; root.add(dg);
+    const o = 180;
+    dim(P(0, 0, -o), P(R.width, 0, -o), `${R.width}`, 'rm', dg);
+    dim(P(-o, 0, 0), P(-o, 0, R.depth), `${R.depth}`, 'rm', dg);
+    dim(P(R.width + o, 0, R.depth), P(R.width + o, R.height, R.depth), `${R.height} high`, 'rm', dg);
+    if (R.door?.width) dim(P(R.door.offset, R.door.height + 60, -20), P(R.door.offset + R.door.width, R.door.height + 60, -20), `door ${R.door.width}`, '', dg);
+    for (const g of units) {
+      const s = g.userData.size, u = g.userData.unit;
+      g.updateMatrixWorld();
+      const a = g.localToWorld(new THREE.Vector3(0, 0.01, s.d + 0.06)), b = g.localToWorld(new THREE.Vector3(s.w, 0.01, s.d + 0.06));
+      dim(a, b, `${u.width}`, '', dg);
+    }
+    for (const x of design.dims || []) dim(P(...x.from), P(...x.to), x.label || '', '', dg);
+
+    // light the room from above, with shadows sized to it
+    sun.position.set(room.w * 0.3, room.h + 4, 2.5); sun.target.position.set(room.w / 2, 0, -room.d / 2);
+    const sc = sun.shadow.camera, ext = Math.max(room.w, room.d) * 0.9 + 0.5;
+    sc.left = -ext; sc.right = ext; sc.top = ext; sc.bottom = -ext; sc.near = 0.5; sc.far = 15; sc.updateProjectionMatrix();
+    lamp.position.set(room.w / 2, room.h - 0.15, -room.d / 2);
+    applyOpts();
+    if (!show.viewed) { view('outside'); show.viewed = true; }
+    needs = true;
+  }
+
+  function applyOpts() {
+    if (!root) return;
+    root.traverse(o => { if (o.userData.dims) o.visible = opts.sizes; if (o.userData.clothes) o.visible = opts.clothes; });
+    labels.forEach(l => l.el.hidden = !opts.sizes);
+    needs = true;
+  }
+
+  function select(g) {
+    selected = g;
+    if (box) { scene.remove(box); box = null; }
+    partLabels.forEach(l => l.el.remove()); partLabels = [];
+    if (g) {
+      box = new THREE.BoxHelper(g, 0xb5754a); scene.add(box);
+      const s = g.userData.size;
+      for (const z of g.userData.zones) addLabel(g.localToWorld(new THREE.Vector3(s.w / 2, (z.y0 + z.y1) / 2, s.d + 0.03)), `${partLabel(z.p)} · ${z.p.height}`, 'part', partLabels);
+    }
+    showUnit(g && g.userData.unit);
+    needs = true;
+  }
+
+  // ---- camera ----
+  function apply() {
+    ctl.phi = Math.max(0.05, Math.min(Math.PI - 0.15, ctl.phi));
+    ctl.r = Math.max(0.05, Math.min(20, ctl.r));
+    const sp = Math.sin(ctl.phi);
+    camera.position.set(ctl.target.x + ctl.r * sp * Math.sin(ctl.theta), ctl.target.y + ctl.r * Math.cos(ctl.phi), ctl.target.z + ctl.r * sp * Math.cos(ctl.theta));
+    camera.lookAt(ctl.target);
+    needs = true;
+  }
+  function lookFrom(pos, target) {
+    ctl.target.copy(target);
+    const v = pos.clone().sub(target);
+    ctl.r = v.length(); ctl.phi = Math.acos(v.y / ctl.r); ctl.theta = Math.atan2(v.x, v.z);
+    apply();
+  }
+  function view(kind) {
+    const c = new THREE.Vector3(room.w / 2, room.h * 0.4, -room.d / 2);
+    const span = Math.max(room.w, room.d, room.h);
+    if (kind === 'inside') lookFrom(new THREE.Vector3(Math.min(0.45, room.w / 2), 1.6, 0.35), new THREE.Vector3(room.w * 0.55, 1.2, -room.d * 0.55));
+    else if (kind === 'top') lookFrom(new THREE.Vector3(c.x, span * 1.9 + 1, c.z + 0.01), new THREE.Vector3(c.x, 0, c.z));
+    else lookFrom(new THREE.Vector3(c.x - span * 0.55, room.h + span * 0.9, c.z + span * 1.25), c);
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === kind));
+  }
+
+  const ptrs = new Map(); let down = null, pinch = null;
+  function pan(dx, dy) {
+    const k = Math.max(ctl.r, 0.6) * 0.0018;
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+    ctl.target.addScaledVector(right, -dx * k).addScaledVector(up, dy * k);
+  }
+  canvas.addEventListener('pointerdown', e => {
+    canvas.setPointerCapture(e.pointerId);
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 1) down = { x: e.clientX, y: e.clientY, t: Date.now(), moved: false, pan: e.button === 2 || e.shiftKey };
+    if (ptrs.size === 2) { down && (down.moved = true); pinch = null; }
+    document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('on'));
+  });
+  canvas.addEventListener('pointermove', e => {
+    const p = ptrs.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    if (ptrs.size === 1) {
+      if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) down.moved = true;
+      if (down?.pan) pan(dx, dy); else { ctl.theta -= dx * 0.006; ctl.phi -= dy * 0.006; }
+      p.x = e.clientX; p.y = e.clientY; apply();
+    } else if (ptrs.size === 2) {
+      p.x = e.clientX; p.y = e.clientY;
+      const [a, b] = [...ptrs.values()];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y), mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      if (pinch) { ctl.r *= pinch.dist / dist; pan(mid.x - pinch.mid.x, mid.y - pinch.mid.y); apply(); }
+      pinch = { dist, mid };
+    }
+  });
+  const end = e => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.delete(e.pointerId); pinch = null;
+    if (ptrs.size === 0 && down && !down.moved && Date.now() - down.t < 500) pick(e);
+    if (ptrs.size === 0) down = null;
+  };
+  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    if (e.ctrlKey) ctl.r *= Math.exp(e.deltaY * 0.01);            // trackpad pinch
+    else ctl.r *= Math.exp(e.deltaY * 0.0012);
+    apply();
+  }, { passive: false });
+  // zooming right in moves the turning point forward, so you can walk through the room
+  canvas.addEventListener('dblclick', e => pick(e, true));
+
+  const ray = new THREE.Raycaster();
+  function pick(e, focus) {
+    const r = canvas.getBoundingClientRect();
+    ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1), camera);
+    const hit = ray.intersectObjects(units, true).find(h => h.object.visible && h.face && h.face.normal.clone().transformDirection(h.object.matrixWorld).dot(ray.ray.direction) < 0.5);
+    let g = hit && hit.object; while (g && !g.userData.unit) g = g.parent;
+    if (focus && hit) { ctl.target.copy(hit.point); apply(); return; }
+    select(g && g !== selected ? g : null);
+  }
+
+  const v = new THREE.Vector3();
+  function placeLabels(list) {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    for (const l of list) {
+      v.copy(l.pos).project(camera);
+      const off = v.z > 1 || v.x < -1.2 || v.x > 1.2 || v.y < -1.2 || v.y > 1.2;
+      l.el.style.display = off ? 'none' : '';
+      if (!off) l.el.style.transform = `translate(${(v.x + 1) / 2 * w}px, ${(1 - v.y) / 2 * h}px) translate(-50%, -50%)`;
+    }
+  }
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); needs = true;
+  }
+  new ResizeObserver(resize).observe(stage);
+  (function loop() {
+    requestAnimationFrame(loop);
+    if (!needs || !root) return;
+    needs = false;
+    if (box) box.update();
+    renderer.render(scene, camera);
+    if (opts.sizes) placeLabels(labels);
+    placeLabels(partLabels);
+  })();
+
+  document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => view(b.dataset.view));
+  $('tMeasure').onclick = () => { opts.sizes = !opts.sizes; $('tMeasure').classList.toggle('on', opts.sizes); applyOpts(); };
+  $('tClothes').onclick = () => { opts.clothes = !opts.clothes; $('tClothes').classList.toggle('on', opts.clothes); const sel = selected?.userData.unit; show(api.design); if (sel) select(units.find(g => g.userData.unit === sel)); };
+  $('fullBtn').onclick = () => { stage.classList.add('full'); resize(); };
+  $('exitFullBtn').onclick = () => { stage.classList.remove('full'); resize(); };
+  addEventListener('keydown', e => { if (e.key === 'Escape') { stage.classList.remove('full'); $('photo').hidden = true; resize(); } });
+
+  const api = { design: null, show, resize };
+  return api;
+})();
+
+// ---------------- start ----------------
+function renderAll() { renderDesigns(); renderAsk(); }
+$('setup').addEventListener('submit', async e => {
+  e.preventDefault();
+  const c = { repo: $('repoIn').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\.git$/, ''), token: $('tokenIn').value.trim(), branch: 'main' };
+  if (!/^[\w.-]+\/[\w.-]+$/.test(c.repo) || !c.token) { $('setupErr').textContent = 'Enter the token and the repo (owner/name).'; return; }
+  $('setupErr').textContent = 'Checking…';
+  try {
+    const info = await gh('', {}, c);
+    if (info.permissions && info.permissions.push === false) { $('setupErr').textContent = 'That token can read the repo but can\'t save to it.'; return; }
+  } catch (err) { $('setupErr').textContent = errText(err); return; }
+  cfg = c; keep(CFG_KEY, cfg); $('tokenIn').value = '';
+  start();
+});
+$('disconnect').addEventListener('click', () => {
+  if (!confirm('Disconnect this device? Everything stays safe on GitHub.')) return;
+  for (const k of [CFG_KEY, 'closet:cache']) try { localStorage.removeItem(k); } catch {}
+  location.reload();
+});
+
+function start() {
+  $('setup').hidden = true; $('app').hidden = false;
+  if (DEMO) { $('disconnect').hidden = true; db = DEMO_DB; }
+  setTab(ui.tab === 'ask' ? 'ask' : 'designs');
+  renderAll(); refresh();
+  setInterval(() => { if (!document.hidden) refresh(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  addEventListener('focus', refresh);
+}
+
+// ?demo shows a sample design without connecting to GitHub (nothing is saved).
+const DEMO_DB = { version: 1, requests: [], designs: [] };
+if (DEMO) fetch('demo.json').then(r => r.json()).then(d => { DEMO_DB.designs.push({ version: 1, created: Date.now(), ...d }); start(); });
+else if (cfg) start(); else $('setup').hidden = false;
+</script>
+</body>
+</html>

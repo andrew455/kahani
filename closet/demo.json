@@ -1,0 +1,22 @@
+{
+  "title": "The bachelor special",
+  "summary": "Designed by a single man. Black walls (\"it's moody\"), one rail, one tiny set of drawers he found on the street, and a shelf that's too high to reach. Everything else is floor — for the clothes pile.\n\nThis is only a joke starting point. Go to Ideas & requests, describe what you really want, add your inspiration photos, and Claude will design it properly.",
+  "room": {
+    "width": 1500, "depth": 3100, "height": 2400, "estimated": true,
+    "door": { "wall": "front", "offset": 0, "width": 850, "height": 2100 }
+  },
+  "finish": { "carcass": "#262626", "fronts": "#8a6a43", "handles": "#d4691e", "rail": "#7d7d7d", "floor": "#4a4440", "walls": "#1c1c1e" },
+  "units": [
+    { "id": "r1", "name": "The one rail", "wall": "right", "from": 1300, "width": 800, "depth": 550, "height": 2000,
+      "parts": [ { "type": "open", "height": 300 }, { "type": "hang", "height": 1400 } ],
+      "note": "Holds 9 black t-shirts and one suit for weddings." },
+    { "id": "b1", "name": "Street-find drawers", "wall": "back", "from": 150, "width": 400, "depth": 400, "height": 700,
+      "parts": [ { "type": "drawers", "count": 3, "height": 682 } ], "fronts": "#a57c4f",
+      "note": "One drawer doesn't close. Contains cables." },
+    { "id": "b2", "name": "Unreachable shelf", "wall": "back", "from": 600, "width": 900, "depth": 300, "height": 40, "elevation": 2150,
+      "parts": [], "note": "Holds a single shoebox. Nobody knows what's in it." }
+  ],
+  "dims": [
+    { "from": [0, 0, 1500], "to": [950, 0, 1500], "label": "Floordrobe 950" }
+  ]
+}
