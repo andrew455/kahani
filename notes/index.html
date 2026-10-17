@@ -80,6 +80,10 @@
   .addcat { display: flex; gap: 6px; margin-top: 10px; }
   .addcat input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 8px; font-size: 14px; }
 
+  .qr { background: #fff; padding: 8px; border-radius: 8px; display: inline-block; line-height: 0; }
+  .qr img, .qr canvas { width: 160px; height: 160px; }
+  .qr-url { font-size: 12px; color: var(--muted); margin-top: 8px; word-break: break-all; }
+  .setup-qr { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); text-align: center; }
   .setup { max-width: 480px; margin: 40px auto; padding: 20px; }
   .setup h2 { margin: 0 0 8px; }
   .setup p, .setup li { color: var(--muted); font-size: 15px; }
@@ -105,6 +109,10 @@
     <label>Repo<input id="repoIn" value="andrew455/kahani-data"></label>
     <div class="err" id="setupErr"></div>
     <button class="primary">Connect</button>
+    <div class="setup-qr desktop-only">
+      <p>Setting up your phone? Scan this to open Notes there.</p>
+      <div class="qr" data-qr></div>
+    </div>
   </form>
 
   <div id="app" hidden>
@@ -117,6 +125,12 @@
 
     <div class="layout">
       <aside class="side desktop-only">
+        <div class="card">
+          <h2>Open on your phone</h2>
+          <p>Scan with your phone camera, then <b>Share → Add to Home Screen</b>.</p>
+          <div class="qr" data-qr></div>
+          <div class="qr-url" data-qr-url></div>
+        </div>
         <div class="card">
           <h2>Categories</h2>
           <div class="catlist" id="catList"></div>
@@ -151,6 +165,7 @@
 </div>
 <div class="toast" id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // Phone Notes, online. Notes live in one JSON file in the private kahani-data repo and are read and
 // written through the GitHub API. Each change is replayed onto the latest copy before saving, so the
@@ -386,6 +401,14 @@ function start() {
   document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
   addEventListener('online', sync);
 }
+// QR codes for opening this page on a phone (just the address — never the token)
+const PAGE_URL = location.origin + location.pathname;
+document.querySelectorAll('[data-qr-url]').forEach(el => el.textContent = PAGE_URL);
+document.querySelectorAll('[data-qr]').forEach(el => {
+  if (window.QRCode) new QRCode(el, { text: PAGE_URL, width: 320, height: 320, correctLevel: QRCode.CorrectLevel.M });
+  else el.closest('.card, .setup-qr').hidden = true;
+});
+
 if (cfg) start(); else $('setup').hidden = false;
 </script>
 </body>
