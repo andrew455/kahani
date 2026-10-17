@@ -3139,6 +3139,7 @@ document.addEventListener("click", e => {
     case "adbwifi": adbToggle(); break;
     case "adbrefresh": render(); break;
     case "adbready": adbReady(); break;
+    case "pullbuild": pullBuild(); break;
     case "aibal": aiSetBalance(($("#aiBalIn") || {}).value || ""); break;
     case "rmxopen": rmxOpen(t.dataset.mode); break;
     case "newk": if (!rmx.busy) { const ti = $("#newTopic"); if (ti) rmx.topic = ti.value; rmx.k = +t.dataset.n; render(); } break;
@@ -4271,14 +4272,37 @@ function adbCard() {
   if (!NATIVE || !NATIVE.adbInfo) return "";
   const a = adbInfo(); if (!a) return "";
   const addr = a.ip ? a.ip + (a.port ? ":" + a.port : "") : "";
-  return `<div class="set-card" id="adbCard"><h3>📡 Wireless debugging</h3>
+  return `<div class="set-card" id="adbCard"><h3>📡 Updates and wireless debugging</h3>
     <div class="set-row"><label>Wireless debugging</label>${a.can ? `<button class="chip-toggle" data-act="adbwifi" aria-pressed="${!!a.on}">${a.on ? "On" : "Off"}</button>` : `<b>${a.on ? "On" : "Off"}</b>`}</div>
     <div class="set-row"><span>Address</span><b style="font-size:1.2rem;font-variant-numeric:tabular-nums">${a.on ? (addr ? esc(addr) : "…") : (a.ip ? esc(a.ip) + ' <span class="muted small">(port shows when it\'s on)</span>' : "No Wi-Fi")}</b></div>
     ${a.on && a.ip && !a.port ? `<p class="muted small" style="margin:0">The port isn't readable here: see Settings → Developer options → Wireless debugging.</p>` : ""}
     ${a.can ? `<p class="muted small" style="margin:0">The Mac uses this address to install updates. It changes when the Thor restarts.</p>`
       : `<p class="muted small" style="margin:0">To switch it from here, run <b>thor-permission.command</b> on the Mac once (while wireless debugging is on).</p>`}
     <div class="ask-row"><button class="btn primary" data-act="adbready" ${adbReadying ? "disabled" : ""}>📥 ${adbReadying ? "Getting ready…" : "Get ready for an update"}</button><button class="btn ghost" data-act="adbrefresh">Refresh</button></div>
-    ${adbPosted ? `<p class="small" style="margin:0">${esc(adbPosted)}</p>` : ""}</div>`;
+    ${adbPosted ? `<p class="small" style="margin:0">${esc(adbPosted)}</p>` : ""}
+    <div class="set-row"><span>App build <b>${NATIVE.appVersion ? NATIVE.appVersion() : "?"}</b></span><button class="btn" data-act="pullbuild" ${bld.busy ? "disabled" : ""}>⬇️ ${bld.busy ? "Working…" : "Pull build"}</button></div>
+    ${bld.msg ? `<p class="small" style="margin:0" aria-live="polite">${esc(bld.msg)}</p>${bld.busy && bld.pct ? `<div class="mix" style="background:linear-gradient(to right, var(--good) 0 ${bld.pct}%, var(--line) ${bld.pct}% 100%)"></div>` : ""}` : `<p class="muted small" style="margin:0">If the Mac can't reach the Thor, it uploads the new build to GitHub instead. Pull build fetches it from there.</p>`}</div>`;
+}
+// Pull build: the Mac leaves builds on the data repo's "builds" branch (Kahani.apk + build.json). Download and install a newer one.
+const bld = { busy: false, msg: "", pct: 0 };
+window.__buildProg = (state, pct, msg) => {
+  bld.busy = state === "dl" || state === "install"; bld.pct = pct; bld.msg = msg;
+  if (route.view === "settings") render();
+};
+async function pullBuild() {
+  if (bld.busy) return;
+  if (!gh) { bld.msg = "Connect GitHub sync first (above)."; render(); return; }
+  bld.busy = true; bld.msg = "Checking GitHub for a newer build…"; bld.pct = 0; render();
+  try {
+    let info;
+    try { info = JSON.parse(b64d((await ghApi("/contents/build.json?ref=builds")).content)); }
+    catch (e) { if (e.status === 404) { bld.busy = false; bld.msg = "No build on GitHub yet."; render(); return; } throw e; }
+    const mine = NATIVE.appVersion();
+    if (+info.versionCode <= mine) { bld.busy = false; bld.msg = `You already have the newest build (${mine}).`; render(); return; }
+    bld.msg = `Build ${info.versionCode} from ${new Date(info.at).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}. Downloading…`; render();
+    bld.busy = false;   // the app side reports progress from here
+    NATIVE.pullBuild(gh.repo, gh.token, "builds");
+  } catch (e) { console.error(e); bld.busy = false; bld.msg = ghErrText(e); render(); }
 }
 // "Get ready for an update": switch Wireless debugging on, then post this Thor's address to the data repo
 // (thor/address.json) so the Mac's install scripts find it without anyone typing it in.
