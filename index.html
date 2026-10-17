@@ -3940,7 +3940,7 @@ const flyOpts = Object.assign({ words: "both", en: false }, store.get("flyopts",
 function flyOptsHtml() {
   const b = (k, v, label) => `<button data-gk="opt" data-gi="${k}:${v}" aria-pressed="${flyOpts[k] === v}">${flyOpts[k] === v ? "✓ " : ""}${label}</button>`;
   return `<div class="hub fly-opts"><div class="seg" role="group" aria-label="Which words">${b("words", "known", "Known words")}${b("words", "learning", "Words I'm learning")}${b("words", "both", "Both")}</div>
-    <div class="seg" role="group" aria-label="English">${b("en", false, "No English")}${b("en", true, "Show English with the sound")}</div></div>`;
+    <div class="seg" role="group" aria-label="English">${b("en", false, "No English")}${b("en", true, "English only (hear it, pick the meaning)")}</div></div>`;
 }
 function flyPool() {
   const seenM = new Set(), out = [], fewKnown = flyOpts.words === "known" && knownN() < 12;
@@ -4016,11 +4016,11 @@ function flyDraw(t) {
       x.lineWidth = Math.max(3, 16 * p); x.strokeStyle = "#f5c84c"; x.beginPath(); x.ellipse(cx, y, rad, rad * .92, 0, 0, 7); x.stroke();
       x.lineWidth = Math.max(1, 4 * p); x.strokeStyle = "#b5791a"; x.beginPath(); x.ellipse(cx, y, rad * .88, rad * .8, 0, 0, 7); x.stroke();
       x.font = `600 ${Math.max(12, rad * .45)}px "Tiro Devanagari Hindi", "Mukta", serif`; x.textAlign = "center"; x.textBaseline = "middle";
-      const ty = flyOpts.en ? y - rad * .18 : y;
-      x.lineWidth = Math.max(2, rad * .08); x.strokeStyle = "rgba(20,24,40,.85)"; x.strokeText(w.w, cx, ty); x.fillStyle = "#fff"; x.fillText(w.w, cx, ty);
-      if (flyOpts.en) {   // English under each word when that option is on
-        x.font = `700 ${Math.max(12, rad * .3)}px Mukta, system-ui, sans-serif`; x.lineWidth = Math.max(3, rad * .08);
-        x.strokeText(w.m, cx, y + rad * .38, rad * 1.8); x.fillStyle = "#ffe9a8"; x.fillText(w.m, cx, y + rad * .38, rad * 1.8);
+      if (flyOpts.en) {   // English option: the rings show only the English meaning; you hear the word and pick its meaning
+        x.font = `700 ${Math.max(12, rad * .34)}px Mukta, system-ui, sans-serif`; x.lineWidth = Math.max(3, rad * .08);
+        x.strokeStyle = "rgba(20,24,40,.85)"; x.strokeText(w.m, cx, y, rad * 1.8); x.fillStyle = "#ffe9a8"; x.fillText(w.m, cx, y, rad * 1.8);
+      } else {
+        x.lineWidth = Math.max(2, rad * .08); x.strokeStyle = "rgba(20,24,40,.85)"; x.strokeText(w.w, cx, y); x.fillStyle = "#fff"; x.fillText(w.w, cx, y);
       }
     });
   }
@@ -4039,7 +4039,7 @@ function flyDraw(t) {
   x.fillStyle = "rgba(17,19,29,.7)"; x.fillRect(0, 0, W, H * .1);
   x.fillStyle = "#fff"; x.font = `600 ${H * .05}px Mukta, system-ui, sans-serif`;
   const ph = g0 && g0.phase, left = g0 ? Math.max(0, Math.ceil(3 - g0.t)) : 0;
-  x.fillText(ph === "read" ? `Read the rings… ${left}` : ph === "steer" ? (flyOpts.en ? `🔊 ${g0.target.m}  ·  ${left}` : `🔊 Listen and steer! ${left}  (A = go)`) : ph === "out" ? "…" : "", W * .02, H * .022);
+  x.fillText(ph === "read" ? `Read the rings… ${left}` : ph === "steer" ? `🔊 Listen and steer! ${left}  (A = go)` : ph === "out" ? "…" : "", W * .02, H * .022);
   x.textAlign = "right"; x.fillText(`★ ${fly.score}   ${"❤️".repeat(Math.max(0, fly.lives))}`, W * .98, H * .022);
   if (fly.msg) { x.textAlign = "center"; x.font = `600 ${H * .045}px "Tiro Devanagari Hindi", Mukta, sans-serif`; x.fillStyle = "rgba(17,19,29,.65)"; const tw = x.measureText(fly.msg).width; x.fillRect(W / 2 - tw / 2 - 16, H * .12, tw + 32, H * .07); x.fillStyle = "#fff"; x.fillText(fly.msg, W / 2, H * .13); }
   if (fly.flash) { x.fillStyle = fly.fcol; x.globalAlpha = fly.flash; x.fillRect(0, 0, W, H); x.globalAlpha = 1; }
@@ -4282,7 +4282,7 @@ function gameBottom() {
   if (v === "fly") {
     if (fly.st === "menu") return menu("✈️ Sky Words", FLY_LEVELS, fly.pick, fly.best, FLY_LEVELS.map((_, i) => Math.min(1, (fly.best[i] || 0) / FLY_PERFECT)));
     const G = fly.gate;
-    return { type: "fly", over: fly.st === "over", phase: G ? G.phase : "", prompt: G && G.phase === "read" ? "Read the rings…" : G && G.phase === "steer" ? (flyOpts.en ? "🔊 " + G.target.m : "🔊 Listen and steer! (A = go)") : "", score: fly.score, lives: fly.lives, msg: fly.msg, best: fly.best[fly.lv] || 0 };
+    return { type: "fly", over: fly.st === "over", phase: G ? G.phase : "", prompt: G && G.phase === "read" ? "Read the rings…" : G && G.phase === "steer" ? "🔊 Listen and steer! (A = go)" : "", score: fly.score, lives: fly.lives, msg: fly.msg, best: fly.best[fly.lv] || 0 };
   }
   if (v === "match") {
     if (match.st === "menu") return menu("🧩 Object Match", matchMenuLevels(), match.pick, match.best, matchProg());
