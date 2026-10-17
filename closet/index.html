@@ -227,6 +227,7 @@
             <span class="spacer"></span>
             <button id="tMeasure" class="on">Sizes</button>
             <button id="tClothes" class="on">Clothes</button>
+            <button id="tShadow">Shadows</button>
             <button id="hideSelBtn" hidden>🙈 Hide</button>
             <button id="unhideBtn" hidden></button>
             <button class="enter-full" id="fullBtn">⤢</button>
@@ -583,7 +584,7 @@ $('askChanges').onclick = () => {
 // ---------------- designs ----------------
 const latestDesign = () => db.designs.reduce((a, b) => (!a || b.version > a.version ? b : a), null);
 const PART_NAMES = { drawers: 'Drawers', shelves: 'Shelves', hang: 'Hanging', shoes: 'Shoe shelves', cabinet: 'Cupboard with doors', open: 'Open space', mirror: 'Mirror', baskets: 'Pull-out baskets' };
-const WALL_NAMES = { left: 'Left wall', right: 'Right wall', back: 'Back wall', front: 'Door wall', floor: 'Island' };
+const WALL_NAMES = { left: 'Left wall', right: 'Right wall', back: 'Back wall', front: 'Door wall', floor: 'Island', corner: 'Corner' };
 function partLabel(p) {
   const n = PART_NAMES[p.type] || p.type;
   const c = p.count;
@@ -806,7 +807,7 @@ const scene3d = (() => {
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(50, 1, 0.02, 100);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xb9a88f, 0.75));
+  const hemi = new THREE.HemisphereLight(0xffffff, 0xb9a88f, 0.75); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xffffff, 0.55);
   sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024); sun.shadow.bias = -0.0005;
   scene.add(sun, sun.target);
@@ -867,7 +868,27 @@ const scene3d = (() => {
   const CLOTH = ['#2f3e55', '#a8b8c8', '#e8e2d6', '#7a4b3a', '#c99b8a', '#3d5a4a', '#d7c3a3', '#1f1f22', '#8e6f9b', '#b44a4a', '#f0efe9', '#5d6b7a'];
   let seed = 1; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
+  // open corner shelf: two back panels in a room corner and quarter-round shelves
+  // (u.corner: back-right | back-left | front-right | front-left; u.width = how far it reaches along each wall)
+  function buildCorner(u, f, R) {
+    const g = new THREE.Group(); g.userData.unit = u;
+    const L = u.width * S, h = (u.height || R.height) * S, t = 0.018, el = (u.elevation || 0) * S;
+    const c = u.corner || 'back-right', right = c.includes('right'), back = c.includes('back');
+    const cx = right ? R.width * S : 0, cz = back ? -R.depth * S : 0, sx = right ? -1 : 1, sz = back ? 1 : -1;
+    const col = mat(u.color || f.carcass || '#efe9df');
+    boxMesh(L, h, t, col, cx + sx * L / 2, el + h / 2, cz + sz * t / 2, g);
+    boxMesh(t, h, L, col, cx + sx * t / 2, el + h / 2, cz + sz * L / 2, g);
+    const n = ((u.parts || []).find(p => p.type === 'shelves')?.count ?? 4) + 2;   // plus the bottom and top
+    const start = sx > 0 ? (sz > 0 ? 0 : Math.PI / 2) : (sz > 0 ? 1.5 * Math.PI : Math.PI);
+    for (let k = 0; k < n; k++) {
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(L, L, t, 40, 1, false, start, Math.PI / 2), col);
+      m.position.set(cx, el + t / 2 + (h - t) * k / (n - 1), cz); m.castShadow = m.receiveShadow = true; g.add(m);
+    }
+    g.userData.zones = []; g.userData.size = { w: L, d: L, h }; g.userData.corner = true;
+    return g;
+  }
   function buildUnit(u, f, R) {
+    if (u.wall === 'corner') return buildCorner(u, f, R);
     const g = new THREE.Group(); g.userData.unit = u;
     const w = u.width * S, d = u.depth * S, h = (u.height || R.height) * S, t = 0.018;
     const plinth = (u.plinth || 0) * S;
@@ -1020,6 +1041,7 @@ const scene3d = (() => {
     if (R.door?.width) dim(P(R.door.offset, R.door.height + 60, -20), P(R.door.offset + R.door.width, R.door.height + 60, -20), `door ${R.door.width}`, '', dg);
     for (const g of units) {
       const s = g.userData.size, u = g.userData.unit;
+      if (g.userData.corner) continue;
       g.updateMatrixWorld();
       const a = g.localToWorld(new THREE.Vector3(0, 0.01, s.d + 0.06)), b = g.localToWorld(new THREE.Vector3(s.w, 0.01, s.d + 0.06));
       dim(a, b, `${u.width}`, '', dg);
@@ -1149,6 +1171,7 @@ const scene3d = (() => {
     const w = stage.clientWidth, h = stage.clientHeight;
     if (!w || !h) return;
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); needs = true;
+    if (composer) composer.setSize(w, h);
   }
   new ResizeObserver(resize).observe(stage);
   (function loop() {
@@ -1156,7 +1179,7 @@ const scene3d = (() => {
     if (!needs || !root) return;
     needs = false;
     if (box) box.update();
-    renderer.render(scene, camera);
+    if (aoOn && composer) composer.render(); else renderer.render(scene, camera);
     if (opts.sizes) placeLabels(labels);
     placeLabels(partLabels);
   })();
@@ -1168,6 +1191,31 @@ const scene3d = (() => {
   $('exitFullBtn').onclick = () => { stage.classList.remove('full'); resize(); };
   addEventListener('keydown', e => { if (e.key === 'Escape') { stage.classList.remove('full'); $('photo').hidden = true; resize(); } });
 
+  // Shadows toggle: ambient occlusion (soft shading in corners and under shelves) plus stronger shadows.
+  // The add-on scripts only load the first time it's switched on.
+  let composer = null, ssao = null, aoOn = false;
+  const AO_BASE = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/';
+  const loadScript = src => new Promise((res, rej) => { const el = document.createElement('script'); el.src = src; el.onload = res; el.onerror = rej; document.head.append(el); });
+  async function setShadows(on) {
+    aoOn = on;
+    hemi.intensity = on ? 0.5 : 0.75; sun.intensity = on ? 0.8 : 0.55;
+    if (on && !composer) {
+      for (const f of ['math/SimplexNoise.js', 'shaders/CopyShader.js', 'shaders/SSAOShader.js', 'postprocessing/EffectComposer.js', 'postprocessing/ShaderPass.js', 'postprocessing/RenderPass.js', 'postprocessing/SSAOPass.js']) await loadScript(AO_BASE + f);
+      const w = stage.clientWidth, h = stage.clientHeight;
+      composer = new THREE.EffectComposer(renderer);
+      composer.setPixelRatio(Math.min(devicePixelRatio, 2)); composer.setSize(w, h);
+      ssao = new THREE.SSAOPass(scene, camera, w, h);
+      ssao.kernelRadius = 0.35; ssao.minDistance = 0.0006; ssao.maxDistance = 0.04;
+      composer.addPass(ssao);
+    }
+    needs = true;
+  }
+  $('tShadow').onclick = async () => {
+    const b = $('tShadow'); b.disabled = true;
+    try { await setShadows(!aoOn); b.classList.toggle('on', aoOn); }
+    catch (e) { aoOn = false; toast('Couldn\'t load the shadow effect — check your connection'); }
+    b.disabled = false;
+  };
   let hiddenIds = new Set();
   function applyHidden() { for (const g of units) g.visible = !hiddenIds.has(g.userData.unit.id); needs = true; }
   $('unhideBtn').onclick = () => { ui.hidden.clear(); hiddenIds = ui.hidden; applyHidden(); renderHidden(); };
