@@ -4016,7 +4016,12 @@ function flyDraw(t) {
       x.lineWidth = Math.max(3, 16 * p); x.strokeStyle = "#f5c84c"; x.beginPath(); x.ellipse(cx, y, rad, rad * .92, 0, 0, 7); x.stroke();
       x.lineWidth = Math.max(1, 4 * p); x.strokeStyle = "#b5791a"; x.beginPath(); x.ellipse(cx, y, rad * .88, rad * .8, 0, 0, 7); x.stroke();
       x.font = `600 ${Math.max(12, rad * .45)}px "Tiro Devanagari Hindi", "Mukta", serif`; x.textAlign = "center"; x.textBaseline = "middle";
-      x.lineWidth = Math.max(2, rad * .08); x.strokeStyle = "rgba(20,24,40,.85)"; x.strokeText(w.w, cx, y); x.fillStyle = "#fff"; x.fillText(w.w, cx, y);
+      const ty = flyOpts.en ? y - rad * .18 : y;
+      x.lineWidth = Math.max(2, rad * .08); x.strokeStyle = "rgba(20,24,40,.85)"; x.strokeText(w.w, cx, ty); x.fillStyle = "#fff"; x.fillText(w.w, cx, ty);
+      if (flyOpts.en) {   // English under each word when that option is on
+        x.font = `600 ${Math.max(10, rad * .22)}px Mukta, system-ui, sans-serif`; x.lineWidth = Math.max(2, rad * .06);
+        x.strokeText(w.m, cx, y + rad * .3, rad * 1.7); x.fillStyle = "#ffe9a8"; x.fillText(w.m, cx, y + rad * .3, rad * 1.7);
+      }
     });
   }
   // the plane
