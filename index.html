@@ -6413,6 +6413,18 @@ function handleCmd(c) {
   pushBottom();
 }
 window.__fromOther = json => { try { handleCmd(JSON.parse(json)); } catch (e) { console.error(e); } };
+// Right stick scrolls the top screen (reading, library, lists); in the 3D world the sticks go to the game.
+let rAxis = 0, rScrollRaf = 0, rAxisT = 0;
+window.__axes = (lx, ly, rx, ry) => {
+  if (route.view === "world") { if (window.__worldAxes) window.__worldAxes(lx, ly, rx, ry); return; }
+  rAxis = GAME_VIEWS.includes(route.view) ? 0 : ry || 0; rAxisT = Date.now();
+  if (Math.abs(rAxis) > .05 && !rScrollRaf) rScrollRaf = requestAnimationFrame(rScroll);
+};
+function rScroll() {
+  if (Math.abs(rAxis) <= .05) { rScrollRaf = 0; return; }
+  scrollBy(0, Math.sign(rAxis) * Math.pow(Math.abs(rAxis), 1.6) * 16);   // gentle near the middle, fast when pushed all the way
+  rScrollRaf = requestAnimationFrame(rScroll);
+}
 window.__pad = k => {
   const v = route.view;
   if (v === "reader") {
@@ -6420,6 +6432,7 @@ window.__pad = k => {
     const curSi = sel ? sel.si : player.si;
     const lvl = d => { if (!sel) return; const s = statusOf(sel.w); const cur = s === -1 ? 0 : s; setStatus(Math.max(0, Math.min(5, cur + d))); };
     const act = {
+      rup: () => { if (Date.now() - rAxisT > 1500) scrollBy({ top: -260, behavior: "smooth" }); }, rdown: () => { if (Date.now() - rAxisT > 1500) scrollBy({ top: 260, behavior: "smooth" }); },
       left: () => moveWord(-1), right: () => moveWord(1),
       down: () => gotoSentence(sel ? curSi + 1 : curSi), up: () => gotoSentence(sel ? (sel.k === firstWordK(curSi) ? curSi - 1 : curSi) : curSi - 1),
       a: () => { if (!L) return; stopPlayer(); const si = Math.max(0, Math.min(L.sentences.length - 1, curSi)); player.si = si; highlightSentence(si); speak(L.sentences[si].hi, { onend: () => highlightSentence(-1) }); },

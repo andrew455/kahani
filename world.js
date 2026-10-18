@@ -717,7 +717,7 @@ window.KahaniWorld = (() => {
       build(); updDiyas(); makeDom(el);
       camera.position.set(S.x, 10.5, S.z + 7.2);
       addEventListener("resize", resize); addEventListener("keydown", e => onKey(e, true)); addEventListener("keyup", e => onKey(e, false));
-      window.__axes = (lx, ly) => { axesSeen = true; nudge.t = 0; axes = { x: lx, y: ly }; };
+      window.__worldAxes = (lx, ly) => { axesSeen = true; nudge.t = 0; axes = { x: lx, y: ly }; };
       window.__held = (k, d) => { heldSeen = true; if (["left", "right", "up", "down"].includes(k)) keys[k] = d; };
       mounted = true;
       if (S.done) { ending = 2; }
