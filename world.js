@@ -1,4 +1,4 @@
-window.WORLD_DATA = {"note": "3D world. Map rows: . grass, # path, s stone, ~ water, = bridge, T tree, b bush (cut for rupees), F farmland.", "hi": {"title": ["दिवाली का गाँव", "The Diwali Village"], "start": [18, 13], "map": ["TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "T..........................................T", "T..T.........T...sssssssssss.....T.......T.T", "T.T...........T..sssssssssss...T......T....T", "T...T............sssssssssss...............T", "T................sssssssssss............T..T", "T.T....b.......b.sssssssssss...............T", "T....b...........sssssssssss.b.............T", "T................sssssssssss.......b.......T", "T.T.............b.....#....................T", "T.................b...#..b.................T", "T.....................#....ssssssssssssss..T", "T.....sssssss.........#....ssssssssssssss..T", "T.########################################.T", "T.....sssssss........#.....ssssssssssssss..T", "T.....sssssss........#.....ssssssssssssss..T", "T..............b.....#.....................T", "T....................#..........b........T.T", "T..FFFFFFFF..........#...b.................T", "T..FFFFFFFF......b...#......b...........T..T", "T..FFFFFFFF..........#.............T.......T", "T..FFFFFFFF..b.......#..b.............T....T", "T....................#.....................T", "T~~~~~~~~~~~~~~~~~~~===~~~~~~~~~~~~~~~~~~~~T", "T~~~~~~~~~~~~~~~~~~~===~~~~~~~~~~~~~~~~~~~~T", "T.....b..............#.....................T", "T.T.........b....T.b.#....T....b...T....T..T", "T....................#..b...T..............T", "T..T.................#...............T.....T", "T........########################..........T", "T...............b....#............b...b..T.T", "T.T..................#......T..............T", "T....................#.....b...............T", "T...T.............b..#...T..........T..T...T", "T..............T..............T............T", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"], "houses": [{"x": 6, "z": 10, "w": 4, "d": 3, "wall": "#f0dcb4", "roof": "#c0563a", "label": "दादी का घर"}, {"x": 12.5, "z": 9, "w": 3, "d": 3, "wall": "#e8c9a0", "roof": "#9a4a2f"}, {"x": 4, "z": 16.5, "w": 3, "d": 3, "wall": "#f2e2c4", "roof": "#b85d34"}, {"x": 14, "z": 16.5, "w": 3, "d": 3, "wall": "#e6d0aa", "roof": "#7d5a3c"}, {"x": 33, "z": 6, "w": 4, "d": 3, "wall": "#f1d3b0", "roof": "#3f6fb0"}, {"x": 39, "z": 9, "w": 3, "d": 3, "wall": "#efe0c8", "roof": "#c0563a"}, {"x": 13, "z": 20.5, "w": 3, "d": 2, "wall": "#d9b98a", "roof": "#6b4b2a", "label": "किसान का घर"}], "temple": {"x": 22, "z": 4.5}, "well": {"x": 9, "z": 13.5}, "stalls": [{"x": 30, "z": 11.5, "awning": ["#e8961a", "#fff3d6"], "goods": ["🥛", "🍌", "🍎"]}, {"x": 37, "z": 11.5, "awning": ["#c0392b", "#fff3d6"], "goods": ["☕", "🫖"]}], "pen": {"x": 14, "z": 26.5, "w": 5, "d": 3}, "signs": [{"x": 17, "z": 12, "t": ["गाँव", "village"]}, {"x": 23, "z": 10, "t": ["मंदिर", "temple"]}, {"x": 26, "z": 12, "t": ["बाज़ार", "market"]}, {"x": 20, "z": 21, "t": ["नदी", "river"]}, {"x": 11, "z": 18, "t": ["खेत", "farm / field"]}, {"x": 10.6, "z": 15.3, "t": ["कुआँ", "well"]}], "npcs": [{"id": "dadi", "n": "दादी", "en": "Grandma", "x": 6, "z": 12.4, "look": {"kind": "old", "cloth": "#8e44ad", "hair": "#d8d8d8", "skin": "#c68a5e"}}, {"id": "sonu", "n": "सोनू", "en": "Sonu", "x": 11.6, "z": 15, "look": {"kind": "child", "cloth": "#2e86de", "hair": "#2b1b10", "skin": "#c98b5f"}}, {"id": "meena", "n": "मीना", "en": "Meena", "x": 30, "z": 13.2, "look": {"kind": "woman", "cloth": "#e84393", "hair": "#1f140c", "skin": "#c08055"}}, {"id": "raju", "n": "राजू", "en": "Raju", "x": 37, "z": 13.2, "look": {"kind": "man", "cloth": "#f6f1e3", "hair": "#1f140c", "skin": "#b87a4f"}}, {"id": "kisan", "n": "किसान", "en": "the farmer", "x": 15.5, "z": 22, "look": {"kind": "man", "cloth": "#ffffff", "hair": "#2b1b10", "skin": "#a8693f", "turban": "#e67e22"}}, {"id": "pujari", "n": "पुजारी", "en": "the priest", "x": 22, "z": 8.3, "look": {"kind": "man", "cloth": "#f39c12", "hair": "#3a2a1a", "skin": "#c08055", "bald": true}}], "cow": {"x": 33, "z": 30}, "bridgeMonkey": {"x": 21, "z": 23.5}, "monkeys": [{"x": 37, "z": 18}, {"x": 31, "z": 32}, {"x": 5, "z": 5}], "balls": [{"id": "red", "x": 25.5, "z": 1.6, "c": "#e74c3c", "n": ["लाल गेंद", "a red ball"]}, {"id": "blue", "x": 3, "z": 21.5, "c": "#2e86de", "n": ["नीली गेंद", "a blue ball"]}], "flowers": [[7, 28, "y"], [9, 30, "r"], [11, 28, "y"], [13, 31, "w"], [8, 32, "r"], [12, 32, "y"], [15, 28, "w"], [10, 27, "r"], [6, 30, "w"], [14, 30, "y"], [16, 32, "r"]], "flowerNames": {"y": ["पीला फूल", "a yellow flower", "#f1c40f"], "r": ["लाल फूल", "a red flower", "#e74c3c"], "w": ["सफ़ेद फूल", "a white flower", "#ffffff"]}, "lines": {"dadi_intro": [["नमस्ते! आज दिवाली है!", "Hello! Today is Diwali!"], ["मंदिर में पाँच दीये चाहिए।", "The temple needs five lamps."], ["गाँव के लोगों की मदद करो। हर मदद के लिए एक दीया!", "Help the village people. One lamp for each good deed!"], ["पहले मुझे दूध चाहिए। मीना की दुकान बाज़ार में है।", "First, I need milk. Meena's shop is in the market."], ["झाड़ी काटो, रुपये मिलते हैं!", "Cut the bushes and you'll find rupees!"]], "dadi_wait": [["दूध कहाँ है? मीना की दुकान बाज़ार में है।", "Where's the milk? Meena's shop is in the market."]], "dadi_done": [["वाह, दूध! धन्यवाद! यह लो, एक दीया।", "Wow, milk! Thank you! Here, take a lamp."]], "dadi_after": [["गाँव के लोगों की मदद करो!", "Help the village people!"]], "meena_hi": [["नमस्ते! आपको क्या चाहिए?", "Hello! What do you need?"]], "meena_milk": [["यह लो, दूध। बीस रुपये।", "Here's the milk. Twenty rupees."]], "meena_banana": [["यह लो, केला। पाँच रुपये।", "Here's a banana. Five rupees."]], "meena_poor": [["माफ़ कीजिए, आपके पास पैसे नहीं हैं।", "Sorry, you don't have enough money."]], "meena_have": [["आपके पास यह है!", "You already have that!"]], "meena_bye": [["ठीक है! शुभ दिवाली!", "Okay! Happy Diwali!"]], "raju_hi": [["नमस्ते! चाय?", "Hello! Tea?"]], "raju_nowater": [["माफ़ कीजिए, पानी नहीं है! कुएँ से पानी लाओ।", "Sorry, there's no water! Bring water from the well."]], "raju_wait": [["पानी कहाँ है? कुआँ गाँव में है।", "Where's the water? The well is in the village."]], "raju_done": [["वाह, पानी! अब मैं चाय बनाता हूँ। यह लो, एक दीया।", "Great, water! Now I'll make tea. Here, take a lamp."]], "raju_after": [["दिवाली की चाय, बहुत मीठी!", "Diwali tea, very sweet!"]], "raju_no": [["ठीक है!", "Okay!"]], "well_take": [["आप कुएँ से पानी लेते हैं।", "You draw water from the well."]], "well_look": [["यह कुआँ है। कुएँ में पानी है।", "This is a well. There's water in the well."]], "sonu_ask": [["मेरी गेंद कहाँ है? मेरी गेंद लाल है।", "Where's my ball? My ball is red."]], "sonu_blue": [["यह नीली गेंद है। मेरी गेंद लाल है!", "That's a blue ball. My ball is red!"]], "sonu_done": [["मेरी लाल गेंद! धन्यवाद! यह लो, एक दीया।", "My red ball! Thank you! Here, take a lamp."]], "sonu_after": [["चलो, खेलते हैं!", "Let's play!"]], "ball_take": [["आप गेंद लेते हैं।", "You pick up the ball."]], "kisan_ask": [["नमस्ते! मेरी गाय कहाँ है? गाय नदी के पार है।", "Hello! Where's my cow? The cow is across the river."]], "kisan_done": [["मेरी गाय! बहुत धन्यवाद! यह लो, एक दीया।", "My cow! Thank you so much! Here, take a lamp."]], "kisan_after": [["गाय अब घर में है।", "The cow is home now."]], "cow_come": [["गाय आपके साथ आती है।", "The cow comes with you."]], "cow_moo": [["गाय खुश है।", "The cow is happy."]], "monkey_block": [["बंदर पुल पर है। बंदर को भूख है।", "There's a monkey on the bridge. The monkey is hungry."]], "monkey_eat": [["बंदर केला खाता है और पेड़ पर जाता है।", "The monkey eats the banana and goes up a tree."]], "monkey_steal": [["बंदर रुपये लेता है!", "The monkey takes rupees!"]], "monkey_run": [["बंदर भागता है!", "The monkey runs away!"]], "pujari_ask": [["नमस्ते! दिवाली के लिए मंदिर में फूल चाहिए।", "Hello! The temple needs flowers for Diwali."], ["तीन पीले फूल लाओ।", "Bring three yellow flowers."]], "pujari_wrong": [["ये फूल पीले नहीं हैं! तीन पीले फूल लाओ।", "These flowers aren't yellow! Bring three yellow flowers."]], "pujari_flowers": [["बहुत सुंदर! यह लो, एक दीया।", "Very beautiful! Here, take a lamp."]], "pujari_count": [["आपके पास {n} दीये हैं। पाँच दीये चाहिए।", "You have {n} lamps. Five lamps are needed."]], "pujari_count1": [["आपके पास एक दीया है। पाँच दीये चाहिए।", "You have one lamp. Five lamps are needed."]], "pujari_final": [["पाँच दीये! वाह!", "Five lamps! Wow!"], ["चलो, दिवाली!", "Let's celebrate Diwali!"]], "end": [["शुभ दिवाली!", "Happy Diwali!"]], "flower_take": [["आप {f} लेते हैं।", "You pick {fe}."]], "nums": {"2": "दो", "3": "तीन", "4": "चार", "0": "कोई"}}, "choices": {"meena": [["दूध", "milk"], ["केला", "a banana"], ["कुछ नहीं", "nothing"]], "raju": [["हाँ, चाय!", "Yes, tea!"], ["नहीं, धन्यवाद", "No, thank you"]]}, "quests": [{"id": "milk", "who": "dadi", "t": ["दादी को दूध दो", "Bring Grandma milk"]}, {"id": "ball", "who": "sonu", "t": ["सोनू की लाल गेंद ढूँढो", "Find Sonu's red ball"]}, {"id": "cow", "who": "kisan", "t": ["किसान की गाय लाओ", "Bring the farmer's cow home"]}, {"id": "water", "who": "raju", "t": ["राजू के लिए पानी लाओ", "Bring Raju water"]}, {"id": "flowers", "who": "pujari", "t": ["तीन पीले फूल लाओ", "Bring three yellow flowers"]}], "items": {"milk": ["दूध", "milk", "🥛"], "banana": ["केला", "banana", "🍌"], "water": ["पानी", "water", "🪣"], "redball": ["लाल गेंद", "red ball", "🔴"], "blueball": ["नीली गेंद", "blue ball", "🔵"]}, "learn": {"दूध": ["milk", "doodh"], "गेंद": ["ball", "gend"], "लाल": ["red", "laal"], "नीली": ["blue (f.)", "neelee"], "गाय": ["cow", "gaay"], "पानी": ["water", "paanee"], "कुआँ": ["well", "kuaan"], "फूल": ["flower", "phool"], "पीले": ["yellow (pl.)", "peele"], "दीया": ["(clay) lamp", "deeya"], "पुल": ["bridge", "pul"], "बंदर": ["monkey", "bandar"], "केला": ["banana", "kela"], "मंदिर": ["temple", "mandir"]}, "gloss": {"दिवाली": ["Diwali (festival of lights)", "divaalee"], "दीये": ["lamps", "deeye"], "दीया": ["(clay) lamp", "deeya"], "मदद": ["help", "madad"], "हर": ["every", "har"], "लोगों": ["people (of)", "logon"], "पहले": ["first", "pehle"], "झाड़ी": ["bush", "jhaadee"], "काटो": ["cut!", "kaato"], "मिलते": ["are found", "milte"], "लो": ["take!", "lo"], "बीस": ["twenty", "bees"], "कुएँ": ["well (from the well)", "kuen"], "कुआँ": ["well", "kuaan"], "लेते": ["take (you take)", "lete"], "नीली": ["blue (f.)", "neelee"], "पार": ["across", "paar"], "आती": ["comes (f.)", "aatee"], "खुश": ["happy", "khush"], "पुल": ["bridge", "pul"], "पुजारी": ["priest", "pujaaree"], "पीले": ["yellow (pl.)", "peele"], "पीला": ["yellow", "peela"], "सुंदर": ["beautiful", "sundar"], "शुभ": ["happy / auspicious (शुभ दिवाली = Happy Diwali)", "shubh"], "सफ़ेद": ["white", "safed"], "किसान": ["farmer", "kisaan"], "बाज़ार": ["market", "baazaar"], "खेत": ["field / farm", "khet"], "नदी": ["river", "nadee"], "गाँव": ["village", "gaanv"], "कोई": ["no / any", "koee"], "बनाता": ["make (I make)", "banaata"]}}};
+window.WORLD_DATA = {"note": "3D world. Map rows: . grass, # path, s stone, ~ water, = bridge, T tree, b bush (cut for rupees), F farmland.", "hi": {"title": ["दिवाली का गाँव", "The Diwali Village"], "start": [18, 13], "map": ["TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT", "T..........................................T", "T..T.........T...sssssssssss.....T.......T.T", "T.T...........T..sssssssssss...T......T....T", "T...T............sssssssssss...............T", "T................sssssssssss............T..T", "T.T....b.......b.sssssssssss...............T", "T....b...........sssssssssss.b.............T", "T................sssssssssss.......b.......T", "T.T.............b.....#....................T", "T.................b...#..b.................T", "T.....................#....ssssssssssssss..T", "T.....sssssss.........#....ssssssssssssss..T", "T.########################################.T", "T.....sssssss........#.....ssssssssssssss..T", "T.....sssssss........#.....ssssssssssssss..T", "T..............b.....#.....................T", "T....................#..........b........T.T", "T..FFFFFFFF..........#...b.................T", "T..FFFFFFFF......b...#......b...........T..T", "T..FFFFFFFF..........#.............T.......T", "T..FFFFFFFF..b.......#..b.............T....T", "T....................#.....................T", "T~~~~~~~~~~~~~~~~~~~===~~~~~~~~~~~~~~~~~~~~T", "T~~~~~~~~~~~~~~~~~~~===~~~~~~~~~~~~~~~~~~~~T", "T.....b..............#.....................T", "T.T.........b....T.b.#....T....b...T....T..T", "T....................#..b...T..............T", "T..T.................#...............T.....T", "T........########################..........T", "T...............b....#............b...b..T.T", "T.T..................#......T..............T", "T....................#.....b...............T", "T...T.............b..#...T..........T..T...T", "T..............T..............T............T", "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"], "houses": [{"x": 6, "z": 10, "w": 4, "d": 3, "wall": "#f0dcb4", "roof": "#c0563a", "label": "दादी का घर"}, {"x": 12.5, "z": 9, "w": 3, "d": 3, "wall": "#e8c9a0", "roof": "#9a4a2f"}, {"x": 4, "z": 16.5, "w": 3, "d": 3, "wall": "#f2e2c4", "roof": "#b85d34"}, {"x": 14, "z": 16.5, "w": 3, "d": 3, "wall": "#e6d0aa", "roof": "#7d5a3c"}, {"x": 33, "z": 6, "w": 4, "d": 3, "wall": "#f1d3b0", "roof": "#3f6fb0"}, {"x": 39, "z": 9, "w": 3, "d": 3, "wall": "#efe0c8", "roof": "#c0563a"}, {"x": 13, "z": 20.5, "w": 3, "d": 2, "wall": "#d9b98a", "roof": "#6b4b2a", "label": "किसान का घर"}], "temple": {"x": 22, "z": 4.5}, "well": {"x": 9, "z": 13.5}, "stalls": [{"x": 30, "z": 11.5, "awning": ["#e8961a", "#fff3d6"], "goods": ["🥛", "🍌", "🍎"]}, {"x": 37, "z": 11.5, "awning": ["#c0392b", "#fff3d6"], "goods": ["☕", "🫖"]}], "pen": {"x": 14, "z": 26.5, "w": 5, "d": 3}, "signs": [{"x": 17, "z": 12, "t": ["गाँव", "village"]}, {"x": 23, "z": 10, "t": ["मंदिर", "temple"]}, {"x": 26, "z": 12, "t": ["बाज़ार", "market"]}, {"x": 20, "z": 21, "t": ["नदी", "river"]}, {"x": 11, "z": 18, "t": ["खेत", "farm / field"]}, {"x": 10.6, "z": 15.3, "t": ["कुआँ", "well"]}], "npcs": [{"id": "dadi", "n": "दादी", "en": "Grandma", "x": 6, "z": 12.4, "look": {"kind": "old", "cloth": "#8e44ad", "hair": "#d8d8d8", "skin": "#c68a5e", "trim": "#f5d76e"}}, {"id": "sonu", "n": "सोनू", "en": "Sonu", "x": 11.6, "z": 15, "look": {"kind": "child", "cloth": "#2e86de", "hair": "#2b1b10", "skin": "#c98b5f", "trousers": "#3d4a6b"}}, {"id": "meena", "n": "मीना", "en": "Meena", "x": 30, "z": 13.2, "look": {"kind": "woman", "cloth": "#e84393", "hair": "#1f140c", "skin": "#c08055", "trim": "#f1c40f"}}, {"id": "raju", "n": "राजू", "en": "Raju", "x": 37, "z": 13.2, "look": {"kind": "man", "cloth": "#f6f1e3", "hair": "#1f140c", "skin": "#b87a4f", "mustache": true, "trousers": "#d8cdb5"}}, {"id": "kisan", "n": "किसान", "en": "the farmer", "x": 15.5, "z": 22, "look": {"kind": "man", "cloth": "#ffffff", "hair": "#2b1b10", "skin": "#a8693f", "turban": "#e67e22", "mustache": true, "trousers": "#f4f1e8"}}, {"id": "pujari", "n": "पुजारी", "en": "the priest", "x": 22, "z": 8.3, "look": {"kind": "man", "cloth": "#f39c12", "hair": "#3a2a1a", "skin": "#c08055", "bald": true, "trousers": "#f39c12"}}], "cow": {"x": 33, "z": 30}, "bridgeMonkey": {"x": 21, "z": 23.5}, "monkeys": [{"x": 37, "z": 18}, {"x": 31, "z": 32}, {"x": 5, "z": 5}], "balls": [{"id": "red", "x": 25.5, "z": 1.6, "c": "#e74c3c", "n": ["लाल गेंद", "a red ball"]}, {"id": "blue", "x": 3, "z": 21.5, "c": "#2e86de", "n": ["नीली गेंद", "a blue ball"]}], "flowers": [[7, 28, "y"], [9, 30, "r"], [11, 28, "y"], [13, 31, "w"], [8, 32, "r"], [12, 32, "y"], [15, 28, "w"], [10, 27, "r"], [6, 30, "w"], [14, 30, "y"], [16, 32, "r"]], "flowerNames": {"y": ["पीला फूल", "a yellow flower", "#f1c40f"], "r": ["लाल फूल", "a red flower", "#e74c3c"], "w": ["सफ़ेद फूल", "a white flower", "#ffffff"]}, "lines": {"dadi_intro": [["नमस्ते! आज दिवाली है!", "Hello! Today is Diwali!"], ["मंदिर में पाँच दीये चाहिए।", "The temple needs five lamps."], ["गाँव के लोगों की मदद करो। हर मदद के लिए एक दीया!", "Help the village people. One lamp for each good deed!"], ["पहले मुझे दूध चाहिए। मीना की दुकान बाज़ार में है।", "First, I need milk. Meena's shop is in the market."], ["झाड़ी काटो, रुपये मिलते हैं!", "Cut the bushes and you'll find rupees!"]], "dadi_wait": [["दूध कहाँ है? मीना की दुकान बाज़ार में है।", "Where's the milk? Meena's shop is in the market."]], "dadi_done": [["वाह, दूध! धन्यवाद! यह लो, एक दीया।", "Wow, milk! Thank you! Here, take a lamp."]], "dadi_after": [["गाँव के लोगों की मदद करो!", "Help the village people!"]], "meena_hi": [["नमस्ते! आपको क्या चाहिए?", "Hello! What do you need?"]], "meena_milk": [["यह लो, दूध। बीस रुपये।", "Here's the milk. Twenty rupees."]], "meena_banana": [["यह लो, केला। पाँच रुपये।", "Here's a banana. Five rupees."]], "meena_poor": [["माफ़ कीजिए, आपके पास पैसे नहीं हैं।", "Sorry, you don't have enough money."]], "meena_have": [["आपके पास यह है!", "You already have that!"]], "meena_bye": [["ठीक है! शुभ दिवाली!", "Okay! Happy Diwali!"]], "raju_hi": [["नमस्ते! चाय?", "Hello! Tea?"]], "raju_nowater": [["माफ़ कीजिए, पानी नहीं है! कुएँ से पानी लाओ।", "Sorry, there's no water! Bring water from the well."]], "raju_wait": [["पानी कहाँ है? कुआँ गाँव में है।", "Where's the water? The well is in the village."]], "raju_done": [["वाह, पानी! अब मैं चाय बनाता हूँ। यह लो, एक दीया।", "Great, water! Now I'll make tea. Here, take a lamp."]], "raju_after": [["दिवाली की चाय, बहुत मीठी!", "Diwali tea, very sweet!"]], "raju_no": [["ठीक है!", "Okay!"]], "well_take": [["आप कुएँ से पानी लेते हैं।", "You draw water from the well."]], "well_look": [["यह कुआँ है। कुएँ में पानी है।", "This is a well. There's water in the well."]], "sonu_ask": [["मेरी गेंद कहाँ है? मेरी गेंद लाल है।", "Where's my ball? My ball is red."]], "sonu_blue": [["यह नीली गेंद है। मेरी गेंद लाल है!", "That's a blue ball. My ball is red!"]], "sonu_done": [["मेरी लाल गेंद! धन्यवाद! यह लो, एक दीया।", "My red ball! Thank you! Here, take a lamp."]], "sonu_after": [["चलो, खेलते हैं!", "Let's play!"]], "ball_take": [["आप गेंद लेते हैं।", "You pick up the ball."]], "kisan_ask": [["नमस्ते! मेरी गाय कहाँ है? गाय नदी के पार है।", "Hello! Where's my cow? The cow is across the river."]], "kisan_done": [["मेरी गाय! बहुत धन्यवाद! यह लो, एक दीया।", "My cow! Thank you so much! Here, take a lamp."]], "kisan_after": [["गाय अब घर में है।", "The cow is home now."]], "cow_come": [["गाय आपके साथ आती है।", "The cow comes with you."]], "cow_moo": [["गाय खुश है।", "The cow is happy."]], "monkey_block": [["बंदर पुल पर है। बंदर को भूख है।", "There's a monkey on the bridge. The monkey is hungry."]], "monkey_eat": [["बंदर केला खाता है और पेड़ पर जाता है।", "The monkey eats the banana and goes up a tree."]], "monkey_steal": [["बंदर रुपये लेता है!", "The monkey takes rupees!"]], "monkey_run": [["बंदर भागता है!", "The monkey runs away!"]], "pujari_ask": [["नमस्ते! दिवाली के लिए मंदिर में फूल चाहिए।", "Hello! The temple needs flowers for Diwali."], ["तीन पीले फूल लाओ।", "Bring three yellow flowers."]], "pujari_wrong": [["ये फूल पीले नहीं हैं! तीन पीले फूल लाओ।", "These flowers aren't yellow! Bring three yellow flowers."]], "pujari_flowers": [["बहुत सुंदर! यह लो, एक दीया।", "Very beautiful! Here, take a lamp."]], "pujari_count": [["आपके पास {n} दीये हैं। पाँच दीये चाहिए।", "You have {n} lamps. Five lamps are needed."]], "pujari_count1": [["आपके पास एक दीया है। पाँच दीये चाहिए।", "You have one lamp. Five lamps are needed."]], "pujari_final": [["पाँच दीये! वाह!", "Five lamps! Wow!"], ["चलो, दिवाली!", "Let's celebrate Diwali!"]], "end": [["शुभ दिवाली!", "Happy Diwali!"]], "flower_take": [["आप {f} लेते हैं।", "You pick {fe}."]], "nums": {"2": "दो", "3": "तीन", "4": "चार", "0": "कोई"}}, "choices": {"meena": [["दूध", "milk"], ["केला", "a banana"], ["कुछ नहीं", "nothing"]], "raju": [["हाँ, चाय!", "Yes, tea!"], ["नहीं, धन्यवाद", "No, thank you"]]}, "quests": [{"id": "milk", "who": "dadi", "t": ["दादी को दूध दो", "Bring Grandma milk"]}, {"id": "ball", "who": "sonu", "t": ["सोनू की लाल गेंद ढूँढो", "Find Sonu's red ball"]}, {"id": "cow", "who": "kisan", "t": ["किसान की गाय लाओ", "Bring the farmer's cow home"]}, {"id": "water", "who": "raju", "t": ["राजू के लिए पानी लाओ", "Bring Raju water"]}, {"id": "flowers", "who": "pujari", "t": ["तीन पीले फूल लाओ", "Bring three yellow flowers"]}], "items": {"milk": ["दूध", "milk", "🥛"], "banana": ["केला", "banana", "🍌"], "water": ["पानी", "water", "🪣"], "redball": ["लाल गेंद", "red ball", "🔴"], "blueball": ["नीली गेंद", "blue ball", "🔵"]}, "learn": {"दूध": ["milk", "doodh"], "गेंद": ["ball", "gend"], "लाल": ["red", "laal"], "नीली": ["blue (f.)", "neelee"], "गाय": ["cow", "gaay"], "पानी": ["water", "paanee"], "कुआँ": ["well", "kuaan"], "फूल": ["flower", "phool"], "पीले": ["yellow (pl.)", "peele"], "दीया": ["(clay) lamp", "deeya"], "पुल": ["bridge", "pul"], "बंदर": ["monkey", "bandar"], "केला": ["banana", "kela"], "मंदिर": ["temple", "mandir"]}, "gloss": {"दिवाली": ["Diwali (festival of lights)", "divaalee"], "दीये": ["lamps", "deeye"], "दीया": ["(clay) lamp", "deeya"], "मदद": ["help", "madad"], "हर": ["every", "har"], "लोगों": ["people (of)", "logon"], "पहले": ["first", "pehle"], "झाड़ी": ["bush", "jhaadee"], "काटो": ["cut!", "kaato"], "मिलते": ["are found", "milte"], "लो": ["take!", "lo"], "बीस": ["twenty", "bees"], "कुएँ": ["well (from the well)", "kuen"], "कुआँ": ["well", "kuaan"], "लेते": ["take (you take)", "lete"], "नीली": ["blue (f.)", "neelee"], "पार": ["across", "paar"], "आती": ["comes (f.)", "aatee"], "खुश": ["happy", "khush"], "पुल": ["bridge", "pul"], "पुजारी": ["priest", "pujaaree"], "पीले": ["yellow (pl.)", "peele"], "पीला": ["yellow", "peela"], "सुंदर": ["beautiful", "sundar"], "शुभ": ["happy / auspicious (शुभ दिवाली = Happy Diwali)", "shubh"], "सफ़ेद": ["white", "safed"], "किसान": ["farmer", "kisaan"], "बाज़ार": ["market", "baazaar"], "खेत": ["field / farm", "khet"], "नदी": ["river", "nadee"], "गाँव": ["village", "gaanv"], "कोई": ["no / any", "koee"], "बनाता": ["make (I make)", "banaata"]}}};
 /* ===================== 🌍 3D world: "दिवाली का गाँव" (The Diwali Village) =====================
    A small Zelda-style 3D world (high, tilted camera) built with three.js. Walk around a village, talk to people in
    Hindi, do their errands and earn five lamps (दीये) for the temple's Diwali. Light action: swing your stick to cut
@@ -9,11 +9,11 @@ window.KahaniWorld = (() => {
   let T, api, D, L, mounted = false, running = false, raf = 0;
   let renderer, scene, camera, root, canvas, hud, dlgEl, promptEl, toastEl, joyEl, endEl, questEl;
   let sun, hemi, clockT = 0, last = 0;
-  const keys = {}; let axes = { x: 0, y: 0 }, touch = { x: 0, y: 0, on: false }, nudge = { x: 0, y: 0, t: 0 }, heldSeen = false;
+  const keys = {}; let axesSeen = false, axes = { x: 0, y: 0 }, touch = { x: 0, y: 0, on: false }, nudge = { x: 0, y: 0, t: 0 }, heldSeen = false;
   let S;   // saved state
   let grid, W, H;
   let player, npcs = {}, bushes = [], coinsFx = [], monkeys = [], cow = null, bridgeMonkey = null, balls = {}, flowers = [], solids = [], signs = [], diyaSpots = [], fireworks = [], water = null;
-  let dlg = null, nearest = null, swingT = 0, lastPush = 0, saveT = 0, ending = 0;
+  let zoomNow = 1, dlg = null, nearest = null, swingT = 0, lastPush = 0, saveT = 0, ending = 0;
 
   const DEFAULT = () => ({ x: D.start[0] + .5, z: D.start[1] + .5, dir: Math.PI, coins: 0, diyas: 0, bag: [], flowers: [], q: {}, intro: false, cowHome: false, monkeyGone: false, done: false, tr: false, wbw: true });
   const say = t => api.speak(t);
@@ -65,7 +65,7 @@ window.KahaniWorld = (() => {
     buildCow(); buildBridgeMonkey(); for (const m of D.monkeys) buildMonkey(m);
     for (const b of D.balls) buildBall(b);
     D.flowers.forEach((f, i) => buildFlower(f, i));
-    player = buildPerson({ kind: "hero", cloth: "#2e9e4f", hair: "#5a3a1a", skin: "#d39a6a" }); player.g.position.set(S.x, 0, S.z);
+    player = buildPerson({ kind: "hero", cloth: "#2f6f8f", trousers: "#ece3cf", hair: "#1c130d", skin: "#c88b5e", shoes: "#5b3a22", eyes: "#3b2416" }); player.g.position.set(S.x, 0, S.z);
   }
   function buildGround() {
     const far = new T.Mesh(new T.PlaneGeometry(240, 240), mat("#5f9a45")); far.rotation.x = -Math.PI / 2; far.position.set(W / 2, -.02, H / 2); scene.add(far);   // land beyond the edges
@@ -171,34 +171,106 @@ window.KahaniWorld = (() => {
     signs.push({ x: s.x, z: s.z, t: s.t });
     solids.push({ c: true, x: s.x, z: s.z, r: .2 });
   }
-  // a little person: hero, man, woman, old woman or child
-  function buildPerson(look) {
-    const g = new T.Group(), sc = look.kind === "child" ? .72 : 1; g.scale.setScalar(sc); scene.add(g);
-    const skin = mat(look.skin), cloth = mat(look.cloth), dark = mat("#3a2a1e");
-    const legs = [-.1, .1].map(x => { const l = mesh(new T.BoxGeometry(.13, .45, .13), dark, x, .22, 0, g); return l; });
-    let body;
-    if (look.kind === "woman" || look.kind === "old") body = mesh(new T.CylinderGeometry(.2, .36, .95, 12), cloth, 0, .55, 0, g), legs.forEach(l => (l.visible = false));
-    else body = mesh(new T.CylinderGeometry(.22, .27, .55, 12), cloth, 0, .72, 0, g);
-    if (look.kind === "hero") mesh(new T.CylinderGeometry(.28, .28, .07, 12), mat("#6b4321"), 0, .6, 0, g);
-    const head = mesh(new T.SphereGeometry(.22, 16, 12), skin, 0, 1.22, 0, g);
-    for (const ex of [-.08, .08]) mesh(new T.SphereGeometry(.03, 6, 6), mat("#1b1b1b"), ex, 1.25, .19, g);
-    if (!look.bald) { const hair = mesh(new T.SphereGeometry(.235, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), mat(look.hair), 0, 1.24, -.01, g); hair.scale.set(1, .9, 1.02); }
-    if (look.kind === "woman" || look.kind === "old") mesh(new T.SphereGeometry(.1, 10, 8), mat(look.hair), 0, 1.3, -.22, g);
-    if (look.kind === "old") { const sh = mesh(new T.SphereGeometry(.25, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), cloth, 0, 1.26, -.03, g); sh.scale.set(1.08, 1, 1.1); }
-    if (look.turban) mesh(new T.TorusGeometry(.19, .09, 8, 16), mat(look.turban), 0, 1.36, 0, g).rotation.x = Math.PI / 2;
-    if (look.bald) mesh(new T.BoxGeometry(.03, .08, .01), mat("#e74c3c"), 0, 1.33, .215, g);
-    if (look.kind === "hero") { const cap = mesh(new T.ConeGeometry(.22, .55, 10), mat("#2e9e4f"), 0, 1.5, -.12, g); cap.rotation.x = -.7; }
-    const arms = [-1, 1].map(sx => { const p = new T.Group(); p.position.set(sx * .3, 1.0, 0); g.add(p); mesh(new T.CylinderGeometry(.055, .05, .45, 8), look.kind === "woman" || look.kind === "old" ? cloth : skin, 0, -.22, 0, p); return p; });
-    let stick = null;
-    if (look.kind === "hero") { stick = mesh(new T.CylinderGeometry(.035, .035, .9, 6), mat("#8b5a2b"), 0, -.45, .3, arms[1]); stick.rotation.x = Math.PI / 2.4; }
-    return { g, legs, arms, body, head, stick, walk: 0, look };
+  // A person with a real skeleton: hips → spine → chest → neck → head; shoulders → elbows → hands; hips → knees → feet.
+  // Realistic proportions (about 6½ heads tall), a face, hair, clothes (kurta and trousers, or a sari), and a walk cycle
+  // with bending knees and elbows that turns into a run the further the stick is pushed.
+  const SMAT = {};
+  function smat(c, rough = .75, extra) { const k = c + rough + (extra ? JSON.stringify(extra) : ""); return SMAT[k] || (SMAT[k] = new T.MeshStandardMaterial(Object.assign({ color: col(c), roughness: rough, metalness: 0 }, extra || {}))); }
+  function limb(parent, len, r0, r1, m) {   // a capsule hanging down from its joint
+    const g = new T.Group(); parent.add(g);
+    mesh(new T.CylinderGeometry(r0, r1, len, 12), m, 0, -len / 2, 0, g);
+    mesh(new T.SphereGeometry(r0, 12, 10), m, 0, 0, 0, g); mesh(new T.SphereGeometry(r1, 12, 10), m, 0, -len, 0, g);
+    return g;
   }
-  function animPerson(p, moving, dt) {
-    p.walk += dt * (moving ? 10 : 0);
-    const s = moving ? Math.sin(p.walk) * .5 : 0;
-    p.legs[0].rotation.x = s; p.legs[1].rotation.x = -s; p.arms[0].rotation.x = -s * .8;
-    if (!(p === player && swingT > 0)) p.arms[1].rotation.x = s * .8;
-    p.g.position.y = moving ? Math.abs(Math.sin(p.walk)) * .05 : Math.sin(clockT * 2 + p.g.position.x) * .01;
+  function joint(parent, x, y, z) { const j = new T.Group(); j.position.set(x, y, z); parent.add(j); return j; }
+  function buildPerson(look) {
+    const kind = look.kind, robe = kind === "woman" || kind === "old", g = new T.Group(); scene.add(g);
+    g.scale.setScalar(kind === "child" ? .68 : kind === "old" ? .94 : 1);
+    const skin = smat(look.skin, .62), cloth = smat(look.cloth, .85), trous = smat(look.trousers || (robe ? look.cloth : "#efe6d2"), .9),
+      shoe = smat(look.shoes || "#4a2f1c", .55), hairM = smat(look.hair, .5), white = smat("#f7f3ea", .3), iris = smat(look.eyes || "#2a1a10", .25), dark = smat("#1a120c", .6);
+    const HIP = .8;
+    const hips = joint(g, 0, HIP, 0);
+    // legs (hidden under a sari, but they still move it)
+    const legs = [-1, 1].map(sx => {
+      const hip = joint(hips, sx * .085, 0, 0), thigh = limb(hip, .36, .068, .052, trous);
+      const knee = joint(thigh, 0, -.36, 0), shin = limb(knee, .35, .05, .04, trous);
+      const ankle = joint(shin, 0, -.35, 0), foot = mesh(new T.BoxGeometry(.085, .06, .19), shoe, 0, -.035, .045, ankle);
+      foot.geometry.translate(0, 0, 0); if (robe) { thigh.visible = false; shin.visible = false; }
+      return { hip, knee, ankle };
+    });
+    // body: waist → chest → shoulders, a kurta (or blouse) made on a lathe, flattened front to back
+    const spine = joint(hips, 0, 0, 0);
+    const prof = [[.122, 0], [.12, .1], [.138, .25], [.155, .37], [.158, .43], [.14, .48], [.09, .515], [.05, .54], [.044, .555]].map(([r, y]) => new T.Vector2(r, y));
+    const torso = mesh(new T.LatheGeometry(prof, 18), cloth, 0, 0, 0, spine); torso.scale.z = .74;
+    if (kind === "hero" || kind === "man" || kind === "child") {   // kurta hem down to the knees
+      const hem = mesh(new T.CylinderGeometry(.132, .165, .36, 18, 1, true), smat(look.cloth, .85, { side: T.DoubleSide }), 0, -.17, 0, hips); hem.scale.z = .78;
+      for (const sx of [-1, 1]) { const slit = mesh(new T.BoxGeometry(.004, .2, .02), smat(look.trousers || "#efe6d2", .9), sx * .158, -.26, 0, hips); slit.rotation.z = sx * .09; }   // side slits
+      if (kind === "hero") { mesh(new T.TorusGeometry(.135, .018, 6, 20), smat("#7a4a22", .6), 0, .02, 0, spine).rotation.x = Math.PI / 2; }
+      for (let i = 0; i < 3; i++) mesh(new T.SphereGeometry(.009, 6, 6), smat("#d4b04a", .3), 0, .44 - i * .06, .125, spine);
+    } else {   // sari: a long skirt to the ankles and a pallu over the shoulder
+      const sk = mesh(new T.CylinderGeometry(.14, .25, .78, 20, 1, true), smat(look.cloth, .85, { side: T.DoubleSide }), 0, -.37, 0, hips); sk.scale.z = .85;
+      const pallu = mesh(new T.BoxGeometry(.09, .5, .03), smat(look.trim || "#f1c40f", .8), .06, .28, .1, spine); pallu.rotation.z = .55;
+    }
+    // neck and head
+    const neck = joint(spine, 0, .54, 0); mesh(new T.CylinderGeometry(.045, .05, .08, 10), skin, 0, .03, 0, neck);
+    const head = joint(neck, 0, .08, 0);
+    const skull = mesh(new T.SphereGeometry(.105, 24, 18), skin, 0, .11, 0, head); skull.scale.set(.92, 1.12, 1);
+    mesh(new T.SphereGeometry(.06, 12, 10), skin, 0, .045, .035, head).scale.set(1.1, .8, 1);   // jaw
+    for (const sx of [-1, 1]) {
+      mesh(new T.SphereGeometry(.022, 10, 8), white, sx * .038, .125, .088, head).scale.set(1, .8, .5);
+      mesh(new T.SphereGeometry(.012, 8, 6), iris, sx * .038, .124, .097, head);
+      const brow = mesh(new T.BoxGeometry(.04, .009, .01), smat(look.hair, .7), sx * .039, .155, .095, head); brow.rotation.z = -sx * .12;
+      mesh(new T.SphereGeometry(.024, 8, 6), skin, sx * .098, .11, 0, head).scale.set(.45, 1, .8);   // ears
+    }
+    const nose = mesh(new T.ConeGeometry(.016, .045, 8), skin, 0, .105, .105, head); nose.rotation.x = Math.PI / 2.2;
+    mesh(new T.BoxGeometry(.036, .008, .01), smat("#8a3b30", .5), 0, .068, .093, head);   // mouth
+    if (look.mustache) mesh(new T.BoxGeometry(.05, .012, .012), dark, 0, .083, .1, head);
+    if (look.bald) { mesh(new T.BoxGeometry(.008, .03, .005), smat("#d63031", .5), 0, .175, .1, head); mesh(new T.SphereGeometry(.108, 18, 12, 0, Math.PI * 2, Math.PI * .55, Math.PI * .3), hairM, 0, .11, 0, head).scale.set(.95, 1.1, 1.02); }
+    else {
+      // hair: a cap tipped back so the hairline sits on the forehead, fuller at the back
+      const cap = mesh(new T.SphereGeometry(.113, 22, 14, 0, Math.PI * 2, 0, Math.PI * .42), hairM, 0, .118, -.012, head); cap.scale.set(.97, 1.12, 1.05); cap.rotation.x = -.42;
+      mesh(new T.SphereGeometry(.075, 14, 10), hairM, 0, .1, -.055, head).scale.set(1.3, 1.25, 1);
+      if (kind === "hero" || kind === "man" || kind === "child") { const q = mesh(new T.SphereGeometry(.05, 10, 8), hairM, .03, .205, .045, head); q.scale.set(1.5, .55, 1); q.rotation.z = -.3; }   // a side-swept quiff
+      if (robe) { mesh(new T.SphereGeometry(.05, 12, 10), hairM, 0, .12, -.12, head); }   // bun
+    }
+    if (look.turban) { const tb = mesh(new T.SphereGeometry(.12, 18, 12, 0, Math.PI * 2, 0, Math.PI * .55), smat(look.turban, .8), 0, .13, 0, head); tb.scale.set(1.08, 1.05, 1.12); mesh(new T.TorusGeometry(.105, .03, 8, 20), smat(look.turban, .8), 0, .16, 0, head).rotation.x = Math.PI / 2 - .15; }
+    if (kind === "old") { const sh = mesh(new T.SphereGeometry(.13, 18, 12, 0, Math.PI * 2, 0, Math.PI * .6), smat(look.cloth, .85, { side: T.DoubleSide }), 0, .1, -.02, head); sh.scale.set(1.05, 1.15, 1.1); }
+    // arms
+    const arms = [-1, 1].map(sx => {
+      const sh = joint(spine, sx * .175, .47, 0), upper = limb(sh, .27, .042, .036, robe ? skin : cloth);
+      const elbow = joint(upper, 0, -.27, 0), fore = limb(elbow, .24, .034, .028, skin);
+      const wrist = joint(fore, 0, -.24, 0); mesh(new T.SphereGeometry(.038, 10, 8), skin, 0, -.035, .005, wrist).scale.set(.75, 1.2, .55);
+      sh.rotation.z = sx * .08;
+      return { sh, elbow, wrist };
+    });
+    let stick = null;
+    if (kind === "hero") {
+      stick = mesh(new T.CylinderGeometry(.016, .02, .9, 8), smat("#7a4a22", .7), 0, -.12, .4, arms[1].wrist); stick.rotation.x = Math.PI / 2.6;
+      // satchel on a strap across the chest
+      const strap = mesh(new T.TorusGeometry(.2, .012, 6, 24, Math.PI * 1.15), smat("#6b4321", .7), 0, .26, 0, spine); strap.rotation.set(0, 0, 2.35); strap.scale.z = .74;
+      mesh(new T.BoxGeometry(.06, .16, .14), smat("#8b5a2b", .7), -.16, .02, .02, spine);
+    }
+    return { g, hips, spine, neck, head, legs, arms, stick, robe, walk: Math.random() * 6, look, swing: 0 };
+  }
+  // amount 0..1 = how hard the stick is pushed (0 = standing)
+  function animPerson(p, amount, dt) {
+    const a = Math.max(0, Math.min(1, amount)), run = Math.max(0, (a - .6) / .4);
+    p.walk += dt * (a > .05 ? 6 + 5 * a : 0);
+    const ph = p.walk, A = a > .05 ? .32 + .2 * run : 0, idle = clockT * 2 + p.g.position.x;
+    p.legs.forEach((L, i) => { const s = Math.sin(ph + i * Math.PI);
+      // thigh swings forward and back; the knee bends while that leg swings through, and the foot stays roughly flat
+      const swingThrough = Math.max(0, Math.cos(ph + i * Math.PI));
+      L.hip.rotation.x = -s * A - (A ? .08 : 0); L.knee.rotation.x = A ? .1 + swingThrough * (.55 + .45 * run) : 0; L.ankle.rotation.x = A ? -(L.hip.rotation.x + L.knee.rotation.x) * .5 : 0; });
+    p.arms.forEach((R, i) => { if (i === 1 && p.swing > 0) return; const s = Math.sin(ph + i * Math.PI);
+      R.sh.rotation.x = A ? s * A * 1.1 : Math.sin(idle) * .03; R.elbow.rotation.x = -(.18 + (A ? Math.max(0, -s) * .4 + run * .6 : 0)); });
+    p.hips.position.y = .8 + (A ? Math.abs(Math.cos(ph)) * .025 * (1 + run) - .015 * run : 0);
+    p.spine.rotation.y = A ? Math.sin(ph) * .1 * A : 0; p.spine.rotation.x = run * .12;
+    p.spine.scale.y = 1 + Math.sin(idle * 1.3) * .008;   // breathing
+    p.head.rotation.y = A ? -Math.sin(ph) * .06 : Math.sin(idle * .4) * .15;
+    if (p.swing > 0) {   // stick swing: up over the shoulder, then down hard
+      const t = 1 - p.swing / .28, R = p.arms[1];
+      R.sh.rotation.x = t < .35 ? -2.6 * (t / .35) : -2.6 + (t - .35) / .65 * 3.3; R.elbow.rotation.x = t < .35 ? -.6 : -.1; p.spine.rotation.y = t < .35 ? .35 : .35 - (t - .35) * 1.2;
+    }
   }
   function buildNpc(n) {
     const p = buildPerson(n.look); p.g.position.set(n.x, 0, n.z); p.g.rotation.y = 0;
@@ -273,8 +345,8 @@ window.KahaniWorld = (() => {
     return { x, y, m: Math.min(1, m) };
   }
   function movePlayer(dt) {
-    if (dlg || ending) { animPerson(player, false, dt); return; }
-    const v = inputVec(), sp = 4.3 * dt;
+    if (dlg || ending) { animPerson(player, 0, dt); return; }
+    const v = inputVec(), sp = (1.6 + 3.2 * v.m) * dt;   // walk when the stick is pushed a little, run when it's pushed all the way
     if (v.m > .1) {
       const nx = S.x + v.x * sp, nz = S.z + v.y * sp;
       if (!blocked(nx, S.z)) S.x = nx; if (!blocked(S.x, nz)) S.z = nz;
@@ -282,7 +354,7 @@ window.KahaniWorld = (() => {
     }
     player.g.position.x = S.x; player.g.position.z = S.z;
     let d = S.dir - player.g.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); player.g.rotation.y += d * Math.min(1, dt * 14);
-    animPerson(player, v.m > .1, dt);
+    animPerson(player, v.m > .1 ? v.m : 0, dt);
   }
 
   /* ---------- quests ---------- */
@@ -441,11 +513,11 @@ window.KahaniWorld = (() => {
     const dt = Math.min(.05, (now - (last || now)) / 1000); last = now; clockT += dt;
     if (nudge.t > 0) nudge.t -= dt;
     movePlayer(dt);
-    if (swingT > 0) { swingT -= dt; player.arms[1].rotation.x = -2.2 + (1 - swingT / .28) * 2.6; }
+    if (swingT > 0) swingT -= dt; player.swing = Math.max(0, swingT);
     // npcs idle, face you when you're near
     for (const id in npcs) { const n = npcs[id], d = Math.hypot(S.x - n.g.position.x, S.z - n.g.position.z);
       if (d < 3) { const a = Math.atan2(S.x - n.g.position.x, S.z - n.g.position.z); let dd = a - n.g.rotation.y; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); n.g.rotation.y += dd * Math.min(1, dt * 5); }
-      animPerson(n, false, dt); n.mark.visible = markFor(id); n.mark.position.y = 2.35 + Math.sin(clockT * 4) * .06; }
+      animPerson(n, 0, dt); n.mark.visible = markFor(id); n.mark.position.y = 2.35 + Math.sin(clockT * 4) * .06; }
     // cow follows you
     if (cow) { const cp = cow.g.position; let moving = false;
       if (cow.follow) { const dx = S.x - cp.x, dz = S.z - cp.z, d = Math.hypot(dx, dz); if (d > 1.6) { const sp = Math.min(d - 1.5, 4 * dt); cp.x += dx / d * sp; cp.z += dz / d * sp; cow.g.rotation.y = Math.atan2(dx, dz); moving = true; } }
@@ -483,8 +555,10 @@ window.KahaniWorld = (() => {
       for (let j = 0; j < f.vel.length; j++) { f.vel[j][1] -= 2 * dt; a.array[j * 3] += f.vel[j][0] * dt; a.array[j * 3 + 1] += f.vel[j][1] * dt; a.array[j * 3 + 2] += f.vel[j][2] * dt; }
       a.needsUpdate = true; f.p.material.opacity = Math.max(0, 1 - f.t / 1.8); if (f.t > 1.8) { scene.remove(f.p); fireworks.splice(i, 1); } }
     // camera: high and tilted, like the 3DS Zelda games
-    const cx = S.x, cz = S.z + 7.2; camera.position.x += (cx - camera.position.x) * Math.min(1, dt * 5); camera.position.z += (cz - camera.position.z) * Math.min(1, dt * 5); camera.position.y = 10.5;
-    camera.lookAt(camera.position.x, 0, camera.position.z - 7.4);
+    // zoom: L2 / R2 (or mouse wheel, + and −) moves the camera closer or further, keeping the same tilt
+    zoomNow += ((S.zoom || 1) - zoomNow) * Math.min(1, dt * 6);
+    const cx = S.x, cz = S.z + 7.2 * zoomNow; camera.position.x += (cx - camera.position.x) * Math.min(1, dt * 5); camera.position.z += (cz - camera.position.z) * Math.min(1, dt * 5); camera.position.y = .6 + 9.9 * zoomNow;
+    camera.lookAt(camera.position.x, .6 * (1 - zoomNow) + .3, camera.position.z - 7.4 * zoomNow);
     sun.position.set(S.x - 7, 16, S.z + 6); sun.target.position.set(S.x, 0, S.z);
     // prompt
     nearest = dlg || ending ? null : findNearest();
@@ -552,8 +626,10 @@ window.KahaniWorld = (() => {
     if (k === "x" || k === "r1") return swing();
     if (k === "b") { swing(); return; }
     if (k === "y") { S.tr = !S.tr; return; }
+    if (k === "l2" || k === "zoomin") { S.zoom = Math.max(.3, (S.zoom || 1) - .2); return; }
+    if (k === "r2" || k === "zoomout") { S.zoom = Math.min(1.4, (S.zoom || 1) + .2); return; }
     if (k === "start") { questEl.hidden = !questEl.hidden; questEl.innerHTML = questHtml(); return; }
-    if (["left", "right", "up", "down"].includes(k) && !heldSeen && !keys.ArrowLeft && !keys.ArrowRight && !keys.ArrowUp && !keys.ArrowDown) {   // older Thor app: one press = a short step
+    if (["left", "right", "up", "down"].includes(k) && !heldSeen && !axesSeen && !keys.ArrowLeft && !keys.ArrowRight && !keys.ArrowUp && !keys.ArrowDown) {   // older Thor app: one press = a short step
       nudge = { x: k === "left" ? -1 : k === "right" ? 1 : 0, y: k === "up" ? -1 : k === "down" ? 1 : 0, t: .3 };
     }
   }
@@ -566,6 +642,7 @@ window.KahaniWorld = (() => {
     if (k === "w" || k === "W") keys.w_ = down; if (k === "a" || k === "A") keys.a_ = down; if (k === "s" || k === "S") keys.s_ = down; if (k === "d" || k === "D") keys.d_ = down;
     if (down && (k === "j" || k === "J" || k === "x")) { /* x reaches us through the app as well */ if (k !== "x") swing(); }
     if (down && (k === "q" || k === "Q" || k === "Tab")) { e.preventDefault(); key("start"); }
+    if (down && (k === "+" || k === "=")) key("zoomin"); if (down && (k === "-" || k === "_")) key("zoomout");
   }
 
   /* ---------- DOM ---------- */
@@ -596,6 +673,7 @@ window.KahaniWorld = (() => {
     joyEl.addEventListener("pointermove", move);
     const up = () => { touch.on = false; touch.x = touch.y = 0; joyEl.firstElementChild.style.transform = ""; };
     joyEl.addEventListener("pointerup", up); joyEl.addEventListener("pointercancel", up);
+    root.addEventListener("wheel", e => { e.preventDefault(); key(e.deltaY < 0 ? "zoomin" : "zoomout"); }, { passive: false });
     el.appendChild(root);
   }
   function resize() {
@@ -615,7 +693,7 @@ window.KahaniWorld = (() => {
       build(); updDiyas(); makeDom(el);
       camera.position.set(S.x, 10.5, S.z + 7.2);
       addEventListener("resize", resize); addEventListener("keydown", e => onKey(e, true)); addEventListener("keyup", e => onKey(e, false));
-      window.__axes = (lx, ly) => { axes = { x: lx, y: ly }; };
+      window.__axes = (lx, ly) => { axesSeen = true; nudge.t = 0; axes = { x: lx, y: ly }; };
       window.__held = (k, d) => { heldSeen = true; if (["left", "right", "up", "down"].includes(k)) keys[k] = d; };
       mounted = true;
       if (S.done) { ending = 2; }
