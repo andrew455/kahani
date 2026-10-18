@@ -465,23 +465,41 @@ window.KahaniWorld = (() => {
 
   /* ---------- dialogue ---------- */
   function open(who, list, choices, after) {
-    dlg = { who, list, i: 0, choices: choices || null, sel: 0, after: after || null }; showLine(); api.push(true);
+    dlg = { who, list, i: 0, choices: choices || null, sel: 0, after: after || null, wi: -1 }; showLine(); api.push(true);
   }
   function showLine() {
     if (!dlg) { dlgEl.hidden = true; return; }
     const [hi, en] = dlg.list[dlg.i], lastOne = dlg.i === dlg.list.length - 1;
     const words = S.wbw ? api.words(hi, D.gloss) : [];
+    // the sentence, each word tappable; the chosen word (◀ ▶ / L1 R1) is highlighted
+    let wi = 0, html = "", at = 0; const re = new RegExp(api.wordRe, "g"); let m;
+    while ((m = re.exec(hi))) { html += api.esc(hi.slice(at, m.index)) + `<span class="wd-w ${dlg.wi === wi ? "on" : ""}" data-wi="${wi}">${api.esc(m[0])}</span>`; at = m.index + m[0].length; wi++; }
+    html += api.esc(hi.slice(at));
+    const cw = dlgWord();
     dlgEl.hidden = false;
     dlgEl.innerHTML = `${dlg.who[0] ? `<div class="wd-who">${api.esc(dlg.who[0])} <span>${api.esc(dlg.who[1])}</span></div>` : ""}
-      <div class="wd-hi" lang="hi">${api.esc(hi)}</div>${S.tr ? `<div class="wd-en">${api.esc(en)}</div>` : ""}
+      <div class="wd-hi" lang="hi">${html}</div>${S.tr ? `<div class="wd-en">${api.esc(en)}</div>` : ""}
+      ${cw && !api.DUAL ? `<div class="wd-card"><b lang="hi">${api.esc(cw.w)}</b> <i>${api.esc(cw.t)}</i> = ${api.esc(cw.m || "—")}<span class="wd-lv">${[1, 2, 3, 4].map(v => `<button data-wlv="${v}" class="${cw.s === v ? "on" : ""}">${v}</button>`).join("")}<button data-wlv="5" class="${cw.s === 5 ? "on" : ""}">✓ Known</button></span></div>` : ""}
       ${words.length && !api.DUAL ? `<div class="wd-words">${words.map(([w, m, t]) => `<span><b>${api.esc(w)}</b><i>${api.esc(t)}</i><small>${api.esc(m)}</small></span>`).join("")}</div>` : ""}
       ${lastOne && dlg.choices ? `<div class="wd-ch">${dlg.choices.map((c, i) => `<button class="${i === dlg.sel ? "on" : ""}" data-wch="${i}">${api.esc(c.t[0])}${S.tr ? ` <small>${api.esc(c.t[1])}</small>` : ""}</button>`).join("")}</div>` : `<div class="wd-next">Ⓐ ▶</div>`}
       <div class="wd-tools"><button data-wtool="tr">🇬🇧 ${S.tr ? "Hide" : "English"}</button><button data-wtool="wbw">🔍 ${S.wbw ? "Hide words" : "Words"}</button><button data-wtool="hear">🔊</button></div>`;
-    say(hi);
+    if (!dlg.quiet) say(hi); dlg.quiet = false;
   }
+  // The word picked in the current line: its meaning, pronunciation and level (set it to 1–4 or Known)
+  function dlgWord() {
+    if (!dlg || dlg.wi == null || dlg.wi < 0) return null;
+    const hi = dlg.list[dlg.i][0], ws = api.words(hi, D.gloss), x = ws[dlg.wi]; if (!x) return null;
+    return { w: x[0], m: x[1], t: x[2], s: api.status(x[0]) };
+  }
+  function dlgMoveWord(d) {
+    const n = api.words(dlg.list[dlg.i][0], D.gloss).length; if (!n) return;
+    dlg.wi = dlg.wi == null || dlg.wi < 0 ? (d > 0 ? 0 : n - 1) : (dlg.wi + d + n) % n;
+    dlg.quiet = true; showLine(); const cw = dlgWord(); if (cw) say(cw.w); api.push(true);
+  }
+  function dlgSetLevel(v) { const cw = dlgWord(); if (!cw) return; api.setLevel(cw.w, +v, cw.m, cw.t); dlg.quiet = true; showLine(); api.push(true); flash(+v === 5 ? `✓ ${cw.w} is known` : `${cw.w} → level ${v}`); }
   function dlgNext() {
     if (!dlg) return;
-    if (dlg.i < dlg.list.length - 1) { dlg.i++; showLine(); api.push(true); return; }
+    if (dlg.i < dlg.list.length - 1) { dlg.i++; dlg.wi = -1; showLine(); api.push(true); return; }
     if (dlg.choices) return choose(dlg.sel);
     const after = dlg.after; dlg = null; dlgEl.hidden = true; save(); api.push(true); if (after) after();
   }
@@ -605,7 +623,7 @@ window.KahaniWorld = (() => {
       bag: S.bag.map(id => D.items[id] || [id, id, "🎁"]).concat(S.flowers.map(i => D.flowerNames[D.flowers[i][2]])),
       quests: questList(), done: S.done,
       dlg: dlg ? { who: dlg.who, hi: dlg.list[dlg.i][0], en: S.tr ? dlg.list[dlg.i][1] : "", words: S.wbw ? api.words(dlg.list[dlg.i][0], D.gloss) : null,
-        choices: dlg.i === dlg.list.length - 1 && dlg.choices ? dlg.choices.map(c => c.t) : null, sel: dlg.sel } : null,
+        choices: dlg.i === dlg.list.length - 1 && dlg.choices ? dlg.choices.map(c => c.t) : null, sel: dlg.sel, wi: dlg.wi, word: dlgWord() } : null,
       prompt: nearest ? nearest.label : null };
   }
 
@@ -615,10 +633,14 @@ window.KahaniWorld = (() => {
     if (dlg) {
       if (k === "a" || k === "next") return dlgNext();
       if (k === "choice") return choose(+i);
-      if ((k === "up" || k === "down" || k === "left" || k === "right") && dlg.choices && dlg.i === dlg.list.length - 1) { const n = dlg.choices.length; dlg.sel = (dlg.sel + (k === "down" || k === "right" ? 1 : n - 1)) % n; showLine(); api.push(true); return; }
+      if (k === "left" || k === "right" || k === "l1" || k === "r1") return dlgMoveWord(k === "right" || k === "r1" ? 1 : -1);
+      if (k === "word") { dlg.wi = +i; dlg.quiet = true; showLine(); const cw = dlgWord(); if (cw) say(cw.w); api.push(true); return; }
+      if (k === "wlevel") return dlgSetLevel(i);
+      if ((k === "up" || k === "down") && dlg.choices && dlg.i === dlg.list.length - 1) { const n = dlg.choices.length; dlg.sel = (dlg.sel + (k === "down" ? 1 : n - 1)) % n; dlg.quiet = true; showLine(); say(dlg.choices[dlg.sel].t[0]); api.push(true); return; }
       if (k === "y" || k === "tr") { S.tr = !S.tr; showLine(); api.push(true); return; }
       if (k === "wbw") { S.wbw = !S.wbw; showLine(); api.push(true); return; }
       if (k === "x" || k === "hear") { say(dlg.list[dlg.i][0]); return; }
+      if (k === "hearw") { const cw = dlgWord(); if (cw) say(cw.w); return; }
       if (k === "b" && !dlg.choices) { dlg.i = dlg.list.length - 1; return dlgNext(); }
       return;
     }
@@ -656,7 +678,9 @@ window.KahaniWorld = (() => {
     questEl = root.querySelector(".w3d-quests"); endEl = root.querySelector(".w3d-end"); joyEl = root.querySelector(".w3d-joy");
     if (api.DUAL || api.NATIVE || !matchMedia("(pointer: coarse)").matches) root.querySelector(".w3d-touch").style.display = "none";
     root.addEventListener("click", e => {
+      const wsp = e.target.closest("[data-wi]"); if (wsp && dlg) { key("word", wsp.dataset.wi); return; }
       const b = e.target.closest("button"); if (!b) { if (dlg && e.target.closest(".w3d-dlg")) dlgNext(); return; }
+      if (b.dataset.wlv) return key("wlevel", b.dataset.wlv);
       if (b.dataset.wch) return choose(+b.dataset.wch);
       if (b.dataset.wtool) return key(b.dataset.wtool === "hear" ? "hear" : b.dataset.wtool);
       if (b.dataset.wexit) { save(); return api.exit(); }
