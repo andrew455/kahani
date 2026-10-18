@@ -817,9 +817,9 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .book-toc { display: grid; gap: 6px; }
 .book-ch { display: flex; gap: 12px; align-items: center; text-align: left; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font: inherit; color: inherit; }
 .book-nav { display: flex; gap: 8px; flex-wrap: wrap; }
-.lesson.kind-focus { border-left: 6px solid #8e44ad; } .lesson.kind-repeat { border-left: 6px solid #16a085; }
+.lesson.kind-story { border-left: 6px solid #e8961a; } .lesson.kind-focus { border-left: 6px solid #8e44ad; } .lesson.kind-repeat { border-left: 6px solid #16a085; }
 .kind-tag { font-size: .78rem; font-weight: 700; letter-spacing: .02em; align-self: flex-start; border-radius: 999px; padding: 1px 10px; }
-.kind-focus .kind-tag { background: rgba(142,68,173,.16); color: #9b59b6; } .kind-repeat .kind-tag { background: rgba(22,160,133,.16); color: #16a085; }
+.kind-story .kind-tag { background: rgba(232,150,26,.16); color: #d4840f; } .kind-focus .kind-tag { background: rgba(142,68,173,.16); color: #9b59b6; } .kind-repeat .kind-tag { background: rgba(22,160,133,.16); color: #16a085; }
 .kind-tag span[lang] { font-family: var(--f-display); font-weight: 400; font-size: .95rem; }
 .w.tgt { text-decoration: underline; text-decoration-color: #16a085; text-decoration-thickness: 3px; text-underline-offset: .28em; }
 .book-ch:hover { border-color: var(--muted); } .bch-n { font-weight: 700; width: 28px; text-align: center; color: var(--muted); } .bch-t { display: grid; flex: 1; min-width: 0; } .bch-t b { font-family: var(--f-display); font-weight: 400; font-size: 1.2rem; }
@@ -1426,8 +1426,8 @@ function viewLibrary() {
     const m = lessonMix(L);
     const pct = x => (m.t ? (x / m.t) * 100 : 0).toFixed(1);
     const kind = storyKind(L);
-    return `<button class="lesson ${kind ? "kind-" + kind : ""}" data-open="${esc(L.id)}">
-      <div class="row"><div style="min-width:0"><div class="t">${esc(L.title)}</div><div class="en">${kind ? `<span class="kind-tag">${kind === "focus" ? "🎯 Focus" : "🔁 Repeat"}</span> ` : ""}${esc(L.titleEn || "")}</div></div>
+    return `<button class="lesson kind-${kind || "story"}" data-open="${esc(L.id)}">
+      <div class="row"><div style="min-width:0"><div class="t">${esc(L.title)}</div><div class="en"><span class="kind-tag">${kind === "focus" ? "🎯 Focus" : kind === "repeat" ? "🔁 Repeat" : "📖 Story"}</span> ${esc(L.titleEn || "")}</div></div>
       ${m.t && !m.l && !m.n ? `<span class="done">★ Learned${readCount(done[L.id]) ? ` · read ${readCount(done[L.id])}×` : ""}</span>` : done[L.id] ? `<span class="done">✓ Read ${readCount(done[L.id])}×</span>` : ""}</div>
       <div class="mix" aria-hidden="true" style="background:linear-gradient(to right, var(--good) 0 ${pct(m.k)}%, var(--accent-strong) ${pct(m.k)}% ${pct(m.k + m.l)}%, var(--new) ${pct(m.k + m.l)}% 100%)"></div>
       <div class="mix-legend"><span class="lk"><b>${m.k}</b> known</span><span class="ll"><b>${m.l}</b> learning</span><span class="ln"><b>${m.n}</b> new</span></div>
