@@ -634,6 +634,10 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .ani-rar { position: absolute; top: 10px; right: 12px; font-size: .8rem; font-weight: 700; background: rgba(0,0,0,.35); color: #fff; border-radius: 99px; padding: 2px 10px; }
 .ani-hearts { font-size: 1.3rem; letter-spacing: 2px; }
 .ani-say { margin-bottom: 10px; }
+.ani-main { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 10px 0; } .ani-main .ani-big-btn:last-child { grid-column: 1 / -1; padding: 12px; }
+.ani-big-btn { display: grid; justify-items: center; gap: 6px; padding: 26px 12px; border-radius: 20px; border: 2px solid var(--line); background: var(--surface); font: inherit; color: inherit; }
+.ani-big-btn b { font-size: 1.5rem; } .abb-ico { font-size: 3.4rem; line-height: 1; } .ani-big-btn.pick { border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--accent-strong); }
+.dual .ani-main .abb-ico { font-size: 7rem; } .dual .ani-big-btn b { font-size: 2.4rem; }
 .ani-arena { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; min-height: 200px; border-radius: 18px; background: linear-gradient(180deg, #ffe7b0, #b7d38a); padding: 12px; margin-bottom: 10px; color: #1d1400; }
 .ani-fighter { display: grid; justify-items: center; gap: 4px; } .ani-fighter .ani-big { font-size: 6rem; } .ani-fighter.mine .ani-big { transform: scaleX(-1); }
 .ani-vs { font-weight: 800; font-size: 1.6rem; }
@@ -5727,7 +5731,7 @@ const ANI_GLOSS = ANI_D ? Object.assign({}, ANI_D.gloss,
   Object.fromEntries(ANIS.flatMap(a => a.n.split(" ").map(w => [norm(w.replace(/^l'/i, "")), [a.en, a.t]]).concat(FR ? [[norm(a.n), [a.en, a.t]]] : []))),
   Object.fromEntries(Object.values(ANI_D.care || {}).flatMap(f => [[norm(f[0]), [f[1], f[3]]]])),
   Object.fromEntries(Object.values(ANI_D.foods).flatMap(f => f[0].split(" ").map(w => [norm(w.replace(/^l'/i, "")), [f[1], f[3]]]).concat([[norm(f[0]), [f[1], f[3]]]])))) : {};
-const ani = { st: "menu", own: store.get("aniown", {}), pick: 0, hab: 0, a: null, hearts: 0, misses: 0, bag: [], sel: 0, line: null, ask: null, tr: false, wbw: false, pics: store.get("anipics", true) };
+const ani = { st: "menu", mpick: 0, own: store.get("aniown", {}), pick: 0, hab: 0, a: null, hearts: 0, misses: 0, bag: [], sel: 0, line: null, ask: null, tr: false, wbw: false, pics: store.get("anipics", true) };
 const aniFriends = () => Object.keys(ani.own).length;
 // How many of each animal you have (befriending the same kind again adds one more).
 ani.count = store.get("anicount", {});
@@ -5828,16 +5832,22 @@ function aniHearts() { const n = aniNeed(); return `<span class="ani-hearts" ari
 function viewAni() {
   if (!ANI_D) return "";
   if (ani.st === "bpick" || ani.st === "battle") return viewAniBattle();
-  if (ani.st === "menu") {
+  if (ani.st === "menu") {   // two big choices: find animals or battle (plus your collection)
+    const opts = [["find", "🔍", "Find animals", "Meet animals in the wild and look after them"], ["battle", "⚔️", "Battle", "Fight with your animals: wild ones, rival farms and bosses"], ["col", "📖", "My animals", `${aniFriends()} / ${ANIS.length} kinds collected`]];
     return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.7rem">🐾 ${FR ? "Mes animaux" : "जानवर दोस्त"} · Animal Friends</h2><button class="btn ghost" data-gk="b">← Games</button></div>
-      <p class="muted">Go into the wild and meet animals. Read what each one needs (food, water, a toy, a cuddle, a bed…) and give it the right thing. Look after all its needs (❤️) and it joins your collection. Two wrong things and it runs away!</p>
-      <div class="ask-row" style="justify-content:center"><button class="btn primary" data-gk="col" style="display:none"></button><span class="seg" role="group"><button aria-pressed="true">🔍 Find animals</button><button data-gk="battle">⚔️ Battle</button></span></div>
-      <div class="adv-chs">${ANI_HABS.map((h, i) => { const open = aniHabOpen(h), all = ANIS.filter(a => a.hab === h.id), got = all.filter(a => ani.own[a.id]).length;
-        return `<button class="adv-ch ${open ? "" : "locked"} ${ani.pick === i ? "pick" : ""}" data-gk="hab" data-gi="${i}" ${open ? "" : "disabled"}><span class="adv-n">${open ? h.ico : "🔒"}</span><span class="adv-t"><b class="display" style="font-size:1.2rem">${esc(h.n)} · ${esc(h.en.replace("the ", ""))}</b>
-          <span class="muted small">${open ? `${got} / ${all.length} animals befriended` : `make ${h.need} animal friends to explore here (${aniFriends()} so far)`}</span>${open ? `<span class="perf-bar"><i style="width:${Math.round(got / all.length * 100)}%"></i></span>` : ""}</span></button>`; }).join("")}
-        <button class="adv-ch ${ani.pick === ANI_HABS.length ? "pick" : ""}" data-gk="col"><span class="adv-n">📖</span><span class="adv-t"><b class="display" style="font-size:1.2rem">My animals</b><span class="muted small">${aniFriends()} / ${ANIS.length} collected</span></span></button></div>
+      <div class="ani-main">${opts.map(([k, ico, t, d], i) => `<button class="ani-big-btn ${ani.mpick === i ? "pick" : ""}" data-gk="${k}"><span class="abb-ico">${ico}</span><b>${t}</b><span class="muted small">${d}</span></button>`).join("")}</div>
       <div class="ask-row" style="justify-content:center"><button class="chip-toggle" data-gk="pics" aria-pressed="${ani.pics}">Pictures: ${ani.pics ? "on" : "off (words only)"}</button></div>
-      <div class="kbd"><kbd>▲ ▼</kbd> choose · <kbd>A</kbd> go · <kbd>B</kbd> back</div></div>`;
+      <div class="kbd"><kbd>◀ ▶</kbd> choose · <kbd>A</kbd> go · <kbd>B</kbd> back</div></div>`;
+  }
+  if (ani.st === "places") {   // where to look for animals (on the Thor the list is on the bottom screen)
+    const placeBtn = (h, i) => { const open = aniHabOpen(h), all = ANIS.filter(a => a.hab === h.id), got = all.filter(a => ani.own[a.id]).length;
+      return `<button class="adv-ch ${open ? "" : "locked"} ${ani.pick === i ? "pick" : ""}" data-gk="hab" data-gi="${i}" ${open ? "" : "disabled"}><span class="adv-n">${open ? h.ico : "🔒"}</span><span class="adv-t"><b class="display" style="font-size:1.2rem">${esc(h.n)} · ${esc(h.en.replace("the ", ""))}</b>
+        <span class="muted small">${open ? `${got} / ${all.length} animals befriended` : `make ${h.need} animal friends to explore here (${aniFriends()} so far)`}</span>${open ? `<span class="perf-bar"><i style="width:${Math.round(got / all.length * 100)}%"></i></span>` : ""}</span></button>`; };
+    const h = ANI_HABS[ani.pick] || ANI_HABS[0];
+    return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.7rem">🔍 Find animals</h2><button class="btn ghost" data-gk="b">← Back</button></div>
+      ${DUAL ? `<div class="ani-scene ani-${h.id}" style="min-height:52vh"><span class="ani-big">${aniHabOpen(h) ? h.ico : "🔒"}</span><span class="ani-rar" style="font-size:1.4rem">${esc(h.n)} · ${esc(h.en.replace("the ", ""))}</span></div><p class="muted" style="text-align:center">Choose a place on the bottom screen · <kbd>A</kbd> go</p>`
+        : `<div class="adv-chs">${ANI_HABS.map(placeBtn).join("")}</div>`}
+      <div class="kbd"><kbd>▲ ▼</kbd> choose a place · <kbd>A</kbd> go · <kbd>B</kbd> back</div></div>`;
   }
   if (ani.st === "col") {
     return `<div class="hub"><div class="section-h"><h2 class="display" style="font-size:1.7rem">📖 My animals · ${aniFriends()} / ${ANIS.length} kinds · ${ANIS.reduce((t, a) => t + aniN(a.id), 0)} animals</h2><button class="btn ghost" data-gk="b">← Back</button></div>
@@ -5863,14 +5873,21 @@ function aniKey(k, i) {
   const flip = f => { ani[f] = !ani[f]; render(); };
   if (k === "known") return markKnown(i);
   if (ani.st === "menu") {
-    const n = ANI_HABS.length + 1;
-    if (k === "hab") return aniMeet(+i);
-    if (k === "col") { ani.st = "col"; render(); return; }
-    if (k === "battle" || k === "r1") { ani.st = "bpick"; ani.bpick = 0; render(); return; }
+    const go3 = j => { if (j === 0) { ani.st = "places"; render(); } else if (j === 1) { ani.st = "bpick"; ani.bpick = 0; render(); } else { ani.st = "col"; render(); } };
+    if (k === "find") return go3(0);
+    if (k === "battle" || k === "r1") return go3(1);
+    if (k === "col") return go3(2);
     if (k === "pics") { ani.pics = !ani.pics; store.set("anipics", ani.pics); render(); return; }
-    if (k === "up" || k === "down") { ani.pick = (ani.pick + (k === "down" ? 1 : n - 1)) % n; render(); }
-    else if (k === "a") { if (ani.pick === ANI_HABS.length) { ani.st = "col"; render(); } else aniMeet(ani.pick); }
+    if (["left", "right", "up", "down"].includes(k)) { ani.mpick = ((ani.mpick || 0) + (k === "right" || k === "down" ? 1 : 2)) % 3; render(); }
+    else if (k === "a") go3(ani.mpick || 0);
     else if (k === "b") go("games");
+    return;
+  }
+  if (ani.st === "places") {
+    if (k === "hab") { ani.pick = +i; return aniMeet(+i); }
+    if (k === "up" || k === "down" || k === "left" || k === "right") { const n = ANI_HABS.length; ani.pick = (ani.pick + (k === "down" || k === "right" ? 1 : n - 1)) % n; render(); }
+    else if (k === "a") aniMeet(ani.pick);
+    else if (k === "b") { ani.st = "menu"; render(); }
     return;
   }
   if (ani.st === "col") {
@@ -5882,7 +5899,7 @@ function aniKey(k, i) {
   if (k === "tr" || k === "y") return flip("tr");
   if (k === "wbw") return flip("wbw");
   if (k === "hearL" || k === "x") return ani.st === "meet" ? sayThen(ani.line[0], ani.ask[0]) : speak(ani.line[0]);
-  if (k === "b") { ani.st = "menu"; render(); return; }
+  if (k === "b") { ani.st = "places"; render(); return; }
   if (ani.st !== "meet") { if (k === "next" || k === "a") aniMeet(ani.hab); return; }
   if (k === "feed") return aniFeed(+i);
   const cols = 3;
@@ -5895,7 +5912,8 @@ function aniKey(k, i) {
 function aniBottom() {
   if (ani.st === "bpick" || ani.st === "battle") return aniBattleBottom();
   const lineB = (l, tr, wbw) => l ? { fr: l[0], en: tr ? l[1] : "", words: wbw ? gameWords(l[0], ANI_GLOSS) : null } : null;
-  if (ani.st === "menu") return { type: "animenu", pick: ani.pick, friends: aniFriends(), total: ANIS.length, habs: ANI_HABS.map(h => ({ ico: h.ico, n: h.n, en: h.en, open: aniHabOpen(h), need: h.need, got: ANIS.filter(a => a.hab === h.id && ani.own[a.id]).length, all: ANIS.filter(a => a.hab === h.id).length })) };
+  if (ani.st === "menu") return { type: "animain", pick: ani.mpick || 0, friends: aniFriends(), total: ANIS.length };
+  if (ani.st === "places") return { type: "animenu", pick: ani.pick, friends: aniFriends(), total: ANIS.length, habs: ANI_HABS.map(h => ({ ico: h.ico, n: h.n, en: h.en, open: aniHabOpen(h), need: h.need, got: ANIS.filter(a => a.hab === h.id && ani.own[a.id]).length, all: ANIS.filter(a => a.hab === h.id).length })) };
   if (ani.st === "col") return { type: "anicol", list: ANIS.map(a => ({ id: a.id, ico: a.ico, n: a.n, en: a.en, own: !!ani.own[a.id], rar: a.rar, x: aniN(a.id) })), friends: aniFriends(), total: ANIS.length };
   const a = ani.a;
   return { type: "ani", brk: aniBreak(), hint: ani.st === "meet" && ani.misses ? ANI_D.hints[ani.needs[ani.hearts]].join(" ") : "", needed: ani.st === "ran" && ani.needed ? `${ani.needed[2]} ${ani.needed[0]} (${ani.needed[1]})` : "", st: ani.st, ico: a.ico, hearts: ani.hearts, need: aniNeed(), line: lineB(ani.line, ani.tr, ani.wbw), ask: ani.st === "meet" && ani.ask[0] !== ani.line[0] ? ani.ask[0] : "",
