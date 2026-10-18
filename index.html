@@ -653,6 +653,34 @@ kbd { font-family: inherit; font-size: .75rem; border: 1px solid var(--line); bo
 .adv-bag { font-size: .95rem; } .adv-goal { background: var(--sunk); border-radius: 10px; padding: 8px 12px; margin: 6px 0; font-size: 1.05rem; }
 .adv-note { background: color-mix(in srgb, var(--accent-strong) 18%, var(--surface)); border-radius: 10px; padding: 8px 12px; margin: 6px 0; font-size: 1.15rem; }
 .adv-cost { font-family: var(--f-body); font-size: .85em; color: var(--accent-strong); }
+/* 3D world */
+.w3d { position: fixed; inset: 0; z-index: 70; background: #0d1b2a; }
+.w3d-loading { color: #fff; display: grid; place-items: center; height: 100%; font-size: 1.4rem; }
+.w3d-root { position: absolute; inset: 0; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+.w3d-root canvas { width: 100% !important; height: 100% !important; display: block; }
+.w3d-hud { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+.w3d-hud span, .w3d-prompt, .w3d-toast { background: rgba(15,20,35,.72); color: #fff; border-radius: 999px; padding: 5px 12px; font-size: 1.05rem; backdrop-filter: blur(4px); }
+.w3d-x, .w3d-q { position: absolute; top: 10px; width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(15,20,35,.72); color: #fff; font-size: 1.1rem; }
+.w3d-x { right: 10px; } .w3d-q { right: 60px; }
+.w3d-prompt { position: absolute; left: 50%; transform: translateX(-50%); bottom: 26%; font-size: 1.2rem; } .w3d-prompt b { color: #ffd23f; } .w3d-prompt span { font-family: var(--f-display); font-size: 1.35rem; } .w3d-prompt small { opacity: .75; }
+.w3d-toast { position: absolute; left: 50%; top: 18%; transform: translateX(-50%) scale(.9); opacity: 0; transition: .25s; pointer-events: none; font-size: 1.3rem; } .w3d-toast.on { opacity: 1; transform: translateX(-50%) scale(1); }
+.w3d-dlg { position: absolute; left: 50%; transform: translateX(-50%); bottom: 14px; width: min(860px, calc(100% - 24px)); background: rgba(255,250,238,.96); color: #1d1a14; border-radius: 18px; padding: 14px 18px 10px; box-shadow: 0 8px 30px rgba(0,0,0,.35); border: 3px solid #c79a5b; }
+.wd-who { font-weight: 700; color: #8a4b12; } .wd-who span { font-weight: 400; color: #8b7b66; font-size: .9rem; }
+.wd-hi { font-family: var(--f-display); font-size: 1.9rem; line-height: 1.35; } .wd-en { color: #5b5346; margin-top: 2px; }
+.wd-words { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; } .wd-words span { display: grid; justify-items: center; border: 1px solid #e2d3b8; border-radius: 10px; padding: 3px 8px; background: #fff; }
+.wd-words b { font-family: var(--f-display); font-weight: 400; font-size: 1.15rem; } .wd-words i { color: #b86c00; font-size: .78rem; } .wd-words small { font-size: .75rem; color: #5b5346; }
+.wd-ch { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; } .wd-ch button { font: inherit; font-family: var(--f-display); font-size: 1.3rem; border-radius: 12px; border: 2px solid #c79a5b; background: #fff; padding: 6px 14px; color: #1d1a14; }
+.wd-ch button.on { background: #ffd23f; border-color: #b86c00; } .wd-ch small { font-family: var(--f-body); font-size: .8rem; color: #5b5346; }
+.wd-next { text-align: right; color: #b86c00; font-weight: 700; animation: wnext 1s infinite; } @keyframes wnext { 50% { opacity: .35; } }
+.wd-tools { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; } .wd-tools button { font: inherit; font-size: .85rem; border: 1px solid #e2d3b8; background: #fff; border-radius: 999px; padding: 2px 10px; color: #1d1a14; }
+.w3d-quests { position: absolute; top: 60px; right: 10px; width: min(340px, calc(100% - 20px)); background: rgba(255,250,238,.96); color: #1d1a14; border-radius: 14px; padding: 12px 14px; display: grid; gap: 4px; }
+.w3d-quests span[lang] { font-family: var(--f-display); font-size: 1.1rem; } .w3d-quests .muted { color: #8b7b66; font-size: .85rem; }
+.w3d-end { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px; color: #fff; text-shadow: 0 2px 10px #000; pointer-events: none; }
+.w3d-end .we-big { font-family: var(--f-display); font-size: 4rem; } .we-row { display: flex; gap: 10px; justify-content: center; pointer-events: auto; } .we-row button { font: inherit; border: 0; border-radius: 999px; padding: 8px 16px; background: #ffd23f; color: #1d1400; font-weight: 700; }
+.w3d-touch { position: absolute; inset: auto 0 0 0; height: 0; } .w3d-joy { position: absolute; left: 24px; bottom: 24px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.22); border: 2px solid rgba(255,255,255,.5); }
+.w3d-joy i { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,.75); }
+.w3d-touch button { position: absolute; bottom: 40px; width: 70px; height: 70px; border-radius: 50%; border: 0; font-size: 1.6rem; background: rgba(255,210,63,.85); } .w3d-touch button[data-wbtn="a"] { right: 24px; } .w3d-touch button[data-wbtn="x"] { right: 110px; bottom: 24px; background: rgba(255,255,255,.75); }
+.dual .w3d-dlg .wd-tools { display: none; }
 @media (max-width: 600px) { .mgrid { gap: 6px; } .memo { font-size: 2.2rem; } .mword { font-size: 1.2rem; } .act-pic { font-size: 5rem; } }
 .dual .act-pic { font-size: 14rem; } .dual .act-scene { min-height: 55vh; } .dual .act-q { font-size: 2.4rem; }
 .dual .adv-text { background: none; border: 0; padding: 4vh 2vw; }
@@ -1236,6 +1264,7 @@ function render() {
   else if (route.view === "shop") v.innerHTML = viewShop();
   else if (route.view === "taxi") v.innerHTML = viewTaxi();
   else if (route.view === "ani") v.innerHTML = viewAni();
+  else if (route.view === "world") v.innerHTML = viewWorld();
   else if (route.view === "talk") v.innerHTML = viewTalk();
   else if (route.view === "book") v.innerHTML = viewBook();
   else v.innerHTML = viewLibrary();
@@ -5123,10 +5152,12 @@ function gameKey(k, i) {
   if (v === "shop") return shopKey(k, i);
   if (v === "taxi") return taxiKey(k, i);
   if (v === "ani") return aniKey(k, i);
+  if (v === "world") return worldKey(k, i);
 }
 function gameBottom() {
   const v = route.view, k = knownN();
   if (v === "ani") return aniBottom();
+  if (v === "world") return window.KahaniWorld ? window.KahaniWorld.bottom() : { type: "world", loading: true };
   if (v === "games") return { type: "hub", list: GAMES.map(g => ({ ico: g[1], hi: g[2], en: g[3] })), pick: hub.pick };
   if (v === "adv") return Object.assign({ type: "adv" }, advBottom());
   const menu = (title, levels, pick, best, prog) => ({ type: "levels", title, pick, list: levels.map((L, i) => ({ name: `Level ${i + 1}${L.name ? " · " + L.name : ""}`, open: lvOpen(levels, i, prog), lock: lvLock(levels, i, prog).replace("🔒 ", ""), need: L.need, best: best[i], prog: prog ? prog[i] || 0 : null })), known: k, fly: v === "fly" ? Object.assign({}, flyOpts) : null });
@@ -6067,6 +6098,26 @@ function aniBattleBottom() {
     moves: aniMoves(me.a).map(m => { const M = ANI_B.moves2[m]; return { ico: M[3], n: M[0], en: M[2], left: me.x.pp[m] || 0, max: M[5] }; }),
     team: b.team.map((r, k) => ({ k, ico: r.a.ico, n: r.a.n, hp: r.x.hp, cur: k === b.cur })) };
 }
+
+/* ---------- 🌍 3D world (world.js, loaded on demand with three.js) ---------- */
+let worldLoading = false;
+function worldApi() {
+  return { lang: FR ? "fr" : "hi", DUAL, NATIVE: !!NATIVE, esc, speak, stop: stopPlayer, store,
+    words: (t, gl) => gameWords(t, Object.fromEntries(Object.entries(gl || {}).map(([k, v]) => [norm(k), v]))),
+    learn: (w, info) => { const k = norm(w); if (statusOf(k) === 0) setWord(k, { s: 1, m: info[0], t: info[1] || "", l: "game" }, true); },
+    push: () => { if (DUAL) pushBottom(); }, exit: () => go("games"), active: () => route.view === "world" };
+}
+function worldMount() {
+  const el = document.getElementById("w3d"); if (!el) return;
+  loadThree(() => {
+    if (window.KahaniWorld) return window.KahaniWorld.mount(el, worldApi());
+    if (worldLoading) return; worldLoading = true;
+    const s = document.createElement("script"); s.src = "world.js"; s.onload = () => { worldLoading = false; worldMount(); }; s.onerror = () => { worldLoading = false; el.innerHTML = `<div class="empty">Couldn't load the 3D world.</div>`; }; document.head.appendChild(s);
+  });
+}
+function viewWorld() { setTimeout(worldMount, 0); return `<div id="w3d" class="w3d"><div class="w3d-loading">🌍 Loading the 3D world…</div></div>`; }
+function worldKey(k, i) { if (window.KahaniWorld) window.KahaniWorld.key(k, i); }
+if (!FR) { GAMES.unshift(["world", "🌍", "दिवाली का गाँव", "The Diwali Village (3D)", "Explore a 3D village, talk to people in Hindi and help them, to light the temple's lamps for Diwali."]); GAME_VIEWS.push("world"); }
 
 /* ===================== Thor: second screen and controller ===================== */
 var DUAL = !!NATIVE && NATIVE.hasBottom();
