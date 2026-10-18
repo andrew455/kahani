@@ -487,7 +487,7 @@ window.KahaniWorld = (() => {
   }
   function choose(i) {
     if (!dlg || !dlg.choices) return; const c = dlg.choices[i]; if (!c) return;
-    say(c.t[0]); dlg = null; dlgEl.hidden = true; setTimeout(() => { c.fn(); save(); api.push(true); }, 500);
+    api.speak(c.t[0], { voice: "m" }); dlg = null; dlgEl.hidden = true;   // your reply, in a man's voice setTimeout(() => { c.fn(); save(); api.push(true); }, 500);
   }
 
   /* ---------- the Diwali ending ---------- */

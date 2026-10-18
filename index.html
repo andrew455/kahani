@@ -1114,7 +1114,7 @@ function nativeTTS(text, opts) {
 function speak(text, opts = {}) {
   if (!NATIVE) return webSpeak(text, opts);
   synth.cancel(); ttsCb = null;
-  const t = String(text); const clip = AUDIO[t] || AUDIO[norm(t)];
+  const t = String(text); const clip = (opts.voice === "m" && AUDIO["m|" + t]) || AUDIO[t] || AUDIO[norm(t)];   // voice "m": the male recording when there is one
   if (!clip) { noAudio(t); nativeTTS(t, opts); return; }
   const a = new Audio("audio/" + clip); audioEl = a;
   a.playbackRate = Math.max(0.5, Math.min(1.5, opts.rate || settings.rate));
