@@ -1124,6 +1124,14 @@ function speechProblem(msg) {
 let ttsSeq = 0, ttsCb = null;
 // The Thor has no text-to-speech engine, so the app ships recorded clips (audio/index.js) and uses Android TTS only as a fallback.
 const AUDIO = window.KAHANI_AUDIO || {};
+// Lines with no recording (new stories) go to Android's text-to-speech in the app's language.
+const TTS_LANG = FR ? "fr-FR" : "hi-IN", TTS_NAME = FR ? "French" : "Hindi";
+try { if (NATIVE) NATIVE.setTtsLang(TTS_LANG); } catch (e) {}
+let ttsWarned = 0;
+function ttsHelp() {
+  const s = NATIVE.ttsStatus();
+  return s === "missing" ? `The Thor's ${TTS_NAME} voice isn't downloaded yet.` : `The Thor has no text-to-speech engine yet.`;
+}
 // Lines with no recording get noted in the synced activity file, so the next build records them.
 const noAudioSeen = new Set();
 function noAudio(t) {
@@ -1135,7 +1143,11 @@ function nativeTTS(text, opts) {
   const id = "u" + (++ttsSeq);
   ttsCb = { id, onend: opts.onend };
   try { if (NATIVE.ttsStatus() !== "ok") throw 0; NATIVE.speak(String(text), opts.rate || settings.rate, opts.pitch || 1, id); }
-  catch (e) { ttsCb = null; if (opts.onend) opts.onend(true); }
+  catch (e) {
+    ttsCb = null;
+    if (Date.now() - ttsWarned > 60000) { ttsWarned = Date.now(); toast(`No recording for this yet. ${ttsHelp()} Settings → Voice → “Set up ${TTS_NAME} voice” fixes it.`, 7000); }
+    if (opts.onend) opts.onend(true);
+  }
 }
 function speak(text, opts = {}) {
   if (!NATIVE) return webSpeak(text, opts);
@@ -2138,7 +2150,7 @@ function viewSettings() {
   const hv = hindiVoices();
   const cur = pickVoice();
   const opts = (hv.length ? hv : voices).map(v => `<option value="${esc(v.voiceURI)}" ${cur && cur.voiceURI === v.voiceURI ? "selected" : ""}>${esc(v.name)} (${esc(v.lang)})</option>`).join("");
-  const voiceNote = NATIVE ? `Stories, words and ${FR ? "sounds" : "the alphabet"} use ${Object.keys(AUDIO).length} recorded clips built into the app. ` + (NATIVE.ttsStatus() === "ok" ? "Anything else uses the Thor's text-to-speech voice." : "Anything else is silent, because the Thor has no text-to-speech engine. Installing “Speech Services by Google” from the Play Store adds one.")
+  const voiceNote = NATIVE ? `Stories, words and ${FR ? "sounds" : "the alphabet"} use ${Object.keys(AUDIO).length} recorded clips built into the app. ` + (NATIVE.ttsStatus() === "ok" ? `New stories without recordings yet use the Thor's ${TTS_NAME} text-to-speech voice.` : `New stories without recordings yet are silent: ${ttsHelp()} <button class="btn" data-act="ttssetup">Set up ${TTS_NAME} voice</button>`)
     : !synth ? "This browser can't read text aloud."
     : hv.length ? `${hv.length} Hindi voice${hv.length === 1 ? "" : "s"} found on this device.`
     : "No Hindi voice found on this device. On Android: Settings → System → Languages → Text-to-speech → Google → Install voice data → Hindi. On Windows, Microsoft Edge has good Hindi voices built in.";
@@ -3473,6 +3485,7 @@ document.addEventListener("click", e => {
     case "adbwifi": adbToggle(); break;
     case "adbrefresh": render(); break;
     case "adbready": adbReady(); break;
+    case "ttssetup": try { NATIVE.openTtsSetup(); } catch (e) { toast("Install “Speech Services by Google” from the Play Store."); } break;
     case "devsettings": try { NATIVE.openDevSettings(); } catch (e) { toast("Open Settings → Developer options → Wireless debugging."); } break;
     case "pullbuild": pullBuild(); break;
     case "aibal": aiSetBalance(($("#aiBalIn") || {}).value || ""); break;
