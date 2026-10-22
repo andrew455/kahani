@@ -6419,7 +6419,7 @@ function vnStep() {
   for (let g = 0; g < 2000; g++) {
     const x = L[vs.i];
     if (!x || x.end) return vnChEnd();
-    if (x.scene) { if (x.scene !== vs.scene) { vn.sceneT = Date.now(); vn.met = {}; } vs.scene = x.scene; vs.dark = false; vs.cut = ""; }
+    if (x.scene) { if (x.scene !== vs.scene) { vn.sceneT = Date.now(); vn.met = {}; vn.focus = ""; } vs.scene = x.scene; vs.dark = false; vs.cut = ""; }
     else if (x.cut) { vs.cut = x.cut; vn.cutT = Date.now(); }
     else if (x.uncut) { if (vs.cut) vn.sceneT = Date.now(); vs.cut = ""; }
     else if (x.show) vs.show = x.show;
@@ -6438,7 +6438,8 @@ function vnStep() {
 function vnShow() {
   const x = vn.line;
   if (x.w !== "~") vs.expr[x.w] = x.e;
-  if (x.w !== "~" && !vn.met[x.w]) { vn.met[x.w] = 1; vn.enter[x.w] = Date.now(); }   // people step in when they first speak
+  if (x.w !== "~" && x.w !== "andy" && vn.focus !== x.w) vn.enter[x.w] = Date.now();   // a new face slides in
+  if (x.w !== "~") vn.met[x.w] = 1;   // people step in when they first speak
   vn.log.push({ w: x.w, hi: x.hi, en: x.en }); if (vn.log.length > 60) vn.log.shift();
   vn.fresh = true; render(); vnSpeak(x);
 }
@@ -6474,9 +6475,9 @@ function vnChEnd() {
 function vnGoChapter(ci) {
   stopPlayer();
   Object.assign(vs, { ci, i: 0, show: [], scene: "", dark: false, cut: "", started: true });
-  vn.st = "play"; vn.log = []; vn.logOpen = false; vn.chT = vn.sceneT = Date.now(); vn.enter = {}; vn.met = {}; vnStep();
+  vn.st = "play"; vn.log = []; vn.logOpen = false; vn.chT = vn.sceneT = Date.now(); vn.enter = {}; vn.met = {}; vn.focus = ""; vnStep();
 }
-function vnContinue() { if (!vs.started) return vnGoChapter(0); vn.st = "play"; vn.logOpen = false; vn.sceneT = Date.now(); vn.chT = 0; vn.met = Object.fromEntries(vs.show.map(p => [p, 1])); vnStep(); }
+function vnContinue() { if (!vs.started) return vnGoChapter(0); vn.st = "play"; vn.logOpen = false; vn.sceneT = Date.now(); vn.chT = 0; vn.met = Object.fromEntries(vs.show.map(p => [p, 1])); vn.focus = vs.show[0] || ""; vnStep(); }
 function vnNew() { Object.assign(vs, { flags: {}, items: [], expr: {} }); vnGoChapter(0); }
 const vnOpenChs = () => VND.chapters.map((c, i) => i === 0 || vs.done.includes(i - 1) || vs.done.includes(i));
 
@@ -6569,8 +6570,9 @@ function vnLeft() {
       <div class="vn-title"><h1>होटल चाँदनी</h1><p>Hotel Chandni</p><small>${vn.st === "menu" ? "एक रात, एक चिट्ठी, एक राज़ · A night, a letter, a secret" : vn.st === "fin" ? "समाप्त · The End" : `अध्याय ${vs.ci + 1} समाप्त · Chapter ${vs.ci + 1} done`}</small></div></div>`;
   }
   const c = vnCh(), x = vn.line, who = x ? x.w : "";
-  let people = vs.show.filter(p => vn.met[p]);
-  if (who && who !== "~" && who !== "andy" && !people.includes(who)) people = [who].concat(people).slice(0, 2);
+  // one person at a time: whoever is talking, or the last person who spoke to you while you talk or think
+  if (who && who !== "~" && who !== "andy") vn.focus = who;
+  const people = vn.focus && (vn.met[vn.focus] || vn.focus === who) && (vs.show.includes(vn.focus) || vn.focus === who) ? [vn.focus] : [];
   const card = vn.chT && Date.now() - vn.chT < 4500 ? `<div class="vn-card" style="${vnAgo(vn.chT)}"><small>अध्याय ${vs.ci + 1} · Chapter ${vs.ci + 1}</small><b>${esc(c.title)}</b><i>${esc(c.titleEn)}</i></div>` : "";
   if (vs.cut) return `<div class="vn-stage cut"><div class="vn-bg" style="${vnAgo(vn.cutT)}"><div class="vn-kb zoom" style="${vnAgo(vn.cutT)}">${vnInsert(vs.cut)}</div></div><div class="vn-vig"></div>
     <div class="vn-head"><span>अध्याय ${vs.ci + 1} · ${esc(c.title)}</span><small>${esc(c.titleEn)}</small></div>${card}</div>`;
