@@ -6404,7 +6404,7 @@ if (!FR) { GAMES.unshift(["world", "🌍", "दिवाली का गाँ�
 // the top screen is the left page (the scene and whoever is talking), the bottom screen is the right page (the words).
 const VND = typeof GAME_VN !== "undefined" ? GAME_VN : null;
 const VNG = VND ? Object.fromEntries(Object.entries(VND.gloss).map(([k, v]) => [norm(k), v])) : {};
-const vs = Object.assign({ ci: 0, i: 0, flags: {}, items: [], show: [], scene: "", dark: false, done: [], rot: "ccw", started: false, lastCh: 0, expr: {} }, store.get("vn", {}));
+const vs = Object.assign({ music: true, ci: 0, i: 0, flags: {}, items: [], show: [], scene: "", dark: false, done: [], rot: "ccw", started: false, lastCh: 0, expr: {} }, store.get("vn", {}));
 const vnAgo = t => `animation-delay:-${Math.max(0, (Date.now() - (t || 0)) / 1000).toFixed(2)}s`;   // lets an animation carry on across redraws
 const vn = { sceneT: 0, chT: 0, enter: {}, met: {}, st: "menu", pick: 0, line: null, choice: null, sel: 0, wi: -1, tr: false, fresh: false, talking: false, echo: null, log: [], logOpen: false };
 const vnSaveNow = () => store.set("vn", vs);
@@ -6445,7 +6445,16 @@ function vnShow() {
   vn.log.push({ w: x.w, hi: x.hi, en: x.en }); if (vn.log.length > 60) vn.log.shift();
   vn.fresh = true; vn.drT = x.dr ? Date.now() : 0; render(); if (x.dr) vnSting(); vnSpeak(x);
 }
-let vnSfx = null;
+let vnSfx = null, vnMus = null;
+// Moody background music (sfx/music.m4a, a seamless loop), quiet under the voices; on/off in the menu and the ☰ bar.
+function vnMusic() {
+  const want = vs.music && route.view === "vn" && !document.hidden;
+  try {
+    if (want) { if (!vnMus) { vnMus = new Audio("sfx/music.m4a"); vnMus.loop = true; vnMus.volume = .3; } if (vnMus.paused) vnMus.play().catch(() => {}); }
+    else if (vnMus && !vnMus.paused) vnMus.pause();
+  } catch (e) {}
+}
+setInterval(vnMusic, 1000); document.addEventListener("visibilitychange", vnMusic);
 function vnSting() { try { if (!vnSfx) vnSfx = new Audio("sfx/sting.m4a"); vnSfx.currentTime = 0; vnSfx.volume = .85; vnSfx.play().catch(() => {}); } catch (e) {} }
 function vnSpeak(x) {
   const c = VND.cast[x.w] || VND.cast["~"];
@@ -6512,7 +6521,7 @@ function vnMenuItems() {
   out.push(["vnplay", 0]);
   if (vs.started) out.push(["vnnew", 0]);
   VND.chapters.forEach((c, i) => out.push(["vnchap", i, !open[i]]));
-  out.push(["vnrot", 0], ["vnexit", 0]);
+  out.push(["vnmusic", 0], ["vnrot", 0], ["vnexit", 0]);
   return out;
 }
 function vnKey(k, i) {
@@ -6524,6 +6533,7 @@ function vnKey(k, i) {
   if (k === "vntr") { vn.tr = !vn.tr; return render(); }
   if (k === "vnhear") { if (vn.line) vnSpeak(vn.line); return; }
   if (k === "vnhw") { const w = vnWords()[vn.wi]; if (w) speak(w[0]); return; }
+  if (k === "vnmusic") { vs.music = !vs.music; vnSaveNow(); vnMusic(); return render(); }
   if (k === "vnrot") { vs.rot = { ccw: "cw", cw: "flat", flat: "ccw" }[vs.rot] || "ccw"; vnSaveNow(); return render(); }
   if (k === "vnmenu") { stopPlayer(); vn.talking = false; vn.st = "menu"; vn.pick = 0; return render(); }
   if (k === "vnexit") { stopPlayer(); go("games"); return; }
@@ -6561,6 +6571,7 @@ function vnKey(k, i) {
 // Buttons work on both screens: the top page uses data-gk, the bottom page sends data-c="gk" back up.
 const vnA = (k, i, bottom) => bottom ? `data-c="gk" data-t="${k}" data-d="${i == null ? 0 : i}"` : `data-gk="${k}" data-gi="${i == null ? 0 : i}"`;
 function viewVn() {
+  setTimeout(vnMusic, 0);
   if (!VND) return `<div class="empty">The story isn't in this build.</div>`;
   if (DUAL) return `<div class="vn-wrap vn-${vs.rot}"><div class="vn-rot"><div class="vn-page vn-left ${vn.st === "play" ? "film" : ""}">${vnLeft()}</div></div></div>`;
   return `<div class="vn-wrap vn-flat vn-two"><div class="vn-page vn-left ${vn.st === "play" ? "film" : ""}">${vnLeft()}</div><div class="vn-page vn-right">${vnRight(false)}</div></div>`;
@@ -6598,6 +6609,7 @@ function vnRight(bottom) {
     const label = ([k, i]) => k === "vnplay" ? (vs.started ? `▶ जारी रखें · Continue <small>Chapter ${vs.ci + 1}: ${esc(VND.chapters[vs.ci].titleEn)}</small>` : "▶ शुरू करें · Begin the story")
       : k === "vnnew" ? "↺ शुरू से · Start again from the beginning"
       : k === "vnchap" ? `${vs.done.includes(i) ? "✓" : open[i] ? "📖" : "🔒"} ${i + 1}. <span lang="hi">${esc(VND.chapters[i].title)}</span> <small>${esc(VND.chapters[i].titleEn)}</small>`
+      : k === "vnmusic" ? `🎵 Music: <b>${vs.music ? "ON" : "OFF"}</b>`
       : k === "vnrot" ? `🔄 Hold: ${vs.rot === "ccw" ? "book, picture on the left" : vs.rot === "cw" ? "book, picture on the right" : "flat (no turning)"}`
       : "← Games";
     return bar(`<b>🏨 होटल चाँदनी</b><span class="vn-sp"></span><button ${A("vnexit")}>✕</button>`) + `<div class="vn-body">
@@ -6614,7 +6626,7 @@ function vnRight(bottom) {
   }
   const pct = Math.round((vs.ci + vs.i / Math.max(1, vnCh().lines.length)) / VND.chapters.length * 100);
   const items = vs.items.map(it => ({ photo: "🖼️", letter: "✉️" })[it] || "").join("");
-  const top = bar(`<button ${A("vnmenu")} title="Menu">☰</button><span class="vn-items">${items}</span><span class="vn-sp"></span><span class="vn-pct">${pct}%</span><button ${A("vnrot")} title="Turn">🔄</button>`);
+  const top = bar(`<button ${A("vnmenu")} title="Menu">☰</button><span class="vn-items">${items}</span><span class="vn-sp"></span><span class="vn-pct">${pct}%</span><button class="${vs.music ? "on" : ""}" ${A("vnmusic")} title="Music">🎵 ${vs.music ? "On" : "Off"}</button><button ${A("vnrot")} title="Turn">🔄</button>`);
   if (vn.logOpen) return top + `<div class="vn-body vn-log"><b>📜 पिछली बातें · What's been said</b>${vn.log.slice(-30).map(l => `<div><b>${l.w === "~" ? "💭" : esc(VND.cast[l.w][0])}</b> <span lang="hi">${esc(l.hi)}</span><small>${esc(l.en)}</small></div>`).join("")}<button ${A("vnlog")}>✕ Close</button></div>`;
   const x = vn.line;
   const fresh = vn.fresh; vn.fresh = false;
@@ -7068,7 +7080,7 @@ const VN_CSS = `
 .vn-bar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px dashed rgba(43,33,24,.35); font-size: .95rem; flex: none; }
 .vn-bar b { font-family: var(--f-display); font-size: 1.1rem; }
 .vn-bar button, .vn-tools button, .vn-word button, .vn-log > button { background: rgba(255,255,255,.4); border: 1px solid rgba(43,33,24,.35); border-radius: 8px; padding: 3px 10px; color: var(--vn-ink); font: inherit; cursor: pointer; }
-.vn-sp { flex: 1; } .vn-pct { font-size: .85rem; opacity: .7; } .vn-items { font-size: 1.1rem; }
+.vn-sp { flex: 1; } .vn-bar button.on { background: var(--vn-ink); color: var(--vn-paper); } .vn-pct { font-size: .85rem; opacity: .7; } .vn-items { font-size: 1.1rem; }
 .vn-body { flex: 1; min-height: 0; overflow-y: auto; padding: 8px 8px 8px; display: flex; flex-direction: column; gap: 8px; }
 .vn-who { display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-size: 1.2rem; color: var(--vn-red); }
 .vn-who small { font-family: var(--f-body); font-size: .8rem; color: #7a6b5a; }
