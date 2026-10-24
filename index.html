@@ -6508,7 +6508,13 @@ const vnOpenChs = () => VND.chapters.map((c, i) => i === 0 || vs.done.includes(i
 const vnWords = () => vn.line ? gameWords(vn.line.hi, VNG) : [];
 function vnWord(i) {
   vn.wi = vn.wi === i ? -1 : i; stopPlayer(); vn.talking = false;
-  const w = vnWords()[vn.wi]; if (w) speak(w[0]);
+  const w = vnWords()[vn.wi];
+  if (w) {
+    speak(w[0]);
+    // like the reader: tapping a new (blue) word puts it into Learning 1, with this line as its example (Settings → "Tapping a new word…")
+    const k = norm(w[0]);
+    if (settings.autoLearn && statusOf(k) === 0 && !vnIsName(w[0])) { setWord(k, { s: 1, m: w[1] || "", t: w[2] || "", c: vn.line.hi, ce: vn.line.en || "", l: "story" }, true); toast(`${w[0]} → Learning 1`, 1200); }
+  }
   render();
 }
 function vnMoveWord(d) {
