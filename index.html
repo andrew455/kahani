@@ -6460,7 +6460,7 @@ function vnMusic() {
   const want = vnP.music && route.view === "vn" && !document.hidden;
   try {
     const src = vnLight() ? "sfx/music_light.m4a" : "sfx/music.m4a";
-    if (want) { if (!vnMus || !vnMus.src.endsWith(src)) { if (vnMus) vnMus.pause(); vnMus = new Audio(src); vnMus.loop = true; vnMus.volume = .3; } if (vnMus.paused) vnMus.play().catch(() => {}); }
+    if (want) { if (!vnMus || !vnMus.src.endsWith(src)) { if (vnMus) vnMus.pause(); vnMus = new Audio(src); vnMus.loop = true; vnMus.volume = vnLight() ? .18 : .3; } if (vnMus.paused) vnMus.play().catch(() => {}); }
     else if (vnMus && !vnMus.paused) vnMus.pause();
   } catch (e) {}
 }
@@ -6523,6 +6523,18 @@ function vnLevel(v) {
   toast(v === 5 ? `✓ ${w[0]} is known` : `${w[0]} → level ${v}`, 1400); render();
 }
 const vnIsName = w => { const g = VNG[norm(w)]; return !!g && /name\)|\(sound/.test(g[0]); };
+// How many different words in a story (or chapter) are new, learning or known for you right now. Recounted every few seconds.
+let vnCountMemo = {};
+function vnCounts(lines, key) {
+  const m = vnCountMemo[key]; if (m && Date.now() - m.t < 4000) return m.c;
+  const ws = new Set(), re = new RegExp(WORD_RE.source, "g");
+  for (const x of lines) for (const t of [x.hi].concat((x.ch || []).map(o => o.hi))) { if (!t) continue; let mm; while ((mm = re.exec(t))) if (!vnIsName(mm[0])) ws.add(norm(mm[0])); }
+  const c = { n: 0, l: 0, k: 0, all: ws.size };
+  ws.forEach(w => { const st = statusOf(w); if (st === 5) c.k++; else if (st >= 1) c.l++; else c.n++; });
+  vnCountMemo[key] = { t: Date.now(), c }; return c;
+}
+const vnStoryCounts = S => vnCounts(S.chapters.flatMap(c => c.lines), S.id);
+const vnCountLine = c => `<span class="vn-cnt"><b class="cn">🆕 ${c.n} new</b><b class="cl">📘 ${c.l} learning</b><b class="ck">✓ ${c.k} known</b></span>`;
 
 /* ---------- keys and taps ---------- */
 const VN_TURN = { ccw: { right: "up", up: "left", left: "down", down: "right" }, cw: { left: "up", up: "right", right: "down", down: "left" } };
@@ -6629,14 +6641,14 @@ function vnRight(bottom) {
       <p class="vn-note">Pick a story. ${DUAL ? "Turn the Thor on its side and hold it like a book." : ""}</p>
       <div class="vn-menu">${VNA.stories.map((S, j) => { const sv = store.get(vnSlot(S.id), {}) || {}, d = (sv.done || []).length, n = S.chapters.length;
         return `<button class="vn-story ${j === vn.spick ? "cur" : ""}" ${A("vnstory", j)}><span class="vn-sico">${S.ico}</span><span><b lang="hi">${esc(S.title[0])}</b> <i>${esc(S.title[1])}</i>
-          <small>${esc(S.level)} · ${n} chapters · ${d >= n ? "✓ finished" : d ? `${d} / ${n} read` : "new"}</small><small>${esc(S.about)}</small></span></button>`; }).join("")}
+          <small>${esc(S.level)} · ${n} chapters · ${d >= n ? "✓ finished" : d ? `${d} / ${n} read` : "not started"}</small>${vnCountLine(vnStoryCounts(S))}<small>${esc(S.about)}</small></span></button>`; }).join("")}
         <button class="${vn.spick === VNA.stories.length ? "cur" : ""}" ${A("vnexit")}>← Games</button></div></div>`;
   }
   if (vn.st === "menu") {
     const items = vnMenuItems(), open = vnOpenChs();
     const label = ([k, i]) => k === "vnplay" ? (vs.started ? `▶ जारी रखें · Continue <small>Chapter ${vs.ci + 1}: ${esc(VND.chapters[vs.ci].titleEn)}</small>` : "▶ शुरू करें · Begin the story")
       : k === "vnnew" ? "↺ शुरू से · Start again from the beginning"
-      : k === "vnchap" ? `${vs.done.includes(i) ? "✓" : open[i] ? "📖" : "🔒"} ${i + 1}. <span lang="hi">${esc(VND.chapters[i].title)}</span> <small>${esc(VND.chapters[i].titleEn)}</small>`
+      : k === "vnchap" ? (() => { const c = vnCounts(VND.chapters[i].lines, VND.id + ":" + i); return `${vs.done.includes(i) ? "✓" : open[i] ? "📖" : "🔒"} ${i + 1}. <span lang="hi">${esc(VND.chapters[i].title)}</span> <small>${esc(VND.chapters[i].titleEn)} · 🆕 ${c.n} new · 📘 ${c.l} learning</small>`; })()
       : k === "vnmusic" ? `🎵 Music: <b>${vnP.music ? "ON" : "OFF"}</b>`
       : k === "vnrot" ? `🔄 Hold: ${vnP.rot === "ccw" ? "book, picture on the left" : vnP.rot === "cw" ? "book, picture on the right" : "flat (no turning)"}`
       : "📚 ← All stories";
@@ -7266,7 +7278,11 @@ const VN_CSS = `
 .vn-menu { display: grid; gap: 6px; } .vn-menu button { font-size: 1.05rem; padding: 6px 12px; } .vn-menu button.ch { font-size: 1rem; }
 .vn-menu button:disabled { opacity: .45; }
 .vn-menu .vn-story { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; }
-.vn-sico { font-size: 2rem; line-height: 1; } .vn-story b { font-size: 1.3rem; } .vn-story i { font-family: Georgia, serif; font-size: .95rem; }
+.vn-sico { font-size: 2rem; line-height: 1; }
+.vn-cnt { display: flex; gap: 6px; flex-wrap: wrap; margin: 3px 0; font-family: var(--f-body); }
+.vn-cnt b { font-size: .8rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: rgba(255,255,255,.55); color: var(--vn-ink); border: 1px solid rgba(43,33,24,.25); }
+.vn-cnt .cn { color: #2457b8; } .vn-cnt .cl { color: #9a5a10; } .vn-cnt .ck { color: #2f7d5b; }
+.vn-story.cur .vn-cnt b { background: rgba(255,255,255,.9); } .vn-story b { font-size: 1.3rem; } .vn-story i { font-family: Georgia, serif; font-size: .95rem; }
 .vn-box { width: 100%; background: rgba(255,252,243,.92); border: 3px solid var(--vn-ink); border-radius: 12px; padding: 8px 14px 12px; box-shadow: 0 0 0 3px var(--vn-paper), 0 0 0 5px rgba(43,33,24,.45), 3px 5px 0 4px rgba(43,33,24,.18); min-height: 9.5em; }
 .vn-box.think { background: rgba(240,232,214,.9); border-style: dashed; }
 .vn-box { margin-top: 18px; position: relative; }
