@@ -6626,6 +6626,71 @@ function vnWord(i) {
   }
   render();
 }
+/* ---------- word breakdown: the letters and their sounds, and the word's base + ending ---------- */
+let vnABC = null;
+function vnLetters() {
+  if (vnABC) return vnABC;
+  const c = {}, m = {}, v = {};
+  try { ABC_ROWS.forEach(r => r.items.forEach(x => (c[x.g] = x.r.replace(/a$/, "")))); ABC_VOWELS.forEach(x => { v[x.g] = x.r; if (x.m) m[x.m] = x.r; }); } catch (e) {}
+  return (vnABC = { c, m, v });
+}
+// पत्थर → [["प","pa"],["त्थ","ttha"],["र","r"]]: each consonant cluster with its vowel sign, the way it's written
+function vnSyllables(w) {
+  const { c, m, v } = vnLetters(), ch = [...w], out = [];
+  for (let i = 0; i < ch.length;) {
+    let g = "", r = "";
+    if (v[ch[i]]) { g = ch[i]; r = v[ch[i]]; i++; }
+    else if (c[ch[i]] != null || c[ch[i] + (ch[i + 1] || "")] != null) {
+      let vowel = "a";
+      for (;;) {
+        let k = ch[i]; if (ch[i + 1] === "़") { k += ch[i + 1]; i++; }
+        g += k; r += c[k] != null ? c[k] : c[k.normalize("NFC")] != null ? c[k.normalize("NFC")] : k; i++;
+        if (ch[i] === "्" && ch[i + 1]) { g += ch[i]; i++; continue; }   // halant: joined to the next letter
+        break;
+      }
+      if (ch[i] && m[ch[i]] != null) { vowel = m[ch[i]]; g += ch[i]; i++; }
+      r += vowel; if (vowel === "a") { out.push([g, r, 1]); g = ""; }
+    } else { g = ch[i]; r = ""; i++; }
+    if (!g) { if (ch[i] === "ं" || ch[i] === "ँ") { const L = out[out.length - 1]; L[0] += ch[i]; L[1] += ch[i] === "ं" ? "n" : "̃"; L[2] = 0; i++; } continue; }
+    if (ch[i] === "ं" || ch[i] === "ँ") { r += ch[i] === "ं" ? "n" : "̃"; g += ch[i]; i++; }
+    out.push([g, r, 0]);
+  }
+  // The built-in 'a' that isn't said (Hindi "schwa deletion"): always at the end (पत्थर = patthar), and in the middle
+  // when a vowel comes before and a consonant + vowel after (उसमें = usmen, देखकर = dekhkar). Worked out from the right.
+  const has = k => out[k] && /[aeiouāīūṛ̃n]$/.test(out[k][1]);
+  if (out.length > 1 && out[out.length - 1][2]) { const L = out[out.length - 1]; L[1] = L[1].slice(0, -1); }
+  for (let k = out.length - 2; k > 0; k--) if (out[k][2] && has(k - 1) && has(k + 1) && /^[^aeiouāīū]/.test(out[k + 1][1])) out[k][1] = out[k][1].slice(0, -1);
+  return out.map(x => [x[0], x[1]]);
+}
+const VN_ENDINGS = [
+  ["ेंगे", "will … (we / they / you)", "v"], ["ेगा", "will … (he)", "v"], ["ेगी", "will … (she)", "v"], ["ूँगा", "I will …", "v"], ["ूँगी", "I will … (f.)", "v"],
+  ["कर", "after …-ing / having …", "v"], ["तीं", "… (women, habit / now)", "v"], ["ता", "… (he / I, m.: does, is …-ing)", "v"], ["ती", "… (she / I, f.: does, is …-ing)", "v"],
+  ["ते", "… (they / you / polite: do, are …-ing)", "v"], ["ना", "to … (the dictionary form)", "v"], ["ने", "to … / of …-ing", "v"], ["नी", "to … (with a feminine word)", "v"],
+  ["िए", "please … (polite)", "v"], ["इए", "please … (polite)", "v"], ["ो", "… ! (to a friend)", "v"], ["ीं", "did … (women)", "v"], ["या", "did … (past, m.)", "v"], ["ये", "did … (past, plural)", "v"], ["यी", "did … (past, f.)", "v"], ["ा", "did … (past, m.)", "v"], ["ी", "did … (past, f.)", "v"], ["े", "did … (past, plural)", "v"],
+  ["ियों", "…s (plural, before के/में/से…)", "n"], ["ियाँ", "…s (plural)", "n"], ["ों", "…s (plural, before के/में/से…)", "n"], ["ें", "…s (plural)", "n"], ["े", "… (form before में / से / के, or plural)", "n"],
+  ["में", "in …", "p"], ["से", "from / with …", "p"], ["के", "of … (के)", "p"], ["की", "of … (की)", "p"], ["का", "of … (का)", "p"], ["को", "to …", "p"], ["ने", "(… did)", "p"], ["ही", "just / only …", "p"]
+];
+function vnMeaning(w) {
+  const k = norm(w), g = VNG[k]; if (g && g[0]) return g[0];
+  const e = V[k]; return e && e.m ? e.m : "";
+}
+function vnBaseOf(w) {
+  for (const [end, what, kind] of VN_ENDINGS) {
+    if (w.length <= end.length + 1 || !w.endsWith(end)) continue;
+    const stem = w.slice(0, -end.length);
+    if (kind === "v") { const inf = stem + "ना"; if (inf !== w && vnMeaning(inf)) return { stem, end, what, base: inf, bm: vnMeaning(inf) }; if (vnMeaning(stem) && /\(|go|come|see|do|eat|sit|say|take|give|look|run|read|write|open|catch|get|seem|sleep|stand|understand|think|play/.test(vnMeaning(stem))) return { stem, end, what, base: stem, bm: vnMeaning(stem) }; }
+    if (kind === "n") for (const b of [stem, stem + "ा", stem + "ी", stem + "ि"]) if (vnMeaning(b)) return { stem, end, what, base: b, bm: vnMeaning(b) };
+    if (kind === "p" && vnMeaning(stem)) return { stem, end, what, base: stem, bm: vnMeaning(stem) };
+  }
+  return null;
+}
+function vnBreakdown(cw, A) {
+  const w = cw[0], syl = vnSyllables(norm(w)), b = vnBaseOf(norm(w));
+  return `<div class="vn-word bd"><div><b lang="hi">${esc(w)}</b> <i>${esc(cw[2] || syl.map(x => x[1]).join(""))}</i> <span>= ${esc(cw[1] || vnMeaning(w) || "?")}</span></div>
+    <div class="vn-syl">${syl.map(([g, r]) => `<span><b lang="hi">${esc(g)}</b><small>${esc(r || "·")}</small></span>`).join(`<em>+</em>`)}</div>
+    ${b ? `<div class="vn-base"><b lang="hi">${esc(b.stem)}</b> + <b lang="hi" class="end">${esc(b.end)}</b> <span>${b.base !== b.stem ? `<b lang="hi">${esc(b.base)}</b> = ${esc(b.bm)}` : `= ${esc(b.bm)}`} · <b lang="hi">${esc(b.end)}</b> = ${esc(b.what)}</span></div>` : ""}
+    <div class="vn-lv"><button ${A("vnhw")}>🔊</button><button class="bk" ${A("vnbd")}>← Back</button></div></div>`;
+}
 function vnMoveWord(d) {
   const n = vnWords().length; if (!n) return;
   vn.wi = vn.wi < 0 ? (d > 0 ? 0 : n - 1) : (vn.wi + d + n) % n;
@@ -6679,6 +6744,7 @@ function vnKey(k, i) {
   if (k === "vnch") { vn.sel = +i; return vnPick(+i); }
   if (k === "vnnext") return vnNext();
   if (k === "vnkp") return vnKeypad(String(i));
+  if (k === "vnbd") { const w = vnWords()[vn.wi]; vn.bdW = w && vn.bdW !== w[0] ? w[0] : null; return render(); }
   if (k === "vntr") { vn.tr = !vn.tr; return render(); }
   if (k === "vnhear") { if (vn.line) vnSpeak(vn.line); return; }
   if (k === "vnhw") { const w = vnWords()[vn.wi]; if (w) speak(w[0]); return; }
@@ -6830,8 +6896,8 @@ function vnRight(bottom) {
     html = `<div class="vn-box ${think ? "think" : ""}"><div class="vn-who ${think ? "think" : ""}">${think ? "💭 <span>मन में… <small>Andy thinks</small></span>" : `${x.w === "andy" ? `<span class="vn-ava">${vnPortrait(VND.cast.andy[4] || "andy", x.e).replace('viewBox="0 -14 200 344"', 'viewBox="38 6 124 124"')}</span>` : ""}<b>${esc(c[0])}</b><small>${esc(c[1])}</small>`}</div>
       <div class="vn-hi ${think ? "think" : ""} ${x.w === "letter" ? "hand" : ""}" lang="hi">${out}</div>
       ${vn.tr ? `<div class="vn-en">${esc(x.en)}</div>` : ""}</div>
-      ${cw ? `<div class="vn-word"><div><b lang="hi">${esc(cw[0])}</b> <i>${esc(cw[2] || "")}</i> <span>= ${esc(cw[1] || "?")}</span> <button ${A("vnhw")}>🔊</button></div>
-        ${vnIsName(cw[0]) ? "" : `<div class="vn-lv">${[1, 2, 3, 4].map(v => `<button class="l${v} ${cs === v ? "on" : ""}" ${A("vnlv", v)}>${v}</button>`).join("")}<button class="kn ${cs === 5 ? "on" : ""}" ${A("vnlv", 5)}>✓ Known</button></div>`}</div>` : ""}`;
+      ${cw && vn.bdW === cw[0] ? vnBreakdown(cw, A) : cw ? `<div class="vn-word"><div><b lang="hi">${esc(cw[0])}</b> <i>${esc(cw[2] || "")}</i> <span>= ${esc(cw[1] || "?")}</span> <button ${A("vnhw")}>🔊</button></div>
+        <div class="vn-lv">${vnIsName(cw[0]) ? "" : [1, 2, 3, 4].map(v => `<button class="l${v} ${cs === v ? "on" : ""}" ${A("vnlv", v)}>${v}</button>`).join("")}<button class="bdb" ${A("vnbd")}>🔍 Breakdown</button>${vnIsName(cw[0]) ? "" : `<button class="kn ${cs === 5 ? "on" : ""}" ${A("vnlv", 5)}>✓ Known</button>`}</div></div>` : ""}`;
   }
   if (vn.choice && vn.map) html += vn.look ? `<div class="vn-evq map">🔍 ध्यान से देखिए · Which part looks wrong?</div>` : `<div class="vn-evq map">📍 नक़्शा · Pick a place on the map</div>`;
   if (vn.choice && vn.choice[0] && vn.choice[0].ev) html += `<div class="vn-evq">📓 सुराग दिखाइए · Show a clue from your notebook</div>`;
@@ -7764,6 +7830,13 @@ const VN_CSS = `
 .vn-lv { display: flex; gap: 5px; } .vn-lv button { min-width: 38px; }
 .vn-lv .kn { margin-left: auto; padding: 8px 18px; font-size: 1.1rem; border-width: 2px; border-radius: 10px; }   /* under the right thumb */
 .vn-tools > button:nth-child(2) { flex: 1; }
+.vn-lv .bdb { margin-left: auto; padding: 8px 12px; font-size: 1rem; border-width: 2px; border-radius: 10px; }
+.vn-lv .bdb + .kn { margin-left: 0; }
+.vn-lv .bk { margin-left: auto; padding: 8px 22px; font-size: 1.1rem; border-width: 2px; border-radius: 10px; background: var(--vn-ink) !important; color: var(--vn-paper) !important; }
+.vn-syl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.vn-syl span { display: flex; flex-direction: column; align-items: center; background: rgba(43,33,24,.08); border: 1px solid rgba(43,33,24,.25); border-radius: 8px; padding: 2px 10px; min-width: 44px; }
+.vn-syl span b { font-size: 1.7rem; line-height: 1.2; } .vn-syl small { color: var(--vn-red); font-size: .95rem; } .vn-syl em { opacity: .45; font-style: normal; }
+.vn-base { font-size: 1rem; } .vn-base b { font-family: var(--f-display); font-size: 1.25rem; } .vn-base b.end { color: var(--vn-red); } .vn-base span { display: block; opacity: .8; font-size: .92rem; }
 .vn-lv button.on { background: var(--vn-ink); color: var(--vn-paper); }
 .vn-choices { display: grid; gap: 7px; margin-top: 4px; }
 .vn-choices button, .vn-menu button, .vn-big { text-align: left; padding: 8px 12px; border: 2px solid var(--vn-ink); border-radius: 8px; background: rgba(255,252,243,.8); font-family: var(--f-display); font-size: 1.2rem; color: var(--vn-ink); cursor: pointer; }
