@@ -1307,6 +1307,7 @@ function render() {
   else if (route.view === "ani") v.innerHTML = viewAni();
   else if (route.view === "world") v.innerHTML = viewWorld();
   else if (route.view === "vn") v.innerHTML = viewVn();
+  else if (typeof RV !== "undefined" && RV.views[route.view]) v.innerHTML = RV.top(route.view);
   else if (route.view === "talk") v.innerHTML = viewTalk();
   else if (route.view === "book") v.innerHTML = viewBook();
   else v.innerHTML = viewLibrary();
@@ -5435,12 +5436,14 @@ function gameKey(k, i) {
   if (v === "ani") return aniKey(k, i);
   if (v === "world") return worldKey(k, i);
   if (v === "vn") return vnKey(k, i);
+  if (typeof RV !== "undefined" && RV.views[v]) return RV.views[v].key(k, i);
 }
 function gameBottom() {
   const v = route.view, k = knownN();
   if (v === "ani") return aniBottom();
   if (v === "world") return window.KahaniWorld ? window.KahaniWorld.bottom() : { type: "world", loading: true };
   if (v === "vn") return vnBottom();
+  if (typeof RV !== "undefined" && RV.views[v]) return RV.bottom(v);
   if (v === "games") return { type: "hub", list: GAMES.map(g => ({ ico: g[1], hi: g[2], en: g[3] })), pick: hub.pick };
   if (v === "adv") return Object.assign({ type: "adv" }, advBottom());
   const menu = (title, levels, pick, best, prog) => ({ type: "levels", title, pick, list: levels.map((L, i) => ({ name: `Level ${i + 1}${L.name ? " · " + L.name : ""}`, open: lvOpen(levels, i, prog), lock: lvLock(levels, i, prog).replace("🔒 ", ""), need: L.need, best: best[i], prog: prog ? prog[i] || 0 : null })), known: k, fly: v === "fly" ? Object.assign({}, flyOpts) : null });
@@ -7919,6 +7922,507 @@ if (VNA && !FR) {
   GAME_VIEWS.push("vn");
   try { const st = document.createElement("style"); st.textContent = VN_CSS; document.head.appendChild(st); } catch (e) {}
 }
+
+/* ===================== Review games: practise the words you're learning, in sentences ===================== */
+// 🕵️ पूछताछ (Interrogation): a suspect gives a statement; one word in it contradicts a clue. Tap that word.
+// ☕ रामू की चाय (Chai Rush): customers order chai in Hindi (अगर / परंतु / मत / बिना / ज़्यादा / कम…); make it before they give up.
+// 🔎 कौन है? (Who Is It?): a crowd in a London street; a Hindi description picks out one person. Tap them.
+// Each game draws the top screen itself and sends ready-made HTML to the Thor's bottom screen (like the story games).
+
+const RV = { views: {} };
+const rvA = (k, i, bottom) => bottom ? `data-c="gk" data-t="${k}" data-d="${i == null ? 0 : i}"` : `data-gk="${k}" data-gi="${i == null ? 0 : i}"`;
+const rvShuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const rvPick = a => a[Math.floor(Math.random() * a.length)];
+const rvTopA = (k, i) => rvA(k, i, false);
+const rvAgo = t => `animation-delay:-${Math.max(0, (Date.now() - (t || 0)) / 1000).toFixed(2)}s`;
+const rvGloss = () => (typeof VNG !== "undefined" ? VNG : {});
+const rvSfx = (n, v) => { try { if (typeof vnSfxPlay === "function") vnSfxPlay(n, v); } catch (e) {} };
+
+// Tappable Hindi: every word is a button; the tapped one opens a little box with its meaning (and goes into Learning 1 if it's new).
+const rvW = { key: "", wi: -1 };
+function rvText(text, key, A, cls) {
+  const ws = gameWords(text, rvGloss()); let out = "", at = 0, wi = 0; const re = new RegExp(WORD_RE.source, "gi"); let m;
+  while ((m = re.exec(text))) {
+    const st = statusOf(norm(m[0])), s = st === 5 ? "s5" : st >= 1 ? "s" + st : st === -1 ? "nm" : "s0";
+    out += esc(text.slice(at, m.index)) + `<button class="rvw ${s} ${rvW.key === key && rvW.wi === wi ? "cur" : ""}" ${A("rvword", key + "|" + wi)}>${esc(m[0])}</button>`;
+    at = m.index + m[0].length; wi++;
+  }
+  return `<span class="${cls || ""}" lang="hi">${out + esc(text.slice(at))}</span>`;
+}
+function rvWordBox(text, key, A, extra) {
+  if (rvW.key !== key || rvW.wi < 0) return "";
+  const w = gameWords(text, rvGloss())[rvW.wi]; if (!w) return "";
+  return `<div class="rv-wbox"><b lang="hi">${esc(w[0])}</b> <i>${esc(w[2] || "")}</i> <span>= ${esc(w[1] || "?")}</span><span class="rv-sp"></span>${extra || ""}<button ${A("rvhear", rvW.wi)}>🔊</button><button ${A("rvwclose")}>✕</button></div>`;
+}
+function rvTapWord(arg, textOf) {
+  const [key, wi] = String(arg).split("|"), i = +wi;
+  if (rvW.key === key && rvW.wi === i) { rvW.wi = -1; return render(); }
+  rvW.key = key; rvW.wi = i;
+  const text = textOf(key), w = text && gameWords(text, rvGloss())[i];
+  if (w) {
+    speak(w[0]);
+    const k = norm(w[0]);
+    if (settings.autoLearn && statusOf(k) === 0 && w[1]) { setWord(k, { s: 1, m: w[1], t: w[2] || "", c: text, l: "game" }, true); toast(`${w[0]} → Learning 1`, 1200); }
+  }
+  render();
+}
+const rvWordReset = () => { rvW.key = ""; rvW.wi = -1; };
+
+// Who's talking: the story games' portraits, drawn small
+const rvFace = (who, e) => (typeof vnPortrait === "function" && VN_LOOK[who]) ? vnPortrait(who, e || "n") : `<div style="font-size:4rem">🧑</div>`;
+
+/* ===================== 🕵️ पूछताछ · Interrogation ===================== */
+// [suspect, [clue hi, en], [statement hi (the lie in *stars*)...], [statement en...], [confession hi, en]]
+const RV_IQ = [
+  ["vicky", ["कल पूरे दिन बारिश हुई। सूरज एक बार भी नहीं निकला।", "It rained all day yesterday. The sun didn't come out once."],
+    ["कल मैं नदी के पास था, एक दोस्त के साथ।", "हम दोनों *सूरज* के नीचे बैठे रहे, और मैंने बहुत आराम किया।", "मैं शाम तक वहीं था। मैंने कुछ नहीं देखा।"],
+    ["Yesterday I was by the river, with a friend.", "We both sat in the sun, and I had a good rest.", "I was there till evening. I didn't see anything."],
+    ["...ठीक है। मैं नदी के पास नहीं था। मैं दुकान में था।", "...All right. I wasn't by the river. I was in the shop."]],
+  ["tipu", ["पार्क का झूला सोमवार से टूटा है। उस पर कोई नहीं बैठ सकता।", "The park swing has been broken since Monday. Nobody can sit on it."],
+    ["बुधवार को मैं पार्क में था।", "मैं बहुत देर तक *झूले* पर बैठा रहा।", "फिर मैं धीरे धीरे घर वापस गया।"],
+    ["On Wednesday I was in the park.", "I sat on the swing for a long time.", "Then I slowly went back home."],
+    ["अच्छा... मैं पार्क में नहीं था। मैं रामू भैया के समोसे के पास था।", "OK... I wasn't in the park. I was near Ramu bhaiya's samosas."]],
+  ["gupta", ["डाकघर बुधवार को पूरा दिन बंद था।", "The post office was shut all day on Wednesday."],
+    ["बुधवार को मैंने बहुत काम किया।", "सुबह मैं *डाकघर* गया, और दस चिट्ठियाँ भेजीं।", "उसके बाद मैं घर पर रहा।"],
+    ["On Wednesday I did a lot of work.", "In the morning I went to the post office, and sent ten letters.", "After that I stayed at home."],
+    ["हम्म... चिट्ठियाँ मेरी जेब में थीं। मैं डाकघर नहीं गया।", "Hmm... the letters were in my pocket. I didn't go to the post office."]],
+  ["pinky", ["लाइब्रेरी शनिवार को बंद होती है।", "The library is closed on Saturdays."],
+    ["शनिवार को मैं सारा दिन *लाइब्रेरी* में थी।", "मैंने एक कविता की किताब पढ़ी।", "मुझे याद है, क्योंकि वह बहुत सुंदर कविता थी।"],
+    ["On Saturday I was in the library all day.", "I read a book of poems.", "I remember, because it was a very beautiful poem."],
+    ["माफ़ कीजिए! शनिवार को मैं मेले में थी।", "Sorry! On Saturday I was at the fair."]],
+  ["zoro", ["ज़ोरो का छाता रविवार से ग़ायब है।", "Zoro's umbrella has been missing since Sunday."],
+    ["सोमवार को बहुत बारिश थी।", "परंतु मैं बिलकुल नहीं भीगा, क्योंकि मेरे पास मेरा *छाता* था।", "जादू? नहीं, सिर्फ़ छाता!"],
+    ["On Monday there was a lot of rain.", "But I didn't get wet at all, because I had my umbrella.", "Magic? No, just an umbrella!"],
+    ["हा हा! ठीक है। मैं भीगा। बहुत भीगा।", "Ha ha! All right. I got wet. Very wet."]],
+  ["chopra", ["उस रात बहुत धुंध थी। दस क़दम आगे भी कुछ नहीं दिखता था।", "That night there was thick fog. You couldn't see anything even ten steps ahead."],
+    ["रात को मैंने खिड़की से सब देखा।", "सड़क के उस तरफ़ एक आदमी था। मैंने उसका चेहरा *साफ़* देखा।", "उसके कपड़े काले थे।"],
+    ["At night I saw everything from the window.", "There was a man across the road. I saw his face clearly.", "His clothes were black."],
+    ["...सच यह है, मैंने कुछ नहीं देखा। धुंध बहुत थी।", "...The truth is, I didn't see anything. The fog was too thick."]],
+  ["babloo", ["बबलू को बुखार है। डॉक्टर कहता है, वह तीन दिन से बीमार है।", "Babloo has a fever. The doctor says he's been ill for three days."],
+    ["कल? कल मैं पूरे दिन *मेले* में था!", "मैंने बहुत झूले देखे, और दो गुब्बारे लिए।", "मैं बिलकुल ठीक हूँ!"],
+    ["Yesterday? Yesterday I was at the fair all day!", "I saw lots of rides, and got two balloons.", "I'm perfectly fine!"],
+    ["अ... मैं बिस्तर पर था। माँ ने मुझे बाहर नहीं जाने दिया।", "Uh... I was in bed. Mum didn't let me go out."]],
+  ["customer", ["बस नंबर बारह गुरुवार को नहीं चलती।", "Bus number twelve doesn't run on Thursdays."],
+    ["गुरुवार को मैं हमेशा की तरह दफ़्तर गया।", "मैं बस नंबर *बारह* से गया, सुबह नौ बजे।", "मैं दस बजे तक दफ़्तर में था।"],
+    ["On Thursday I went to the office as usual.", "I went on bus number twelve, at nine in the morning.", "I was in the office by ten."],
+    ["...ठीक है, मैं दफ़्तर नहीं गया। मैं घर पर सो रहा था।", "...All right, I didn't go to the office. I was asleep at home."]],
+  ["malhotra", ["गुप्ता जी ने चोर को साफ़ देखा: उसके कपड़े काले थे।", "Gupta ji saw the thief clearly: his clothes were black."],
+    ["हाँ, मैंने भी चोर को देखा।", "वह बहुत तेज़ी से भागा। उसके कपड़े *पीले* थे।", "मुझे अच्छी तरह याद है।"],
+    ["Yes, I saw the thief too.", "He ran off very fast. His clothes were yellow.", "I remember it well."],
+    ["...मैंने चोर नहीं देखा। मैं सिर्फ़ मदद करना चाहता था।", "...I didn't see the thief. I just wanted to help."]],
+  ["joshi", ["जोशी जी का चश्मा टूटा है। वह चश्मे के बिना कुछ नहीं पढ़ सकते।", "Joshi ji's glasses are broken. He can't read anything without them."],
+    ["वह चिट्ठी? हाँ, मैंने उसे ध्यान से *पढ़ा*।", "हर शब्द।", "उसमें कुछ अजीब नहीं था।"],
+    ["That letter? Yes, I read it carefully.", "Every word.", "There was nothing strange in it."],
+    ["...सच में, मैंने कुछ नहीं पढ़ा। मैंने सिर्फ़ उसे देखा।", "...Honestly, I didn't read anything. I only looked at it."]],
+  ["khan", ["सोमवार को डाकघर सिर्फ़ बारह बजे तक खुला रहता है।", "On Mondays the post office is only open until twelve."],
+    ["सोमवार को बहुत काम था।", "मैं डाकघर में शाम *पाँच* बजे तक था।", "उसके बाद मैं सीधे घर गया।"],
+    ["On Monday there was a lot of work.", "I was in the post office until five in the evening.", "After that I went straight home."],
+    ["हम्म। बारह बजे के बाद मैं चाय पीने गया। रामू भैया के पास।", "Hmm. After twelve I went for chai. To Ramu bhaiya's."]],
+  ["nisha", ["निशा का फ़ोन सोमवार से पुलिस के पास है।", "Nisha's phone has been with the police since Monday."],
+    ["मंगलवार को मैं समुद्र के पास गई।", "मैंने अपने *फ़ोन* से बहुत फ़ोटो लीं।", "आप देखना चाहते हैं?"],
+    ["On Tuesday I went to the seaside.", "I took lots of photos with my phone.", "Do you want to see?"],
+    ["...वे फ़ोटो पुरानी हैं। मंगलवार को मैं घर पर थी।", "...Those photos are old. On Tuesday I was at home."]],
+  ["hasan", ["हसन भाई की दुकान में इलायची पिछले हफ़्ते से ख़त्म है।", "Hasan bhai's shop has been out of cardamom since last week."],
+    ["हाँ, चोपड़ा जी आज सुबह आए।", "मैंने उन्हें दो किलो *इलायची* दी।", "बहुत अच्छी इलायची।"],
+    ["Yes, Chopra ji came this morning.", "I gave him two kilos of cardamom.", "Very good cardamom."],
+    ["अरे... मैंने अदरक दी थी। इलायची नहीं।", "Oh... I gave him ginger. Not cardamom."]],
+  ["lalu", ["लालू के सारे गुब्बारे लाल और पीले हैं।", "All of Lalu's balloons are red and yellow."],
+    ["उस बच्चे ने मुझसे एक *हरा* गुब्बारा लिया।", "फिर वह नदी की तरफ़ गया।", "मैंने उसे फिर कभी नहीं देखा।"],
+    ["That child took a green balloon from me.", "Then he went towards the river.", "I never saw him again."],
+    ["...हाँ, हाँ। गुब्बारा लाल था। और बच्चा मेले में ही है।", "...Yes, yes. The balloon was red. And the child is still at the fair."]],
+  ["jenny", ["जेनी की दुकान दस बजे खुलती है। उससे पहले ताला बंद रहता है।", "Jenny's stall opens at ten. Before that it stays locked."],
+    ["सुबह *आठ* बजे मैं अपनी दुकान में थी।", "मैं खिलौने साफ़ कर रही थी।", "मैंने किसी को नहीं देखा।"],
+    ["At eight in the morning I was in my stall.", "I was cleaning the toys.", "I didn't see anyone."],
+    ["...मैं दस बजे आई। माफ़ कीजिए, मुझे देर हुई।", "...I came at ten. Sorry, I was late."]],
+  ["rohan", ["रोहन के पैर में दर्द है। वह सीढ़ियाँ नहीं चढ़ सकता।", "Rohan's leg hurts. He can't climb stairs."],
+    ["रात को मैं *ऊपर* गया, अंकल के कमरे में।", "मैंने उनसे बात की, और फिर वापस आया।", "बस इतना।"],
+    ["At night I went upstairs, to Uncle's room.", "I talked to him, and then came back.", "That's all."],
+    ["...मैंने अंकल को फ़ोन किया। नीचे से।", "...I phoned Uncle. From downstairs."]],
+  ["sharma", ["आज ट्रेन में कोई टीटी नहीं है। टीटी बीमार है।", "There's no ticket inspector on the train today. He's ill."],
+    ["हाँ, मेरे पास टिकट है।", "मैंने अपना टिकट *टीटी* को दिखाया, दो बार।", "आप चाहें तो उससे पूछिए।"],
+    ["Yes, I have a ticket.", "I showed my ticket to the inspector, twice.", "Ask him, if you want."],
+    ["अ... मेरे पास टिकट नहीं है। माफ़ कीजिए!", "Uh... I don't have a ticket. Sorry!"]],
+  ["kapoor", ["डॉक्टर कपूर की दवाई की दुकान गुरुवार को बंद होती है।", "Doctor Kapoor's pharmacy is closed on Thursdays."],
+    ["गुरुवार को मेरे सिर में बहुत दर्द था।", "मैंने डॉक्टर कपूर की दुकान से *दवाई* ली।", "अब मैं ठीक हूँ।"],
+    ["On Thursday I had a bad headache.", "I got medicine from Doctor Kapoor's shop.", "Now I'm fine."],
+    ["...दवाई मेरे घर पर थी। पुरानी दवाई।", "...The medicine was at my house. Old medicine."]],
+  ["sonia", ["सोनिया आंटी को पानी से डर लगता है। वह कभी पानी में नहीं जातीं।", "Sonia Aunty is scared of water. She never goes into the water."],
+    ["उस दिन हम दोनों समुद्र पर थे।", "हम बहुत देर तक *पानी* में खेलते रहे।", "बहुत मज़ा आया!"],
+    ["That day we were both at the seaside.", "We played in the water for a long time.", "It was so much fun!"],
+    ["हाय राम! ठीक है, मैं सिर्फ़ किनारे पर बैठी थी।", "Oh my! All right, I only sat on the shore."]],
+  ["singh", ["मेले का बड़ा झूला सिर्फ़ शनिवार को चलता है।", "The fair's big wheel only runs on Saturdays."],
+    ["*बुधवार* को मैं झूले पर था।", "ऊपर से पूरा शहर दिखता है!", "मैंने वहाँ से सब देखा।"],
+    ["On Wednesday I was on the big wheel.", "You can see the whole city from the top!", "I saw everything from there."],
+    ["...शायद वह शनिवार था। हाँ, शनिवार!", "...Maybe it was Saturday. Yes, Saturday!"]],
+  ["samir", ["उस दुकान में सिर्फ़ एक दरवाज़ा है, सामने की तरफ़।", "That shop has only one door, at the front."],
+    ["मैं दुकान में *पीछे* वाले दरवाज़े से आया।", "इसलिए किसी ने मुझे नहीं देखा।", "मैं जल्दी में था।"],
+    ["I came into the shop by the back door.", "That's why nobody saw me.", "I was in a hurry."],
+    ["...मैं सामने से आया। और सबने मुझे देखा।", "...I came in the front. And everyone saw me."]],
+  ["driver", ["उस शाम सड़क पर बहुत भीड़ थी। कोई गाड़ी तेज़ नहीं चल सकती थी।", "That evening the road was packed. No car could go fast."],
+    ["मैं बहुत *तेज़* आया।", "सिर्फ़ पाँच मिनट में, स्टेशन से यहाँ तक।", "मुझे याद है, क्योंकि मैंने घड़ी देखी।"],
+    ["I came very fast.", "In just five minutes, from the station to here.", "I remember, because I looked at the clock."],
+    ["...एक घंटा लगा। भीड़ बहुत थी।", "...It took an hour. The traffic was terrible."]]
+];
+// split a statement line into its text and the lie (if any)
+const rvLie = s => { const m = s.match(/\*([^*]+)\*/); return { text: s.replace(/\*/g, ""), lie: m ? m[1] : "" }; };
+const iq = { st: "menu", order: [], ri: 0, hearts: 3, score: 0, done: null, wrong: 0, tr: false, face: "n", best: store.get("iqbest", 0), t0: 0 };
+// rounds with the most words you're learning come first, so the backlog gets used
+function iqLearnN(R) { let n = 0; const re = new RegExp(WORD_RE.source, "g"); for (const s of R[2]) { let m; while ((m = re.exec(s.replace(/\*/g, "")))) { const st = statusOf(norm(m[0])); if (st >= 1 && st <= 4) n++; } } return n; }
+function iqStart() {
+  const all = RV_IQ.map((R, i) => [i, iqLearnN(R) + Math.random() * 3]).sort((a, b) => b[1] - a[1]).slice(0, 8).map(x => x[0]);
+  Object.assign(iq, { st: "play", order: rvShuffle(all).slice(0, 5), ri: 0, hearts: 3, score: 0, done: null, wrong: 0, tr: false, face: "n", t0: Date.now() });
+  rvWordReset(); render(); iqSay();
+}
+const iqR = () => RV_IQ[iq.order[iq.ri]];
+function iqSay() { const R = iqR(); if (!R) return; speak(R[2].map(s => s.replace(/\*/g, "")).join(" "), { voice: (VN_LOOK[R[0]] || {}).f ? "" : "m" }); }
+function iqText(key) {
+  const R = iqR(); if (!R) return "";
+  if (key[0] === "s") return rvLie(R[2][+key.slice(1)]).text;
+  if (key === "c") return R[1][0];
+  if (key === "f") return R[4][0];
+  return "";
+}
+function iqAccuse() {
+  const R = iqR(); if (!R || iq.done) return;
+  const k = rvW.key; if (k[0] !== "s") return;
+  const L = rvLie(R[2][+k.slice(1)]), w = gameWords(L.text, rvGloss())[rvW.wi];
+  if (w && L.lie && norm(w[0]) === norm(L.lie)) {
+    iq.done = "ok"; iq.doneT = Date.now(); iq.face = "sad"; iq.score += iq.wrong ? 1 : 2; rvSfx("sting", .8); toast("🫵 झूठ! · Caught the lie!", 1800);
+    setTimeout(() => speak(R[4][0], { voice: (VN_LOOK[R[0]] || {}).f ? "" : "m" }), 900);
+  } else {
+    iq.wrong++; iq.hearts--; iq.face = "h"; rvSfx("ping", .5);
+    toast("सच है! · That part's true.", 1600);
+    if (iq.hearts <= 0) { iq.done = "lost"; iq.face = "h"; }
+  }
+  render();
+}
+function iqNext() {
+  if (iq.done === "lost" || iq.ri + 1 >= iq.order.length) {
+    iq.st = "over"; if (iq.score > iq.best) { iq.best = iq.score; store.set("iqbest", iq.best); } rvWordReset(); return render();
+  }
+  iq.ri++; iq.done = null; iq.wrong = 0; iq.face = "n"; iq.tr = false; rvWordReset(); render(); iqSay();
+}
+function iqTop() {
+  if (iq.st !== "play") return `<div class="rv-scene rv-iq-room"><div class="rv-iq-lamp"></div><div class="rv-title"><b lang="hi">🕵️ पूछताछ</b><span>Interrogation</span>
+    <p>${iq.st === "over" ? `केस ख़त्म! · Score <b>${iq.score}</b> · best ${iq.best}` : `Read each statement. One word in it is a lie: it can't be true because of the clue. Tap that word, then press <b>🫵 झूठ!</b>`}</p></div></div>`;
+  const R = iqR(), who = R[0];
+  return `<div class="rv-scene rv-iq-room"><div class="rv-iq-lamp"></div>
+    <div class="rv-iq-face ${iq.done === "ok" ? "caught" : ""}">${rvFace(who, iq.face)}</div>
+    <div class="rv-clue"><b>📓 सुराग · Clue</b>${rvText(R[1][0], "c", rvTopA, "")}${iq.tr ? `<small>${esc(R[1][1])}</small>` : ""}</div>
+    ${iq.done === "ok" ? `<div class="rv-stamp" style="${rvAgo(iq.doneT)}">झूठ!</div>` : ""}
+    <div class="rv-hud"><span>${"❤️".repeat(Math.max(0, iq.hearts))}${"🖤".repeat(3 - Math.max(0, iq.hearts))}</span><span>${iq.ri + 1} / ${iq.order.length}</span><span>⭐ ${iq.score}</span></div></div>`;
+}
+function iqBottom(bottom) {
+  const A = (k, i) => rvA(k, i, bottom);
+  if (iq.st !== "play") return `<div class="rv-pad"><div class="rv-big">${iq.st === "over" ? `⭐ ${iq.score}` : "🕵️"}</div>
+    <button class="rv-go" ${A("rvstart")}>${iq.st === "over" ? "फिर से · Again" : "शुरू करें · Start"} ▶</button><button ${A("rvback")}>← Games</button></div>`;
+  const R = iqR(), name = (typeof VNA !== "undefined" && VNA && Object.values(VNA.stories).map(s => s.cast[R[0]]).find(Boolean)) || [R[0], R[0]];
+  const lines = R[2].map((s, j) => `<p>${rvText(rvLie(s).text, "s" + j, A, "")}${iq.tr ? `<small>${esc(R[3][j])}</small>` : ""}</p>`).join("");
+  const accuse = rvW.key[0] === "s" && !iq.done ? `<button class="rv-accuse" ${A("rvaccuse")}>🫵 झूठ!</button>` : "";
+  return `<div class="rv-pad"><div class="rv-who"><b lang="hi">${esc(name[0])}</b> <small>${esc(name[1])}</small></div>
+    <div class="rv-say">${lines}</div>
+    ${iq.done === "ok" ? `<div class="rv-conf">${rvText(R[4][0], "f", A, "")}${iq.tr ? `<small>${esc(R[4][1])}</small>` : ""}</div>` : ""}
+    ${iq.done === "lost" ? `<div class="rv-conf bad">${esc(R[0])} smiles. The lie was <b lang="hi">${esc(R[2].map(rvLie).find(x => x.lie).lie)}</b>.</div>` : ""}
+    ${rvWordBox(iqText(rvW.key), rvW.key, A, accuse)}
+    <div class="rv-row">${iq.done ? `<button class="rv-go" ${A("rvnext")}>${iq.done === "lost" || iq.ri + 1 >= iq.order.length ? "Finish" : "अगला · Next"} ▶</button>` : `<span class="rv-hint">Tap the word that can't be true</span>`}
+      <button ${A("rvsay")}>🔊</button><button class="${iq.tr ? "on" : ""}" ${A("rvtr")}>🇬🇧 ${iq.tr ? "ON" : "OFF"}</button></div></div>`;
+}
+RV.views.iq = {
+  top: () => iqTop(), bottom: b => iqBottom(b),
+  key(k, i) {
+    if (k === "rvstart" || (iq.st !== "play" && k === "a")) return iqStart();
+    if (k === "rvback" || k === "b") { if (iq.st === "play") { iq.st = "menu"; rvWordReset(); return render(); } return go("games"); }
+    if (iq.st !== "play") return;
+    if (k === "rvword") return rvTapWord(i, iqText);
+    if (k === "rvwclose") { rvWordReset(); return render(); }
+    if (k === "rvhear") { const w = gameWords(iqText(rvW.key), rvGloss())[+i]; if (w) speak(w[0]); return; }
+    if (k === "rvaccuse") return iqAccuse();
+    if (k === "rvnext" || (k === "a" && iq.done)) return iqNext();
+    if (k === "rvsay" || k === "x") return iqSay();
+    if (k === "rvtr" || k === "y") { iq.tr = !iq.tr; return render(); }
+  }
+};
+
+/* ===================== ☕ रामू की चाय · Chai Rush ===================== */
+const CH_ING = [["अदरक", "ginger", "🫚"], ["इलायची", "cardamom", "🟢"], ["तुलसी", "tulsi (holy basil)", "🌿"], ["केसर", "saffron", "🧡"], ["मसाला", "spice mix", "🌶️"]];
+const CH_SUGAR = [["चीनी के बिना", "no sugar"], ["कम चीनी", "a little sugar"], ["चीनी", "normal sugar"], ["ज़्यादा चीनी", "lots of sugar"]];
+const CH_SNACK = [["बिस्कुट", "biscuit", "🍪"], ["समोसा", "samosa", "🥟"]];
+const CH_LOOKS = ["gupta", "pinky", "nisha", "khan", "reena", "joshi", "hasan", "lalu", "jenny", "customer", "driver", "singh", "sonia", "malhotra", "samir", "babloo", "tipu", "kabir", "verma", "brown"];
+const ch = { st: "menu", n: 0, money: 0, miss: 0, ord: null, ing: [], sugar: 2, snack: -1, out: -1, t0: 0, pat: 30, res: null, tr: false, best: store.get("chaibest", 0), last: null, timer: 0 };
+// An order: what the customer says, and what they actually want.
+function chOrder() {
+  const I = rvShuffle([0, 1, 2, 3, 4]), a = I[0], b = I[1], N = i => CH_ING[i][0], E = i => CH_ING[i][1];
+  const sg = Math.random() < .55 ? rvPick([0, 1, 3]) : 2, S = sg === 2 ? ["", ""] : [`, ${CH_SUGAR[sg][0]}`, `, ${CH_SUGAR[sg][1]}`];
+  const out = Math.random() < .5 ? a : rvPick([2, 3, 4].map(j => I[j]));   // what Ramu has run out of today
+  const T = [
+    () => ({ hi: `${N(a)} वाली चाय${S[0]}।`, en: `Chai with ${E(a)}${S[1]}.`, want: [a] }),
+    () => ({ hi: `${N(a)} और ${N(b)}, दोनों डालिए${S[0]}।`, en: `Put in ${E(a)} and ${E(b)}, both${S[1]}.`, want: [a, b] }),
+    () => ({ hi: `${N(a)} डालिए, परंतु ${N(b)} मत डालिए${S[0]}।`, en: `Put in ${E(a)}, but don't put in ${E(b)}${S[1]}.`, want: [a] }),
+    () => ({ hi: `${N(b)} के बिना। सिर्फ़ ${N(a)}${S[0]}।`, en: `Without ${E(b)}. Just ${E(a)}${S[1]}.`, want: [a] }),
+    () => ({ hi: `अगर ${N(a)} है, तो ${N(a)} वाली चाय। अगर नहीं है, तो ${N(b)}${S[0]}।`, en: `If there's ${E(a)}, then ${E(a)} chai. If not, then ${E(b)}${S[1]}.`, want: [out === a ? b : a], cond: 1 }),
+    () => ({ hi: `${N(a)} वाली चाय${S[0]}, और साथ में एक ${CH_SNACK[0][0]}।`, en: `${E(a)} chai${S[1]}, and a biscuit with it.`, want: [a], snack: 0 }),
+    () => ({ hi: `${N(a)} वाली चाय${S[0]}। और अगर समोसा गरम है, तो एक समोसा भी।`, en: `${E(a)} chai${S[1]}. And if the samosas are hot, a samosa too.`, want: [a], snack: 1 }),
+    () => ch.last ? ({ hi: `जो उन्होंने लिया, वही चाय, परंतु ${sg === 2 ? "ज़्यादा चीनी" : CH_SUGAR[sg][0]}।`, en: `The same chai they had, but ${sg === 2 ? "lots of sugar" : CH_SUGAR[sg][1]}.`, want: ch.last.want.slice(), snack: undefined, sugar: sg === 2 ? 3 : sg, same: 1 }) : null
+  ];
+  let o = null; while (!o) o = rvPick(T)();
+  if (o.sugar == null) o.sugar = sg; if (o.snack == null) o.snack = -1;
+  o.outIdx = out;
+  // Ramu can't run out of something the order really needs (only "if there's X…" orders test what's out)
+  if (!o.cond && o.want.includes(out)) o.outIdx = -1;
+  o.who = rvPick(CH_LOOKS.filter(w => VN_LOOK[w]));
+  return o;
+}
+function chStart() { Object.assign(ch, { st: "play", n: 0, money: 0, miss: 0, last: null, tr: false }); chNew(); }
+function chNew() {
+  ch.ord = chOrder(); ch.out = ch.ord.outIdx; ch.ing = []; ch.sugar = 2; ch.snack = -1; ch.res = null; ch.t0 = Date.now(); ch.pat = Math.max(14, 32 - ch.n * 1.6);
+  rvWordReset(); clearTimeout(ch.timer); ch.timer = setTimeout(chTimeUp, ch.pat * 1000); render();
+  speak(ch.ord.hi, { voice: (VN_LOOK[ch.ord.who] || {}).f ? "" : "m" });
+}
+function chTimeUp() { if (ch.st !== "play" || ch.res) return; ch.res = { ok: false, why: "⏰ बहुत देर! · Too slow — they left." }; ch.miss++; rvSfx("sting", .5); render(); }
+function chServe() {
+  if (ch.res || ch.st !== "play") return; clearTimeout(ch.timer);
+  const o = ch.ord, want = o.want.slice().sort().join(), got = ch.ing.slice().sort().join();
+  const used = ch.ing.includes(ch.out);
+  const ok = want === got && ch.sugar === o.sugar && ch.snack === (o.snack == null ? -1 : o.snack) && !used;
+  if (ok) {
+    const left = Math.max(0, 1 - (Date.now() - ch.t0) / 1000 / ch.pat), tip = Math.round(left * 10);
+    ch.money += 20 + tip; ch.res = { ok: true, why: `😋 बहुत अच्छी चाय! · Lovely! ₹20${tip ? ` + ₹${tip} tip` : ""}` }; rvSfx("chime", .6);
+    ch.last = { want: o.want.slice() };
+  } else {
+    ch.miss++; rvSfx("ping", .5);
+    const why = used ? `${CH_ING[ch.out][0]} आज नहीं है! · We're out of ${CH_ING[ch.out][1]} today.` : want !== got ? "यह वह चाय नहीं है! · That's not what I asked for." : ch.sugar !== o.sugar ? "चीनी सही नहीं है! · The sugar's wrong." : "कुछ भूल गए! · You forgot something.";
+    ch.res = { ok: false, why };
+  }
+  render();
+}
+function chNext() {
+  ch.n++;
+  if (ch.miss >= 3 || ch.n >= 10) { ch.st = "over"; clearTimeout(ch.timer); if (ch.money > ch.best) { ch.best = ch.money; store.set("chaibest", ch.best); } return render(); }
+  chNew();
+}
+const chText = key => key === "o" && ch.ord ? ch.ord.hi : "";
+const chAnswer = () => { const o = ch.ord; return [o.want.map(i => CH_ING[i][2] + " " + CH_ING[i][0]).join(" + "), CH_SUGAR[o.sugar][0], o.snack >= 0 ? CH_SNACK[o.snack][2] + " " + CH_SNACK[o.snack][0] : ""].filter(Boolean).join(" · "); };
+function chTop() {
+  const bg = typeof vnScene === "function" ? vnScene("chai") : "";
+  if (ch.st !== "play") return `<div class="rv-scene"><div class="rv-bg">${bg}</div><div class="rv-title"><b lang="hi">☕ रामू की चाय</b><span>Chai Rush</span>
+    <p>${ch.st === "over" ? `दुकान बंद! · Shop closed. You made <b>₹${ch.money}</b> · best ₹${ch.best}` : "Customers order in Hindi. Make exactly what they ask for, before they lose patience. Watch the board for what Ramu has run out of!"}</p></div></div>`;
+  const o = ch.ord;
+  return `<div class="rv-scene"><div class="rv-bg">${bg}</div>
+    <div class="rv-cust ${ch.res ? (ch.res.ok ? "happy" : "cross") : ""}">${rvFace(o.who, ch.res ? (ch.res.ok ? "h" : "ang") : "n")}</div>
+    <div class="rv-bubble">${rvText(o.hi, "o", rvTopA, "")}${ch.tr ? `<small>${esc(o.en)}</small>` : ""}</div>
+    ${ch.out >= 0 ? `<div class="rv-board"><b>आज नहीं ✗</b><span lang="hi">${CH_ING[ch.out][2]} ${CH_ING[ch.out][0]}</span></div>` : ""}
+    ${!ch.res ? `<div class="rv-patience"><i style="animation-duration:${ch.pat}s;${rvAgo(ch.t0)}"></i></div>` : ""}
+    <div class="rv-hud"><span>👤 ${ch.n + 1} / 10</span><span>💰 ₹${ch.money}</span><span>${"☕".repeat(3 - ch.miss)}${"✗".repeat(ch.miss)}</span></div></div>`;
+}
+function chBottom(bottom) {
+  const A = (k, i) => rvA(k, i, bottom);
+  if (ch.st !== "play") return `<div class="rv-pad"><div class="rv-big">${ch.st === "over" ? `₹${ch.money}` : "☕"}</div>
+    <button class="rv-go" ${A("rvstart")}>${ch.st === "over" ? "फिर से · Again" : "दुकान खोलें · Open the stall"} ▶</button><button ${A("rvback")}>← Games</button></div>`;
+  const o = ch.ord, r = ch.res;
+  return `<div class="rv-pad"><div class="rv-say order">${rvText(o.hi, "o", A, "")}${ch.tr ? `<small>${esc(o.en)}</small>` : ""}</div>
+    ${rvWordBox(chText(rvW.key), rvW.key, A)}
+    ${r ? `<div class="rv-conf ${r.ok ? "" : "bad"}">${esc(r.why)}${r.ok ? "" : `<small lang="hi">${esc(chAnswer())}</small>`}</div>
+      <div class="rv-row"><button class="rv-go" ${A("rvnext")}>${ch.miss >= 3 || ch.n + 1 >= 10 ? "Finish" : "अगला ग्राहक · Next"} ▶</button><button class="${ch.tr ? "on" : ""}" ${A("rvtr")}>🇬🇧</button></div>`
+    : `<div class="rv-ings">${CH_ING.map((x, j) => `<button class="${ch.ing.includes(j) ? "on" : ""} ${ch.out === j ? "out" : ""}" ${A("chi", j)}><span>${x[2]}</span><b lang="hi">${x[0]}</b></button>`).join("")}</div>
+      <div class="rv-sugar">${CH_SUGAR.map((x, j) => `<button class="${ch.sugar === j ? "on" : ""}" ${A("chs", j)} lang="hi">${x[0]}</button>`).join("")}</div>
+      <div class="rv-row">${CH_SNACK.map((x, j) => `<button class="${ch.snack === j ? "on" : ""}" ${A("chk", j)}>${x[2]} <span lang="hi">${x[0]}</span></button>`).join("")}
+        <button ${A("rvsay")}>🔊</button><button class="${ch.tr ? "on" : ""}" ${A("rvtr")}>🇬🇧</button><button class="rv-go" ${A("chserve")}>☕ दीजिए!</button></div>`}</div>`;
+}
+RV.views.chai = {
+  top: () => chTop(), bottom: b => chBottom(b),
+  key(k, i) {
+    if (k === "rvstart" || (ch.st !== "play" && k === "a")) return chStart();
+    if (k === "rvback" || k === "b") { clearTimeout(ch.timer); if (ch.st === "play") { ch.st = "menu"; return render(); } return go("games"); }
+    if (ch.st !== "play") return;
+    if (k === "rvword") return rvTapWord(i, chText);
+    if (k === "rvwclose") { rvWordReset(); return render(); }
+    if (k === "rvhear") { const w = gameWords(chText(rvW.key), rvGloss())[+i]; if (w) speak(w[0]); return; }
+    if (k === "rvsay" || k === "x") return speak(ch.ord.hi, { voice: (VN_LOOK[ch.ord.who] || {}).f ? "" : "m" });
+    if (k === "rvtr" || k === "y") { ch.tr = !ch.tr; return render(); }
+    if (ch.res) { if (k === "rvnext" || k === "a") chNext(); return; }
+    if (k === "chi") { const j = +i, at = ch.ing.indexOf(j); if (at >= 0) ch.ing.splice(at, 1); else ch.ing.push(j); return render(); }
+    if (k === "chs") { ch.sugar = +i; return render(); }
+    if (k === "chk") { ch.snack = ch.snack === +i ? -1 : +i; return render(); }
+    if (k === "chserve" || k === "a") return chServe();
+  }
+};
+
+/* ===================== 🔎 कौन है? · Who Is It? ===================== */
+// Eight people in a street: by the shop, by the tree, by the wall. Each has a type (man, woman, boy, girl, old man, old woman),
+// a colour of clothes, and maybe an umbrella, a hat, glasses or a balloon. The description uses जो / जिसके / के बिना / के सामने…
+const WH_ZONE = [["दुकान के सामने", "in front of the shop"], ["पेड़ के पास", "by the tree"], ["दीवार के पास", "by the wall"]];
+const WH_COL = [["लाल", "red", "#b03a2e"], ["हरे", "green", "#3f8a45"], ["पीले", "yellow", "#d8a72a"], ["काले", "black", "#2a2a2e"], ["नीले", "blue", "#2c5a9a"]];
+const WH_TYPE = [["आदमी", "man", 0, 0], ["औरत", "woman", 1, 0], ["लड़का", "boy", 0, 1], ["लड़की", "girl", 1, 1], ["बूढ़ा आदमी", "old man", 0, 2], ["बूढ़ी औरत", "old woman", 1, 2]];
+const WH_SKIN = ["#c58d67", "#a8704c", "#ecc9ad", "#b47c58", "#9a6040", "#d2a07c"];
+const wh = { st: "menu", round: 0, score: 0, ppl: [], target: -1, desc: null, res: null, pick: -1, tr: false, best: store.get("whobest", 0), lives: 3 };
+function whPerson(i) {
+  const t = rvPick([0, 0, 1, 1, 2, 3, 4, 5]), T = WH_TYPE[t], f = T[2], kid = T[3] === 1, old = T[3] === 2;
+  const p = { t, zone: i < 3 ? 0 : i < 5 ? 1 : 2, col: Math.floor(Math.random() * WH_COL.length), umb: Math.random() < .35, hat: Math.random() < .3, specs: !kid && Math.random() < .35, ball: kid ? Math.random() < .6 : Math.random() < .15 };
+  p.look = { skin: rvPick(WH_SKIN), hair: old ? "#dcd8d0" : rvPick(["#1d1a1a", "#2a1d14", "#3a302c", "#6e4a2e"]), eye: "#3b2516", hs: p.hat ? "cap" : f ? rvPick(["bun", "pony", "long", "bob"]) : old ? rvPick(["bald", "receding", "side"]) : rvPick(["short", "boy", "messy", "curly", "side"]),
+    top: WH_COL[p.col][2], top2: "#efefec", wear: f && !kid ? rvPick(["shawl", "kurta", "sweater"]) : rvPick(["tee", "jacket", "sweater", "hoodie"]), f: f ? 1 : 0, old: old ? 1 : 0, chub: kid ? 1 : 0, glasses: p.specs ? "round" : "", stache: !f && !kid && Math.random() < .4 ? "#2a2420" : "" };
+  return p;
+}
+// the clauses that can describe a person, in Hindi and English, with a test
+function whClauses(p) {
+  const T = WH_TYPE[p.t], f = T[2], kh = f ? "खड़ी" : "खड़ा", pe = f ? "पहनती" : "पहनता";
+  return [
+    { hi: `जो ${WH_ZONE[p.zone][0]} ${kh} है`, en: `who is standing ${WH_ZONE[p.zone][1]}`, test: q => q.zone === p.zone },
+    { hi: `जिसके कपड़े ${WH_COL[p.col][0]} हैं`, en: `whose clothes are ${WH_COL[p.col][1]}`, test: q => q.col === p.col },
+    p.umb ? { hi: "जिसके पास छाता है", en: "who has an umbrella", test: q => q.umb } : { hi: "जो छाते के बिना है", en: "who has no umbrella", test: q => !q.umb },
+    p.hat ? { hi: "जिसके सिर पर टोपी है", en: "who has a cap on", test: q => q.hat } : { hi: "जो टोपी के बिना है", en: "who has no cap", test: q => !q.hat },
+    p.specs ? { hi: `जो चश्मा ${pe} है`, en: "who wears glasses", test: q => q.specs } : null,
+    p.ball ? { hi: "जिसके हाथ में गुब्बारा है", en: "who is holding a balloon", test: q => q.ball } : null
+  ].filter(Boolean);
+}
+function whNew() {
+  for (let tries = 0; tries < 60; tries++) {
+    const ppl = Array.from({ length: 8 }, (_, i) => whPerson(i)), target = Math.floor(Math.random() * 8), p = ppl[target];
+    let cand = ppl.map((q, i) => i).filter(i => ppl[i].t === p.t);   // the type ("the woman", "the boy") is always said
+    const used = [];
+    for (const c of rvShuffle(whClauses(p))) {
+      if (cand.length === 1 && used.length >= Math.min(2, 1 + Math.floor(wh.round / 3))) break;
+      const nc = cand.filter(i => c.test(ppl[i]));
+      if (nc.length < cand.length || used.length < 1) { used.push(c); cand = nc; }
+    }
+    if (cand.length !== 1 || used.length > 3) continue;
+    const T = WH_TYPE[p.t], join = (a, s) => a.length === 1 ? a[0] : a.slice(0, -1).join(", ") + s + a[a.length - 1];
+    wh.ppl = ppl; wh.target = target; wh.res = null; wh.pick = -1;
+    wh.desc = { hi: `वह ${T[0]} ढूँढिए, ${join(used.map(c => c.hi), ", और ")}।`, en: `Find the ${T[1]} ${join(used.map(c => c.en), ", and ")}.` };
+    rvWordReset(); render(); speak(wh.desc.hi); return;
+  }
+}
+function whStart() { Object.assign(wh, { st: "play", round: 0, score: 0, lives: 3, tr: false }); whNew(); }
+function whTap(i) {
+  if (wh.res || wh.st !== "play") return;
+  wh.pick = i;
+  if (i === wh.target) { wh.res = { ok: true }; wh.score++; rvSfx("chime", .6); }
+  else { wh.res = { ok: false }; wh.lives--; rvSfx("ping", .5); }
+  render();
+}
+function whNext() {
+  wh.round++;
+  if (wh.lives <= 0 || wh.round >= 10) { wh.st = "over"; if (wh.score > wh.best) { wh.best = wh.score; store.set("whobest", wh.best); } return render(); }
+  whNew();
+}
+const whText = key => key === "d" && wh.desc ? wh.desc.hi : "";
+function whStreet() {
+  // shop on the left, a tree in the middle, a brick wall on the right
+  return `<svg viewBox="0 0 1000 560" preserveAspectRatio="xMidYMid slice" class="rv-street" aria-hidden="true">
+    <rect width="1000" height="560" fill="#9fc3dc"/><rect y="420" width="1000" height="140" fill="#9a9488"/><rect y="410" width="1000" height="14" fill="#6e6a60"/>
+    <g stroke="#1a1410" stroke-width="3"><rect x="20" y="90" width="330" height="320" fill="#c0392b"/><rect x="50" y="200" width="270" height="140" fill="#e8f0f4"/><rect x="40" y="110" width="290" height="60" fill="#f3d37a"/>
+      <text x="185" y="152" text-anchor="middle" font-size="36" font-family="Tiro Devanagari Hindi, serif" fill="#7d2338" stroke="none">दुकान</text>
+      <rect x="470" y="210" width="40" height="210" fill="#6b4226"/><circle cx="490" cy="170" r="110" fill="#4f8f45"/><circle cx="430" cy="210" r="60" fill="#4f8f45"/><circle cx="555" cy="215" r="65" fill="#4f8f45"/>
+      <rect x="690" y="150" width="300" height="270" fill="#a8583a"/></g>
+    ${Array.from({ length: 9 }, (_, r) => Array.from({ length: 6 }, (_, c) => `<rect x="${690 + c * 50 + (r % 2) * 25}" y="${150 + r * 30}" width="48" height="28" fill="none" stroke="#7a3a22" stroke-width="2"/>`).join("")).join("")}</svg>`;
+}
+function whFig(p, i) {
+  const X = [70, 175, 280, 420, 545, 690, 800, 905][i], kid = WH_TYPE[p.t][3] === 1, s = kid ? .74 : 1;
+  const key = "_wh" + i; VN_LOOK[key] = p.look;
+  const res = wh.res && (i === wh.target ? "right" : i === wh.pick ? "wrong" : "");
+  return `<button class="rv-fig ${res}" style="left:${X / 10}%;--s:${s}" ${rvA("whp", i)}>
+    ${p.umb ? `<svg class="rv-umb" viewBox="0 0 100 70"><path d="M5 45 Q50 -10 95 45 Q80 36 65 45 Q50 36 35 45 Q20 36 5 45Z" fill="#2a2a2e" stroke="#000" stroke-width="2"/><path d="M50 45 V70" stroke="#000" stroke-width="3"/></svg>` : ""}
+    ${p.ball ? `<svg class="rv-ball" viewBox="0 0 40 110"><ellipse cx="20" cy="22" rx="17" ry="21" fill="${["#c0392b", "#e8b23a", "#2c4a8a", "#4f8f45"][i % 4]}" stroke="#000" stroke-width="2"/><path d="M20 43 Q26 70 18 110" stroke="#000" fill="none" stroke-width="1.6"/></svg>` : ""}
+    <span class="rv-figp">${vnPortrait(key, "n")}</span></button>`;
+}
+function whTop() {
+  if (wh.st !== "play") return `<div class="rv-scene"><div class="rv-bg">${whStreet()}</div><div class="rv-title"><b lang="hi">🔎 कौन है?</b><span>Who Is It?</span>
+    <p>${wh.st === "over" ? `⭐ ${wh.score} / 10 · best ${wh.best}` : "Read the description on the bottom screen, then tap that person in the street."}</p></div></div>`;
+  return `<div class="rv-scene"><div class="rv-bg">${whStreet()}</div><div class="rv-crowd">${wh.ppl.map(whFig).join("")}</div>
+    <div class="rv-hud"><span>${"❤️".repeat(Math.max(0, wh.lives))}</span><span>${wh.round + 1} / 10</span><span>⭐ ${wh.score}</span></div></div>`;
+}
+function whBottom(bottom) {
+  const A = (k, i) => rvA(k, i, bottom);
+  if (wh.st !== "play") return `<div class="rv-pad"><div class="rv-big">${wh.st === "over" ? `⭐ ${wh.score}` : "🔎"}</div>
+    <button class="rv-go" ${A("rvstart")}>${wh.st === "over" ? "फिर से · Again" : "शुरू करें · Start"} ▶</button><button ${A("rvback")}>← Games</button></div>`;
+  return `<div class="rv-pad"><div class="rv-say order">${rvText(wh.desc.hi, "d", A, "")}${wh.tr || wh.res ? `<small>${esc(wh.desc.en)}</small>` : ""}</div>
+    ${rvWordBox(whText(rvW.key), rvW.key, A)}
+    ${wh.res ? `<div class="rv-conf ${wh.res.ok ? "" : "bad"}">${wh.res.ok ? "✓ सही! · Right!" : "✗ नहीं, वह नहीं · Not them (the right one is glowing)"}</div>` : `<div class="rv-hint">Tap the person on the top screen</div>`}
+    <div class="rv-row">${wh.res ? `<button class="rv-go" ${A("rvnext")}>${wh.lives <= 0 || wh.round + 1 >= 10 ? "Finish" : "अगला · Next"} ▶</button>` : ""}
+      <button ${A("rvsay")}>🔊</button><button class="${wh.tr ? "on" : ""}" ${A("rvtr")}>🇬🇧 ${wh.tr ? "ON" : "OFF"}</button></div></div>`;
+}
+RV.views.who = {
+  top: () => whTop(), bottom: b => whBottom(b),
+  key(k, i) {
+    if (k === "rvstart" || (wh.st !== "play" && k === "a")) return whStart();
+    if (k === "rvback" || k === "b") { if (wh.st === "play") { wh.st = "menu"; return render(); } return go("games"); }
+    if (wh.st !== "play") return;
+    if (k === "rvword") return rvTapWord(i, whText);
+    if (k === "rvwclose") { rvWordReset(); return render(); }
+    if (k === "rvhear") { const w = gameWords(whText(rvW.key), rvGloss())[+i]; if (w) speak(w[0]); return; }
+    if (k === "whp") return whTap(+i);
+    if (k === "rvsay" || k === "x") return speak(wh.desc.hi);
+    if (k === "rvtr" || k === "y") { wh.tr = !wh.tr; return render(); }
+    if (wh.res && (k === "rvnext" || k === "a")) return whNext();
+  }
+};
+
+/* ---------- shared look ---------- */
+const RV_CSS = `
+.rv-scene { position: relative; width: 100%; height: 100%; min-height: 420px; overflow: hidden; border-radius: 12px; background: #2a2018; color: #f3ead5; font-family: var(--f-body); }
+.rv-bg, .rv-bg svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rv-bg svg { filter: saturate(.75) brightness(.9); }
+.rv-title { position: absolute; inset: auto 6% 10% 6%; background: rgba(20,14,10,.82); border: 2px solid #c9a25a; border-radius: 14px; padding: 14px 18px; text-align: center; }
+.rv-title b { font-family: var(--f-display); font-size: 2.2rem; display: block; color: #ffd27a; } .rv-title span { opacity: .8; font-style: italic; } .rv-title p { margin: 8px 0 0; font-size: 1.05rem; }
+.rv-hud { position: absolute; top: 8px; left: 10px; right: 10px; display: flex; justify-content: space-between; font-size: 1.1rem; background: rgba(0,0,0,.45); border-radius: 10px; padding: 4px 12px; }
+.rv-iq-room { background: radial-gradient(ellipse at 50% 0%, #4a3a28 0%, #1a120c 70%); }
+.rv-iq-lamp { position: absolute; left: 50%; top: 0; width: 60%; height: 100%; transform: translateX(-50%); background: radial-gradient(ellipse at 50% 0%, rgba(255,210,122,.28), transparent 65%); }
+.rv-iq-face { position: absolute; left: 4%; bottom: 0; width: 40%; height: 92%; display: flex; align-items: flex-end; justify-content: center; }
+.rv-iq-face svg { height: 100%; max-width: 100%; filter: saturate(.4) sepia(.15) contrast(1.15); }
+.rv-iq-face.caught { animation: rvShake .5s; }
+.rv-clue { position: absolute; right: 4%; top: 18%; width: 50%; background: #f3ead5; color: #2b2118; border-radius: 6px; padding: 12px 16px; transform: rotate(1.5deg); box-shadow: 4px 6px 0 rgba(0,0,0,.4); font-family: var(--f-display); font-size: 1.35rem; line-height: 1.6; }
+.rv-clue b { display: block; font-family: var(--f-body); font-size: .9rem; color: #7d2338; } .rv-clue small, .rv-bubble small { display: block; font-family: var(--f-body); font-size: .9rem; font-style: italic; opacity: .75; }
+.rv-stamp { position: absolute; right: 12%; bottom: 14%; font-family: var(--f-display); font-size: 4rem; color: #c0392b; border: 6px solid #c0392b; border-radius: 12px; padding: 0 22px; transform: rotate(-12deg); animation: rvStamp .35s both; background: rgba(243,234,213,.85); }
+@keyframes rvStamp { from { transform: rotate(-12deg) scale(3); opacity: 0; } }
+@keyframes rvShake { 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+.rv-cust { position: absolute; right: 3%; bottom: 0; width: 34%; height: 80%; display: flex; align-items: flex-end; } .rv-cust svg { height: 100%; max-width: 100%; }
+.rv-cust.cross { animation: rvShake .5s; }
+.rv-bubble { position: absolute; left: 4%; top: 16%; width: 56%; background: #fffaf0; color: #2b2118; border: 3px solid #2b2118; border-radius: 18px; padding: 12px 16px; font-family: var(--f-display); font-size: 1.45rem; line-height: 1.6; }
+.rv-board { position: absolute; left: 4%; bottom: 8%; background: #2a2a22; color: #fff; border: 4px solid #6b4226; border-radius: 6px; padding: 6px 14px; font-size: 1.2rem; transform: rotate(-2deg); } .rv-board b { display: block; color: #ff8a7a; font-size: .95rem; }
+.rv-patience { position: absolute; right: 4%; top: 13%; width: 30%; height: 12px; background: rgba(0,0,0,.4); border-radius: 6px; overflow: hidden; }
+.rv-patience i { display: block; height: 100%; background: linear-gradient(90deg, #c0392b, #e8b23a 40%, #4f8f45); animation-name: rvDrain; animation-timing-function: linear; animation-fill-mode: forwards; transform-origin: left; }
+@keyframes rvDrain { to { transform: scaleX(0); } }
+.rv-street { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rv-crowd { position: absolute; inset: 0; }
+.rv-fig { position: absolute; bottom: 4%; width: 13%; height: 62%; transform: translateX(-50%) scale(var(--s)); transform-origin: bottom center; background: none; border: 0; padding: 0; cursor: pointer; }
+.rv-figp svg { position: absolute; bottom: 0; left: 0; width: 100%; height: auto; max-height: 100%; }
+.rv-fig.right .rv-figp svg { filter: drop-shadow(0 0 10px #ffd27a) drop-shadow(0 0 4px #ffd27a); } .rv-fig.wrong { opacity: .45; }
+.rv-umb { position: absolute; left: -10%; top: -14%; width: 120%; } .rv-ball { position: absolute; right: -24%; top: 0; width: 34%; }
+.rv-pad { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px; height: 100%; box-sizing: border-box; overflow-y: auto; color: var(--text, #f3ead5); }
+.rv-pad > * { flex-shrink: 0; }
+.rv-pad button { font: inherit; background: rgba(255,255,255,.08); color: inherit; border: 1px solid rgba(255,255,255,.25); border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+.rv-pad button.on { background: #ffd27a; color: #2b2118; }
+.rv-big { font-size: 3rem; text-align: center; margin-top: 10px; }
+.rv-go { background: #c99a3a !important; color: #1a120c !important; font-weight: 700; font-size: 1.15rem; padding: 12px 20px !important; border: 0 !important; }
+.rv-who b { font-family: var(--f-display); font-size: 1.3rem; color: #ffd27a; } .rv-who small { opacity: .7; }
+.rv-say { background: #f3ead5; color: #2b2118; border-radius: 12px; padding: 8px 14px; font-family: var(--f-display); font-size: 1.5rem; line-height: 1.75; }
+.rv-say p { margin: 0 0 4px; } .rv-say small, .rv-conf small { display: block; font-family: var(--f-body); font-size: .92rem; font-style: italic; color: #6a5a48; line-height: 1.4; }
+.rv-conf { background: rgba(79,143,69,.25); border: 1px solid #4f8f45; border-radius: 10px; padding: 8px 12px; font-family: var(--f-display); font-size: 1.25rem; } .rv-conf.bad { background: rgba(192,57,43,.22); border-color: #c0392b; } .rv-conf small { color: inherit; opacity: .8; }
+.rvw { font: inherit; color: inherit; background: none !important; border: 0 !important; padding: 0 2px !important; margin: 0; border-radius: 6px !important; line-height: inherit; cursor: pointer; }
+.rvw.s0 { color: #2457b8 !important; text-decoration: underline dotted; text-underline-offset: .3em; }
+.rvw.s1 { background: rgba(214,140,40,.42) !important; } .rvw.s2 { background: rgba(214,140,40,.32) !important; } .rvw.s3 { background: rgba(214,140,40,.22) !important; } .rvw.s4 { background: rgba(214,140,40,.12) !important; }
+.rvw.nm { color: #13857a !important; } .rvw.cur { outline: 2px solid #c0392b; background: rgba(125,35,56,.18) !important; }
+.rv-wbox { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; background: rgba(255,252,243,.95); color: #2b2118; border-radius: 10px; padding: 8px 10px; }
+.rv-wbox b { font-family: var(--f-display); font-size: 1.4rem; } .rv-wbox i { color: #7d2338; } .rv-wbox button { color: #2b2118 !important; border-color: rgba(43,33,24,.35) !important; }
+.rv-sp { flex: 1; }
+.rv-accuse { background: #c0392b !important; color: #fff !important; font-weight: 700; font-size: 1.2rem; padding: 10px 18px !important; border: 0 !important; }
+.rv-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; } .rv-row .rv-go { margin-left: auto; }
+.rv-hint { opacity: .65; font-size: .95rem; flex: 1; }
+.rv-ings { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.rv-ings button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px !important; } .rv-ings span { font-size: 1.6rem; } .rv-ings b { font-family: var(--f-display); font-size: 1.15rem; font-weight: 400; }
+.rv-ings button.on { background: #4f8f45 !important; color: #fff !important; } .rv-ings button.out { opacity: .5; border-style: dashed !important; }
+.rv-sugar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; } .rv-sugar button { font-family: var(--f-display); font-size: 1.05rem; padding: 8px 4px !important; }
+`;
+try { const st = document.createElement("style"); st.textContent = RV_CSS; document.head.appendChild(st); } catch (e) {}
+
+// The games list, the top screen and the Thor's bottom screen
+if (!FR && typeof VN_LOOK !== "undefined") {
+  GAMES.push(["iq", "🕵️", "पूछताछ", "Interrogation", "A suspect's statement has one lie in it. Spot the word that can't be true. Uses the words you're learning."]);
+  GAMES.push(["chai", "☕", "रामू की चाय", "Chai Rush", "Make each customer's chai exactly as they order it, in Hindi, before they lose patience."]);
+  GAMES.push(["who", "🔎", "कौन है?", "Who Is It?", "A Hindi description picks out one person in a busy street. Find them."]);
+  GAME_VIEWS.push("iq", "chai", "who");
+}
+RV.top = v => RV.views[v] ? (DUAL ? `<div class="rv-top">${RV.views[v].top()}</div>` : `<div class="rv-top rv-one">${RV.views[v].top()}<div class="rv-under">${RV.views[v].bottom(false)}</div></div>`) : "";
+RV.bottom = v => RV.views[v] ? { type: "html", id: "rvcss", css: RV_CSS, html: RV.views[v].bottom(true) } : null;
 
 /* ===================== Thor: second screen and controller ===================== */
 var DUAL = !!NATIVE && NATIVE.hasBottom();
