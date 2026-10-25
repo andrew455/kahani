@@ -6478,6 +6478,7 @@ function vnLoad(id) {
   VND = VNA.stories.find(x => x.id === id) || VNA.stories[0];
   vs = Object.assign({ ci: 0, i: 0, flags: {}, items: [], show: [], scene: "", dark: false, done: [], started: false, lastCh: 0, expr: {}, clues: [], miss: 0, amb: "" }, store.get(vnSlot(VND.id), {}));
   vnP.story = VND.id;
+  try { vn.lock = null; } catch (e) {}   // (vnLoad also runs once at start-up, before vn exists)
 }
 if (VNA) vnLoad(vnP.story);
 const vnAgo = t => `animation-delay:-${Math.max(0, (Date.now() - (t || 0)) / 1000).toFixed(2)}s`;   // lets an animation carry on across redraws
@@ -6571,7 +6572,7 @@ function vnTalkClass() {   // mouths move while the line plays, without redrawin
   document.querySelectorAll(".vnp[data-who]").forEach(el => el.classList.toggle("talk", vn.talking && !!vn.line && el.dataset.who === vn.line.w));
 }
 function vnNext() {
-  if (vn.lock) return vnKeypad("ok");
+  if (vn.lock && (vnCh().lines[vs.i] || {}).lock) return vnKeypad("ok");
   if (vn.choice) return vnPick(vn.sel);
   stopPlayer();
   if (vn.echo) { const o = vn.echo; vn.echo = null; vs.i = vnLabel(o.go); return vnStep(); }
@@ -6797,7 +6798,7 @@ function vnKey(k, i) {
 
 /* ---------- the two pages ---------- */
 // Buttons work on both screens: the top page uses data-gk, the bottom page sends data-c="gk" back up.
-const vnA = (k, i, bottom) => bottom ? `data-c="gk" data-t="${k}" data-d="${i == null ? 0 : i}"` : `data-gk="${k}" data-gi="${i == null ? 0 : i}"`;
+const vnA = (k, i, bottom) => bottom ? (typeof i === "string" && isNaN(+i) ? `data-c="gk" data-t="${k}" data-w="${i}"` : `data-c="gk" data-t="${k}" data-d="${i == null ? 0 : i}"`) : `data-gk="${k}" data-gi="${i == null ? 0 : i}"`;
 function viewVn() {
   setTimeout(vnMusic, 0);
   if (!VNA) return `<div class="empty">The stories aren't in this build.</div>`;
@@ -6904,6 +6905,7 @@ function vnRight(bottom) {
   }
   if (vn.choice && vn.map) html += vn.look ? `<div class="vn-evq map">🔍 ध्यान से देखिए · Which part looks wrong?</div>` : `<div class="vn-evq map">📍 नक़्शा · Pick a place on the map</div>`;
   if (vn.choice && vn.choice[0] && vn.choice[0].ev) html += `<div class="vn-evq">📓 सुराग दिखाइए · Show a clue from your notebook</div>`;
+  if (vn.lock && !(vnCh().lines[vs.i] || {}).lock) vn.lock = null;   // only on the keypad step itself
   if (vn.lock) {
     const L = vn.lock, cell = d => `<button class="${d === "ok" ? "ok" : d === "del" ? "del" : ""}" ${A("vnkp", d)}>${d === "ok" ? "✓" : d === "del" ? "⌫" : d}</button>`;
     html += `<div class="vn-lock"><div class="vn-lockv">${Array.from({ length: L.code.length }, (_, k) => `<b>${L.v[k] || "·"}</b>`).join("")}</div>
