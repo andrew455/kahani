@@ -1306,7 +1306,7 @@ function render() {
   else if (route.view === "taxi") v.innerHTML = viewTaxi();
   else if (route.view === "ani") v.innerHTML = viewAni();
   else if (route.view === "world") v.innerHTML = viewWorld();
-  else if (route.view === "vn" || route.view === "vn2") v.innerHTML = viewVn();
+  else if (route.view === "vn" || route.view === "vn2" || route.view === "vn3") v.innerHTML = viewVn();
   else if (typeof RV !== "undefined" && RV.views[route.view]) v.innerHTML = RV.top(route.view);
   else if (route.view === "talk") v.innerHTML = viewTalk();
   else if (route.view === "book") v.innerHTML = viewBook();
@@ -5436,14 +5436,14 @@ function gameKey(k, i) {
   if (v === "taxi") return taxiKey(k, i);
   if (v === "ani") return aniKey(k, i);
   if (v === "world") return worldKey(k, i);
-  if (v === "vn" || v === "vn2") return vnKey(k, i);
+  if (v === "vn" || v === "vn2" || v === "vn3") return vnKey(k, i);
   if (typeof RV !== "undefined" && RV.views[v]) return RV.views[v].key(k, i);
 }
 function gameBottom() {
   const v = route.view, k = knownN();
   if (v === "ani") return aniBottom();
   if (v === "world") return window.KahaniWorld ? window.KahaniWorld.bottom() : { type: "world", loading: true };
-  if (v === "vn" || v === "vn2") return vnBottom();
+  if (v === "vn" || v === "vn2" || v === "vn3") return vnBottom();
   if (typeof RV !== "undefined" && RV.views[v]) return RV.bottom(v);
   if (v === "games") return { type: "hub", list: GAMES.map(g => ({ ico: g[1], hi: g[2], en: g[3] })), pick: hub.pick };
   if (v === "adv") return Object.assign({ type: "adv" }, advBottom());
@@ -6472,21 +6472,28 @@ if (!FR) { GAMES.unshift(["world", "🌍", "दिवाली का गाँ�
 // console on its side: the top screen is the left page (the scene and whoever is talking), the bottom screen the right page (the words).
 const VNA = typeof GAME_VN !== "undefined" && GAME_VN.stories ? GAME_VN : null;
 const VNG = VNA ? Object.fromEntries(Object.entries(VNA.gloss).map(([k, v]) => [norm(k), v])) : {};
-const vnSlot = id => id === "hotel" ? "vn" : "vn:" + id;   // each story keeps its own place
+const vnFilm = () => typeof route !== "undefined" && route.view === "vn3";   // "Story films": the painted stories play by themselves
+const vnSlot = id => (vnFilm() ? "vnf:" : "") + (id === "hotel" ? "vn" : "vn:" + id);   // each story keeps its own place (the films keep their own)
 const vnP = Object.assign({ music: true, rot: (store.get("vn", {}) || {}).rot || "ccw", story: "" }, store.get("vnprefs", {}));   // music and how you hold it: shared
 let VND = null, vs = null;
-// Two games share this engine: "Story games" (vn) has the drawn stories, "Painted stories" (vn2) only the ones with painted art.
-const vnInV2 = () => typeof route !== "undefined" && route.view === "vn2";
-const vnList = () => VNA.stories.filter(x => (x.art === "v2") === vnInV2());
-const vnHere = v => v === "vn" || v === "vn2";
-function vnEnsure() {   // coming into either game: load that game's current story
-  if (VNA && VND && !vnList().includes(VND)) { vnLoad(vnP[vnInV2() ? "story2" : "story"]); vn.st = "stories"; vn.spick = Math.max(0, vnList().indexOf(VND)); }
+const VF = { paused: false, t: 0, tok: 0, hist: [], seen: new Set() };   // 🎬 the film's state (see "Story films" below)
+const VF_GAPS = { short: 250, normal: 800, long: 2000 };
+// Three games share this engine: "Story games" (vn) has the drawn stories, "Painted stories" (vn2) only the ones with painted art,
+// and "Story films" (vn3) plays the first five painted stories by themselves, like a film, with the bottom screen as the remote.
+const vnInV2 = () => typeof route !== "undefined" && (route.view === "vn2" || route.view === "vn3");
+const vnList = () => { const l = VNA.stories.filter(x => (x.art === "v2") === vnInV2()); return vnFilm() ? l.slice(0, 5) : l; };
+const vnHere = v => v === "vn" || v === "vn2" || v === "vn3";
+const vnPrefKey = () => vnFilm() ? "story3" : vnInV2() ? "story2" : "story";
+let vnMode = "";
+function vnEnsure() {   // coming into a game: load that game's current story
+  if (VNA && VND && (!vnList().includes(VND) || vnMode !== route.view)) { vnMode = route.view; vnLoad(vnP[vnPrefKey()]); vn.st = "stories"; vn.spick = Math.max(0, vnList().indexOf(VND)); }
 }
 function vnLoad(id) {
   VND = vnList().find(x => x.id === id) || VNA.stories.find(x => x.id === id && (x.art === "v2") === vnInV2()) || vnList()[0] || VNA.stories[0];
   const saved = store.get(vnSlot(VND.id), {}) || {};
   vs = Object.assign({ ci: 0, i: 0, flags: {}, items: [], show: [], scene: "", dark: false, done: [], started: false, lastCh: 0, expr: {}, clues: [], miss: 0, amb: "" }, (saved.v ? saved.v !== VND.v : VND.resetOld && saved.started) ? {} : saved, { v: VND.v });   // a rewritten story starts fresh
-  vnP[VND.art === "v2" ? "story2" : "story"] = VND.id;
+  vnP[typeof route !== "undefined" ? vnPrefKey() : "story"] = VND.id;
+  VF.hist = []; VF.seen = new Set();
   try { vn.lock = null; } catch (e) {}   // (vnLoad also runs once at start-up, before vn exists)
 }
 if (VNA) vnLoad(vnP.story);
@@ -6527,13 +6534,13 @@ function vnStep() {
     else if (x.sfx) { vnSfxPlay(x.sfx, .9); }
     else if (x.lock) {   // a number lock: type the code on the keypad
       if (!vn.line) { for (let j = vs.i - 1; j >= 0; j--) if (L[j].hi) { vn.line = L[j]; break; } }
-      vs.lastCh = vs.i; vn.choice = null; vn.lock = { code: x.lock.code, go: x.lock.go, bad: x.lock.bad, v: "" }; vn.wi = -1; vnSaveNow(); render(); return; }
+      vs.lastCh = vs.i; vn.choice = null; vn.lock = { code: x.lock.code, go: x.lock.go, bad: x.lock.bad, v: "" }; vn.wi = -1; vnSaveNow(); render(); if (vnFilm()) vnFilmAfter(1200); return; }
     else if (x.ev) {   // show a clue from the notebook
       if (!vn.line) { for (let j = vs.i - 1; j >= 0; j--) if (L[j].hi) { vn.line = L[j]; break; } }
       if (!vs.clues.some(c => c.id === x.ev.ok)) { const def = VND.chapters.flatMap(c => c.lines).find(y => y.clue && y.clue.id === x.ev.ok); if (def) vs.clues.push(def.clue); }   // never stuck without the clue you need
-      vn.map = false; vs.lastCh = vs.i; vn.choice = vs.clues.map(c => ({ hi: c.hi, en: c.en, go: c.id === x.ev.ok ? x.ev.go : x.ev.bad, ev: 1 })); vn.sel = 0; vn.wi = -1; vn.notesOpen = false; vnSaveNow(); render(); return; }
+      vn.map = false; vs.lastCh = vs.i; vn.choice = vs.clues.map(c => ({ hi: c.hi, en: c.en, go: c.id === x.ev.ok ? x.ev.go : x.ev.bad, ev: 1 })); vn.sel = 0; vn.wi = -1; vn.notesOpen = false; vnSaveNow(); render(); if (vnFilm()) vnFilmAfter(1200); return; }
     else if (x.ch) { if (!vn.line) { for (let j = vs.i - 1; j >= 0; j--) if (L[j].hi) { vn.line = L[j]; break; } }   // coming back to a choice: show what led to it
-      vs.lastCh = vs.i; vn.choice = x.ch.filter(o => vnOk(o.if)); vn.map = !!(x.map || x.look); vn.look = x.look || ""; vn.sel = 0; vn.wi = -1; vnSaveNow(); render(); vnSayChoice(); return; }
+      vs.lastCh = vs.i; vn.choice = x.ch.filter(o => vnOk(o.if)); vn.map = !!(x.map || x.look); vn.look = x.look || ""; vn.sel = 0; vn.wi = -1; vnSaveNow(); render(); if (vnFilm()) vnFilmAfter(vn.map ? 1800 : 600); else vnSayChoice(); return; }
     else if (x.hi) { vn.line = x; vn.choice = null; vn.echo = null; vn.wi = -1; vnSaveNow(); vnShow(); return; }
     vs.i++;
   }
@@ -6547,6 +6554,7 @@ function vnShow() {
   if (x.w !== "~" && x.w !== "andy" && !texter && vn.focus !== x.w) vn.enter[x.w] = Date.now();   // a new face slides in
   if (x.w !== "~") vn.met[x.w] = 1;   // people step in when they first speak
   vn.log.push({ w: x.w, hi: x.hi, en: x.en }); if (vn.log.length > 60) vn.log.shift();
+  if (vnFilm()) { VF.hist.push({ vs: JSON.parse(JSON.stringify(vs)), line: x, echo: vn.echo }); if (VF.hist.length > 300) VF.hist.shift(); }
   vn.fresh = true; vn.drT = x.dr ? Date.now() : 0; render(); if (x.dr) vnSting(); vnSpeak(x);
 }
 let vnSfx = null, vnMus = null;
@@ -6572,9 +6580,10 @@ function vnAmbience(on) {   // the train's rumble and clatter under the music
 }
 function vnSting() { try { if (!vnSfx) vnSfx = new Audio("sfx/sting.m4a"); vnSfx.currentTime = 0; vnSfx.volume = .85; vnSfx.play().catch(() => {}); } catch (e) {} }
 function vnSpeak(x) {
-  const c = VND.cast[x.w] || VND.cast["~"];
+  const c = VND.cast[x.w] || VND.cast["~"], film = vnFilm(), tok = ++VF.tok, t0 = Date.now();
   vn.talking = true; vnTalkClass();
-  speak(x.hi, { voice: c[2], shift: c[3], pitch: c[2] === "m" ? c[3] * .78 : c[3], onend: () => { vn.talking = false; vnTalkClass(); } });
+  speak(x.hi, { voice: c[2], shift: c[3], pitch: c[2] === "m" ? c[3] * .78 : c[3], rate: film ? settings.rate * (vnP.fspd || 1) : undefined,
+    onend: () => { vn.talking = false; vnTalkClass(); if (film && tok === VF.tok) vnFilmAfter(Math.max(0, x.hi.length * 60 - (Date.now() - t0))); } });   // (a line with no voice still gets its time on screen)
 }
 function vnSayChoice() { const o = vn.choice && vn.choice[vn.sel]; if (o) speak(o.hi, { voice: "m" }); }
 function vnTalkClass() {   // mouths move while the line plays, without redrawing the page
@@ -6611,7 +6620,7 @@ function vnChEnd() {
   if (!vs.done.includes(vs.ci)) vs.done.push(vs.ci);
   stopPlayer(); vn.line = null; vn.choice = null; vn.talking = false;
   vn.st = vs.ci === VND.chapters.length - 1 ? "fin" : "chend"; vn.pick = 0;
-  vnSaveNow(); render();
+  vnSaveNow(); render(); if (vnFilm()) vnFilmAfter(vn.st === "fin" ? 5000 : 2500);
 }
 function vnGoChapter(ci) {
   stopPlayer(); vn.lock = null;
@@ -6639,6 +6648,97 @@ function vnWord(i) {
   }
   render();
 }
+/* ---------- 🎬 Story films: the story plays itself; the bottom screen is the remote ---------- */
+// It takes the right turn at every choice (a wrong answer's branch ends in @retry, so those are skipped), visits every place on a map,
+// shows the right clue and types the right code. Each line it shows is remembered, so ⏮ can step back through the story.
+function vnFilmAfter(extra) {   // after a line (or a pause on a map, a choice, a chapter's end): the next thing, unless paused
+  clearTimeout(VF.t);
+  if (VF.paused || !vnFilm()) return;
+  VF.t = setTimeout(() => { if (!VF.paused && vnFilm()) vnFilmGo(); }, (VF_GAPS[vnP.fgap] || 800) + (extra || 0));
+}
+const vnFilmBad = lb => { const L = vnCh().lines; for (let j = vnLabel(lb) + 1; j < L.length; j++) { const y = L[j]; if (y.retry) return true; if (y.lb || y.end || y.ch || y.ev || y.lock || y.go) return false; } return false; };
+function vnFilmGo() {
+  clearTimeout(VF.t);
+  if (vn.st === "chend") return vnGoChapter(vs.ci + 1);
+  if (vn.st === "fin") {   // on to the next film, or the end of them all
+    const nx = vnList()[vnList().indexOf(VND) + 1];
+    if (!nx) { VF.paused = true; return render(); }
+    vnLoad(nx.id); vnSaveNow(); return vnNew();
+  }
+  if (vn.st !== "play") return;
+  if (vn.lock) { vn.lock.v = vn.lock.code; return vnKeypad("ok"); }
+  if (vn.choice) {
+    let k;
+    if (vn.choice[0] && vn.choice[0].ev) k = vn.choice.findIndex(o => o.go === vnCh().lines[vs.lastCh].ev.go);
+    else {   // places and things to look at: each one once (a stop you can always go back to, like the chai stall, just the first time)
+      const seen = o => VF.seen.has(VND.id + ":" + vs.ci + ":" + o.go), ok = o => !vnFilmBad(o.go) && !(o.done && vs.flags[o.done]);
+      k = vn.choice.findIndex(o => ok(o) && !seen(o)); if (k < 0) k = vn.choice.findIndex(ok); if (k < 0) k = vn.choice.findIndex(o => !vnFilmBad(o.go));
+      if (k >= 0) VF.seen.add(VND.id + ":" + vs.ci + ":" + vn.choice[k].go);
+    }
+    vn.sel = Math.max(0, k); return vnPick(vn.sel);
+  }
+  vnNext();
+}
+function vnFilmPause(p) {
+  VF.paused = p; clearTimeout(VF.t);
+  if (p) { VF.tok++; stopPlayer(); vn.talking = false; vnTalkClass(); return render(); }
+  render();
+  if (vn.st === "play" && vn.line && !vn.choice && !vn.lock) vnSpeak(vn.line); else vnFilmAfter(0);
+}
+function vnFilmPrev() {   // back one line: put the story back as it was then, and play that line again
+  clearTimeout(VF.t);
+  if (vn.st === "play" && VF.hist.length) VF.hist.pop();
+  const h = VF.hist.pop();
+  if (!h) { if (vn.line) vnSpeak(vn.line); return; }
+  stopPlayer(); vs = h.vs; vn.st = "play"; vn.choice = null; vn.lock = null; vn.map = false; vn.echo = h.echo; vn.line = h.line; vn.sceneT = Date.now(); vn.chT = 0;
+  vnShow();
+}
+function vnFilmNext() { clearTimeout(VF.t); VF.tok++; stopPlayer(); vnFilmGo(); }
+function vnFilmKey(k, i) {   // the remote's buttons and the D-pad while a film plays; true when it's been dealt with
+  if (k === "vnstory") { stopPlayer(); vnLoad(vnList()[+i].id); vnSaveNow(); VF.paused = false; vnContinue(); return true; }
+  if (k === "vnplay" || k === "vnchap" || k === "vnnew" || k === "vnnextch") { VF.paused = false; return false; }
+  if (k === "vnmenu" || k === "vnstories" || k === "vnexit") { clearTimeout(VF.t); VF.tok++; return false; }
+  if (k === "vfpause") { vnFilmPause(!VF.paused); return true; }
+  if (k === "vfprev") { vnFilmPrev(); return true; }
+  if (k === "vfnext") { vnFilmNext(); return true; }
+  if (k === "vfagain") { clearTimeout(VF.t); if (vn.line && vn.st === "play") vnSpeak(vn.line); return true; }
+  if (k === "vfch") { const ci = vs.ci + +i; if (ci >= 0 && ci < VND.chapters.length) { VF.paused = false; vnGoChapter(ci); } return true; }
+  if (k === "vfspd") { vnP.fspd = Math.round(Math.max(.6, Math.min(1.4, (vnP.fspd || 1) + +i * .1)) * 10) / 10; vnSaveNow(); render(); return true; }
+  if (k === "vfgap") { vnP.fgap = String(i); vnSaveNow(); render(); return true; }
+  if (k === "vfsub") { vnP.fsub = ((vnP.fsub || 0) + 1) % 3; vnSaveNow(); render(); return true; }
+  return false;
+}
+function vnFilmPad(k) {   // the D-pad, already turned with the console
+  const m = { a: "vfpause", left: "vfprev", right: "vfnext", x: "vfagain", y: "vfsub" }[k];
+  if (m) return vnFilmKey(m);
+  if (k === "l1" || k === "r1") return vnFilmKey("vfch", k === "l1" ? -1 : 1);
+  if (k === "up" || k === "down") return vnFilmKey("vfspd", k === "up" ? 1 : -1);
+  if (k === "b" || k === "start" || k === "select") { vnKey("vnmenu"); return true; }
+  return false;
+}
+function vnFilmRemote(A) {
+  const x = vn.st === "play" ? vn.line : null, c = x ? VND.cast[x.w] || VND.cast["~"] : null, n = VND.chapters.length;
+  const pct = Math.round((vs.ci + (vn.st === "play" ? vs.i / Math.max(1, vnCh().lines.length) : 1)) / n * 100);
+  const last = vn.st === "fin" && !vnList()[vnList().indexOf(VND) + 1];
+  const now = vn.st === "chend" ? `<b>अध्याय ${vs.ci + 1} समाप्त</b><small>Chapter ${vs.ci + 1} done · the next one starts in a moment</small>`
+    : vn.st === "fin" ? (last ? `<b>समाप्त</b><small>The End. That was the last film.</small>` : `<b>समाप्त</b><small>The End · the next film starts in a moment</small>`)
+    : vn.choice ? `<b>${vn.map ? "📍" : vn.lock ? "🔢" : "🤔"}</b><small>${vn.map ? "Choosing where to go…" : "Choosing…"}</small>`
+    : x ? `<b>${x.w === "~" ? "💭 मन में" : esc(c[0])}</b><small>${x.w === "~" ? "Andy thinks" : esc(c[1])}</small>` : `<small>…</small>`;
+  const sub = x && vnP.fsub ? `<div class="vf-sub"><span lang="hi">${esc(x.hi)}</span>${vnP.fsub === 2 ? `<small>${esc(x.en)}</small>` : ""}</div>` : "";
+  const gap = vnP.fgap || "normal";
+  return `<div class="vn-bar"><button ${A("vnmenu")} title="Menu">☰</button><b>🎬 ${esc(VND.title[0])}</b><span class="vn-sp"></span><span class="vn-pct">${vnList().indexOf(VND) + 1}/${vnList().length} · ${pct}%</span><button class="${vnP.music ? "on" : ""}" ${A("vnmusic")} title="Music">🎵</button></div>
+    <div class="vn-body vf">
+      <div class="vf-ch"><button ${A("vfch", -1)} ${vs.ci ? "" : "disabled"}>⏪</button><div><b lang="hi">अध्याय ${vs.ci + 1}: ${esc(vnCh().title)}</b><small>Chapter ${vs.ci + 1} of ${n} · ${esc(vnCh().titleEn)}</small></div><button ${A("vfch", 1)} ${vs.ci < n - 1 ? "" : "disabled"}>⏩</button></div>
+      <div class="vf-bar"><i style="width:${pct}%"></i>${VND.chapters.map((_, j) => j ? `<em style="left:${j / n * 100}%"></em>` : "").join("")}</div>
+      <div class="vf-now ${VF.paused ? "paused" : ""}">${now}</div>
+      <div class="vf-main"><button ${A("vfprev")} title="Previous sentence">⏮<small>Back</small></button><button class="vf-play" ${A("vfpause")}>${VF.paused ? "▶" : "❚❚"}<small>${VF.paused ? "Play" : "Pause"}</small></button><button ${A("vfnext")} title="Next sentence">⏭<small>Skip</small></button></div>
+      <div class="vf-row"><button ${A("vfagain")}>🔁 Again</button><button class="${vnP.fsub ? "on" : ""}" ${A("vfsub")}>💬 ${["Words off", "हिंदी", "हिंदी + English"][vnP.fsub || 0]}</button></div>
+      <div class="vf-row"><span>Voice</span><button ${A("vfspd", -1)}>−</button><b>${(vnP.fspd || 1).toFixed(1)}×</b><button ${A("vfspd", 1)}>+</button><span>Gap</span>${["short", "normal", "long"].map(g => `<button class="${gap === g ? "on" : ""}" ${A("vfgap", g)}>${g}</button>`).join("")}</div>
+      ${sub}
+      <p class="vn-note">Ⓐ play/pause · ◀ ▶ back/skip a line · L R chapter · ▲▼ voice speed · Ⓧ again · Ⓨ words · Ⓑ menu</p>
+    </div>`;
+}
+
 /* ---------- word breakdown: the letters and their sounds, and the word's base + ending ---------- */
 let vnABC = null;
 function vnLetters() {
@@ -6753,6 +6853,7 @@ function vnMenuItems() {
 function vnKey(k, i) {
   if (!VNA) { if (k === "b") go("games"); return; }
   vnEnsure();
+  if (vnFilm() && vnFilmKey(k, i)) return;
   if (k === "vnw") return vnWord(+i);
   if (k === "vnlv") return vnLevel(+i);
   if (k === "vnch") { vn.sel = +i; return vnPick(+i); }
@@ -6775,6 +6876,7 @@ function vnKey(k, i) {
   if (k === "vnnotes") { vn.notesOpen = !vn.notesOpen; vn.logOpen = false; return render(); }
   if (k === "vnnextch") return vnGoChapter(vs.ci + 1);
   if (vnTurned() && VN_TURN[vnP.rot][k]) k = VN_TURN[vnP.rot][k];   // the D-pad turns with the console
+  if (vnFilm() && (vn.st === "play" || vn.st === "chend" || vn.st === "fin") && !vn.logOpen && !vn.notesOpen && vnFilmPad(k)) return;
   if (vn.st === "stories") {
     const n = vnList().length + 1;   // the stories, then "← Games"
     if (k === "up" || k === "down") { vn.spick = (vn.spick + (k === "down" ? 1 : -1) + n) % n; return render(); }
@@ -6813,8 +6915,8 @@ function viewVn() {
   vnEnsure();
   setTimeout(vnMusic, 0);
   if (!VNA) return `<div class="empty">The stories aren't in this build.</div>`;
-  if (DUAL) return `<div class="vn-wrap vn-${vnP.rot} mood-${VND.mood}"><div class="vn-rot"><div class="vn-page vn-left ${vn.st === "play" ? "film" : ""}">${vnLeft()}</div></div></div>`;
-  return `<div class="vn-wrap vn-flat vn-two mood-${VND.mood}"><div class="vn-page vn-left ${vn.st === "play" ? "film" : ""}">${vnLeft()}</div><div class="vn-page vn-right">${vnRight(false)}</div></div>`;
+  if (DUAL) return `<div class="vn-wrap vn-${vnP.rot} mood-${VND.mood}"><div class="vn-rot"><div class="vn-page vn-left ${vn.st === "play" ? "film" : ""}">${vnLeft()}${vnFilm() && VF.paused && vn.st === "play" ? `<div class="vf-paused">❚❚</div>` : ""}</div></div></div>`;
+  return `<div class="vn-wrap vn-flat vn-two mood-${VND.mood}"><div class="vn-page vn-left ${vn.st === "play" ? "film" : ""}">${vnLeft()}${vnFilm() && VF.paused && vn.st === "play" ? `<div class="vf-paused">❚❚</div>` : ""}</div><div class="vn-page vn-right">${vnRight(false)}</div></div>`;
 }
 function vnBottom() {
   vnEnsure(); return { type: "vn", css: VN_CSS, html: `<div class="vn-wrap vn-${vnP.rot} mood-${VND.mood}"><div class="vn-rot"><div class="vn-page vn-right">${vnRight(true)}</div></div></div>` }; }
@@ -6878,6 +6980,7 @@ function vnRight(bottom) {
       <p class="vn-note">${DUAL ? "Turn the Thor on its side and hold it like a book. Ⓐ next · tap a word to learn it · Ⓨ English · Ⓧ hear again" : "Ⓐ / Enter next · tap a word to learn it"}</p>
       <div class="vn-menu">${items.map((it, j) => `<button class="${j === vn.pick ? "cur" : ""} ${it[0] === "vnchap" ? "ch" : ""}" ${A(it[0], it[1])} ${it[2] ? "disabled" : ""}>${label(it)}</button>`).join("")}</div></div>`;
   }
+  if ((vn.st === "chend" || vn.st === "fin") && vnFilm()) return vnFilmRemote(A);
   if (vn.st === "chend" || vn.st === "fin") {
     const nx = VND.chapters[vs.ci + 1];
     return bar(`<b>${VND.ico} ${esc(VND.title[0])}</b><span class="vn-sp"></span><button ${A("vnmenu")}>☰</button>`) + `<div class="vn-body vn-end">
@@ -6889,6 +6992,7 @@ function vnRight(bottom) {
       ${nx ? `<button class="vn-big" ${A("vnnextch")}>अध्याय ${vs.ci + 2}: <span lang="hi">${esc(nx.title)}</span> ▶<small>${esc(nx.titleEn)}</small></button>` : `<button class="vn-big" ${A("vnmenu")}>☰ Menu</button>`}
       <p class="vn-note">Ⓐ ${nx ? "next chapter" : "menu"} · Ⓑ menu</p></div>`;
   }
+  if (vnFilm()) return vnFilmRemote(A);
   const pct = Math.round((vs.ci + vs.i / Math.max(1, vnCh().lines.length)) / VND.chapters.length * 100);
   const items = vs.items.map(it => ({ photo: "🖼️", letter: "✉️" })[it] || "").join("");
   const top = bar(`<button ${A("vnmenu")} title="Menu">☰</button>${VND.rank ? `<button class="${vn.notesOpen ? "on" : ""}" ${A("vnnotes")} title="Notebook">📓 ${vs.clues.length}</button>` : ""}<span class="vn-items">${items}</span><span class="vn-sp"></span><span class="vn-pct">${pct}%</span><button class="${vnP.music ? "on" : ""}" ${A("vnmusic")} title="Music">🎵 ${vnP.music ? "On" : "Off"}</button><button ${A("vnrot")} title="Turn">🔄</button>`);
@@ -7881,6 +7985,22 @@ const VN_CSS = `
 .vn-title h1 { font-family: var(--f-display); font-size: 2.6rem; margin: 0; color: var(--vn-red); line-height: 1.1; }
 .vn-title p { margin: 0; font-family: Georgia, serif; font-style: italic; font-size: 1.2rem; letter-spacing: .08em; }
 .vn-title small { opacity: .75; }
+.vn-left { position: relative; }
+.vf-paused { position: absolute; top: 44px; right: 14px; z-index: 30; background: rgba(0,0,0,.55); color: #fff; font-size: 1.6rem; padding: 4px 14px; border-radius: 10px; }
+.vn-body.vf { gap: 10px; padding: 10px 12px; }
+.vf button { background: rgba(255,255,255,.45); border: 1px solid rgba(43,33,24,.35); border-radius: 10px; padding: 6px 12px; color: var(--vn-ink); font: inherit; cursor: pointer; }
+.vf button.on { background: var(--vn-ink); color: var(--vn-paper); } .vf button:disabled { opacity: .3; }
+.vf-ch { display: flex; align-items: center; gap: 8px; } .vf-ch > div { flex: 1; text-align: center; display: grid; } .vf-ch b { font-family: var(--f-display); font-size: 1.2rem; } .vf-ch small { opacity: .7; }
+.vf-ch button { font-size: 1.4rem; padding: 6px 14px; }
+.vf-bar { position: relative; height: 10px; border-radius: 5px; background: rgba(43,33,24,.15); overflow: hidden; flex: none; }
+.vf-bar i { position: absolute; inset: 0 auto 0 0; background: var(--vn-red); } .vf-bar em { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--vn-paper); }
+.vf-now { display: grid; justify-items: center; text-align: center; min-height: 3.2em; } .vf-now b { font-family: var(--f-display); font-size: 1.5rem; } .vf-now small { opacity: .7; } .vf-now.paused { opacity: .55; }
+.vf-sub { background: rgba(255,255,255,.5); border-radius: 12px; padding: 8px 12px; text-align: center; } .vf-sub span { font-family: var(--f-display); font-size: 1.35rem; display: block; } .vf-sub small { opacity: .75; }
+.vf-main { display: flex; gap: 10px; justify-content: center; align-items: stretch; flex: none; }
+.vf-main button { flex: 1; display: grid; justify-items: center; font-size: 2rem; padding: 10px 0; border-radius: 16px; }
+.vf-main button small { font-size: .85rem; opacity: .75; }
+.vf-main .vf-play { flex: 1.4; background: var(--vn-ink); color: var(--vn-paper); font-size: 2.4rem; }
+.vf-row { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; } .vf-row > span { opacity: .7; font-size: .9rem; } .vf-row b { min-width: 2.6em; text-align: center; }
 .vn-bar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px dashed rgba(43,33,24,.35); font-size: .95rem; flex: none; }
 .vn-bar b { font-family: var(--f-display); font-size: 1.1rem; }
 .vn-bar button, .vn-tools button, .vn-word button, .vn-log > button { background: rgba(255,255,255,.4); border: 1px solid rgba(43,33,24,.35); border-radius: 8px; padding: 3px 10px; color: var(--vn-ink); font: inherit; cursor: pointer; }
@@ -7979,6 +8099,8 @@ if (VNA && !FR) {
   if (VNA.stories.some(x => x.art === "v2")) {
     GAMES.splice(1, 0, ["vn2", "🎨", "नई कहानियाँ", "Painted stories", "The story games in the new painted style. Starts with Hotel Chandni, repainted."]);
     GAME_VIEWS.push("vn2");
+    GAMES.splice(2, 0, ["vn3", "🎬", "कहानी फ़िल्में", "Story films", "The first five painted stories play by themselves, like a film: just watch and listen. The bottom screen is the remote: pause, back a sentence, skip, chapters, voice speed and optional subtitles."]);
+    GAME_VIEWS.push("vn3");
   }
   try { const st = document.createElement("style"); st.textContent = VN_CSS; document.head.appendChild(st); } catch (e) {}
 }
