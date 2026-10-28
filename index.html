@@ -3527,6 +3527,7 @@ document.addEventListener("click", e => {
     case "aioff": aiForget(); break;
     case "adbwifi": adbToggle(); break;
     case "bdim": settings.bdim = Math.max(0, Math.min(.85, Math.round(((settings.bdim || 0) + (+t.dataset.d || 0)) * 100) / 100)); store.set("settings", settings); render(); break;
+    case "dimtop": settings.dimTop = settings.dimTop === false; store.set("settings", settings); render(); break;
     case "adbrefresh": render(); break;
     case "adbready": adbReady(); break;
     case "ttssetup": try { NATIVE.openTtsSetup(); } catch (e) { toast("Install “Speech Services by Google” from the Play Store."); } break;
@@ -4829,12 +4830,18 @@ async function rmxSave(res, pick) {
 
 /* ===================== Thor: Wireless debugging ===================== */
 function adbInfo() { try { return JSON.parse(NATIVE.adbInfo()); } catch (e) { return null; } }
-// The Thor's brightness slider only reaches the top screen, so the app dims the bottom screen itself.
+// The Thor's brightness slider only reaches the top screen, so the app dims its screens itself: both together, or just the bottom one.
 function dimCard() {
-  const d = settings.bdim || 0, pct = Math.round((1 - d) * 100);
-  return `<div class="set-card"><h3>🔆 Bottom screen brightness</h3>
-    <p class="muted small">Android's brightness only changes the top screen. This dims the bottom one.</p>
-    <div class="set-row"><button class="btn" data-act="bdim" data-d="0.1" ${d >= .85 ? "disabled" : ""}>🔅 Darker</button><b style="min-width:4em;text-align:center">${pct}%</b><button class="btn" data-act="bdim" data-d="-0.1" ${d <= 0 ? "disabled" : ""}>🔆 Brighter</button></div></div>`;
+  const d = settings.bdim || 0, pct = Math.round((1 - d) * 100), both = settings.dimTop !== false;
+  return `<div class="set-card"><h3>🔆 Screen brightness</h3>
+    <p class="muted small">${both ? "Dims both screens together." : "Dims the bottom screen only (the top one follows Android's brightness)."} Android's own brightness only reaches the top screen.</p>
+    <div class="set-row"><button class="btn" data-act="bdim" data-d="0.1" ${d >= .85 ? "disabled" : ""}>🔅 Darker</button><b style="min-width:4em;text-align:center">${pct}%</b><button class="btn" data-act="bdim" data-d="-0.1" ${d <= 0 ? "disabled" : ""}>🔆 Brighter</button></div>
+    <div class="set-row"><button class="btn ${both ? "primary" : ""}" data-act="dimtop">${both ? "✓ " : ""}Top screen too</button></div></div>`;
+}
+function dimTop() {   // the same dimmer as the bottom screen's, over the top screen
+  let dm = document.getElementById("topdimmer");
+  if (!dm) { dm = document.createElement("div"); dm.id = "topdimmer"; dm.style.cssText = "position:fixed;inset:0;background:#000;pointer-events:none;z-index:2147483647;transition:opacity .3s"; document.body.appendChild(dm); }
+  dm.style.opacity = settings.dimTop === false ? 0 : settings.bdim || 0;
 }
 function adbCard() {
   if (!NATIVE || !NATIVE.adbInfo) return "";
@@ -8668,6 +8675,7 @@ var trOpen = -1;   // sentence whose English is shown on the bottom screen (Y)
 var pushQueued = false;
 if (DUAL) document.documentElement.classList.add("dual");
 function pushBottom() {
+  if (DUAL) dimTop();
   if (!DUAL || pushQueued) return;
   pushQueued = true;
   setTimeout(() => { pushQueued = false; try { NATIVE.send(JSON.stringify(bottomState())); } catch (e) { console.error(e); } }, 40);
@@ -8777,8 +8785,14 @@ function rScroll() {
   scrollBy(0, Math.sign(rAxis) * Math.pow(Math.abs(rAxis), 1.6) * 16);   // gentle near the middle, fast when pushed all the way
   rScrollRaf = requestAnimationFrame(rScroll);
 }
+let padBack = "library";
 window.__pad = k => {
   const v = route.view;
+  if (k === "start") {   // Start opens Settings from anywhere; Start again goes back to where you were
+    if (v === "settings") go(padBack);
+    else { if (v === "vn3" && typeof vnFilmPause === "function") vnFilmPause(true); padBack = v; go("settings"); }
+    return;
+  }
   if (v === "reader") {
     const L = currentLesson();
     const curSi = sel ? sel.si : player.si;
